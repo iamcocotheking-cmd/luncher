@@ -1,8 +1,19 @@
 package net.kdt.pojavlaunch.ui
 
+import android.media.AudioManager
+import android.media.MediaPlayer
+import android.media.ToneGenerator
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.view.SoundEffectConstants
+import android.view.View
+import android.view.ViewGroup
+import android.widget.VideoView
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -11,6 +22,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +55,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,11 +66,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +81,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import net.kdt.pojavlaunch.R
 import net.kdt.pojavlaunch.ui.theme.DurbinAccentOrange
 import net.kdt.pojavlaunch.ui.theme.DurbinBackground
@@ -81,6 +102,10 @@ import net.kdt.pojavlaunch.ui.theme.DurbinTheme
 
 private enum class DurbinDialog {
     NONE, VERSIONS, LAUNCH_MODE, COMING_SOON
+}
+
+private enum class DurbinSound {
+    CLICK, LAUNCH, POPUP
 }
 
 private data class LaunchModeOption(
@@ -112,7 +137,17 @@ fun DurbinDashboardHost(callbacks: DurbinMenuCallbacks) {
 @Composable
 private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
     var activeDialog by remember { mutableStateOf(DurbinDialog.NONE) }
+    var contentVisible by remember { mutableStateOf(false) }
+    val entryProgress by animateFloatAsState(
+        targetValue = if (contentVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 520),
+        label = "dashboardEntry"
+    )
     val isLandscape = LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
+
+    LaunchedEffect(Unit) {
+        contentVisible = true
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(DurbinBackground)) {
         DurbinCosmicBackground()
@@ -121,6 +156,10 @@ private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .graphicsLayer {
+                    alpha = entryProgress
+                    translationY = (1f - entryProgress) * 42f
+                }
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -146,7 +185,7 @@ private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         DurbinAccountCard(callbacks)
-                        DurbinQuickActions(callbacks) { activeDialog = DurbinDialog.VERSIONS }
+                        DurbinQuickActions(callbacks) { activeDialog = DurbinDialog.LAUNCH_MODE }
                         DurbinFooter()
                     }
                 }
@@ -154,7 +193,7 @@ private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
                 DurbinHeroCard(callbacks) { activeDialog = DurbinDialog.LAUNCH_MODE }
                 DurbinLaunchButton(callbacks.onLaunch)
                 DurbinAccountCard(callbacks)
-                DurbinQuickActions(callbacks) { activeDialog = DurbinDialog.VERSIONS }
+                DurbinQuickActions(callbacks) { activeDialog = DurbinDialog.LAUNCH_MODE }
                 DurbinFooter()
             }
         }
@@ -183,6 +222,89 @@ private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
 
 @Composable
 private fun DurbinCosmicBackground() {
+    Box(modifier = Modifier.fillMaxSize()) {
+        DurbinVideoBackground()
+        DurbinAnimatedBackgroundOverlay()
+    }
+}
+
+@Composable
+private fun DurbinVideoBackground() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val videoUri = remember(context) {
+        Uri.parse("android.resource://${context.packageName}/${R.raw.durbin_background}")
+    }
+    var videoView by remember { mutableStateOf<VideoView?>(null) }
+
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { ctx ->
+            VideoView(ctx).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                setVideoURI(videoUri)
+                setOnPreparedListener { player ->
+                    player.isLooping = true
+                    player.setVolume(0f, 0f)
+                    try {
+                        player.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
+                    } catch (_: Throwable) {
+                        // Some devices ignore this; the dark overlay still keeps the UI clean.
+                    }
+                    start()
+                }
+                setOnErrorListener { _, _, _ -> true }
+                videoView = this
+            }
+        },
+        update = { view ->
+            if (!view.isPlaying) {
+                try {
+                    view.start()
+                } catch (_: Throwable) {
+                    // Keep launcher usable even if the video decoder fails.
+                }
+            }
+        }
+    )
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    try {
+                        if (videoView?.isPlaying != true) videoView?.start()
+                    } catch (_: Throwable) {
+                        // Keep launcher usable if video playback is unavailable.
+                    }
+                }
+                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
+                    try {
+                        if (videoView?.isPlaying == true) videoView?.pause()
+                    } catch (_: Throwable) {
+                        // No-op.
+                    }
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            try {
+                videoView?.stopPlayback()
+            } catch (_: Throwable) {
+                // No-op.
+            }
+        }
+    }
+}
+
+@Composable
+private fun DurbinAnimatedBackgroundOverlay() {
     val transition = rememberInfiniteTransition(label = "cosmic")
     val phase by transition.animateFloat(
         initialValue = 0f,
@@ -195,12 +317,12 @@ private fun DurbinCosmicBackground() {
     )
 
     Canvas(modifier = Modifier.fillMaxSize()) {
+        drawRect(Color(0xB8050505))
         drawRect(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    Color(0xFF1B072C),
-                    Color(0xFF050505),
-                    Color(0xFF050505)
+                    Color(0x661B072C),
+                    Color.Transparent
                 ),
                 center = Offset(size.width * (0.3f + phase * 0.4f), size.height * 0.2f),
                 radius = size.maxDimension * 0.9f
@@ -209,22 +331,42 @@ private fun DurbinCosmicBackground() {
         drawRect(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    Color(0x402E1502),
+                    Color(0x552E1502),
                     Color.Transparent
                 ),
                 center = Offset(size.width * 0.85f, size.height * 0.75f),
                 radius = size.maxDimension * 0.55f
             )
         )
-        drawRect(Color(0x88050505))
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0x88000000),
+                    Color.Transparent,
+                    Color(0xCC000000)
+                )
+            )
+        )
     }
 }
 
 @Composable
 private fun DurbinTopBar(onSettings: () -> Unit, onAccounts: () -> Unit) {
+    val view = LocalView.current
+    val transition = rememberInfiniteTransition(label = "logoPulse")
+    val logoPulse by transition.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1600, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "logoPulseScale"
+    )
+
     GlassCard(modifier = Modifier.fillMaxWidth(), glowColor = DurbinOrangeGlow) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -238,22 +380,39 @@ private fun DurbinTopBar(onSettings: () -> Unit, onAccounts: () -> Unit) {
                 androidx.compose.foundation.Image(
                     painter = painterResource(R.drawable.durbin_logo),
                     contentDescription = "DURBIN",
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier
+                        .size(36.dp)
+                        .graphicsLayer {
+                            scaleX = logoPulse
+                            scaleY = logoPulse
+                        }
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(10.dp))
                 Text(
                     text = "DURBIN",
                     color = DurbinPrimaryText,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    letterSpacing = 2.sp
+                    fontSize = 19.sp,
+                    letterSpacing = 2.4.sp
                 )
             }
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = onSettings, modifier = Modifier.size(36.dp)) {
+            IconButton(
+                onClick = {
+                    playDurbinSound(view, DurbinSound.CLICK)
+                    onSettings()
+                },
+                modifier = Modifier.size(38.dp)
+            ) {
                 Icon(Icons.Default.Settings, contentDescription = "Settings", tint = DurbinSecondaryText)
             }
-            IconButton(onClick = onAccounts, modifier = Modifier.size(36.dp)) {
+            IconButton(
+                onClick = {
+                    playDurbinSound(view, DurbinSound.CLICK)
+                    onAccounts()
+                },
+                modifier = Modifier.size(38.dp)
+            ) {
                 Icon(Icons.Default.AccountCircle, contentDescription = "Accounts", tint = DurbinAccentOrange)
             }
         }
@@ -263,7 +422,7 @@ private fun DurbinTopBar(onSettings: () -> Unit, onAccounts: () -> Unit) {
 @Composable
 private fun DurbinHeroCard(callbacks: DurbinMenuCallbacks, onOpenLaunchMode: () -> Unit) {
     GlassCard(
-        modifier = Modifier.fillMaxWidth().clickable { onOpenLaunchMode() },
+        modifier = Modifier.fillMaxWidth().durbinClickable(DurbinSound.POPUP) { onOpenLaunchMode() },
         glowColor = DurbinOrangeGlow,
         borderColor = DurbinStrongBorderColor
     ) {
@@ -311,13 +470,26 @@ private fun DurbinHeroCard(callbacks: DurbinMenuCallbacks, onOpenLaunchMode: () 
                 DurbinStatTile("RENDERER", callbacks.getRenderer(), Modifier.weight(1f))
             }
             Row(
-                modifier = Modifier.fillMaxWidth().clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { onOpenLaunchMode() },
+                modifier = Modifier.fillMaxWidth().durbinClickable(DurbinSound.POPUP) { callbacks.onOpenVersions() },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Change launch mode", color = DurbinSecondaryText, fontSize = 12.sp)
+                Icon(Icons.Default.Menu, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Open saved profiles", color = DurbinSecondaryText, fontSize = 12.sp)
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = DurbinAccentOrange
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().durbinClickable(DurbinSound.POPUP) { onOpenLaunchMode() },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Outlined.Extension, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Create / change launch mode", color = DurbinSecondaryText, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -353,6 +525,17 @@ private fun DurbinStatTile(label: String, value: String, modifier: Modifier = Mo
 
 @Composable
 private fun DurbinLaunchButton(onLaunch: () -> Unit) {
+    val transition = rememberInfiniteTransition(label = "launchPulse")
+    val iconPulse by transition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "launchIconPulse"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -362,11 +545,26 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
                 Brush.horizontalGradient(listOf(DurbinLaunchGreenDark, DurbinLaunchGreen, DurbinLaunchGreenDark))
             )
             .glowOverlay(DurbinLaunchGreen.copy(alpha = 0.25f))
-            .clickable(onClick = onLaunch),
+            .durbinClickable(DurbinSound.LAUNCH, onClick = onLaunch),
         contentAlignment = Alignment.Center
     ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawCircle(
+                color = Color.White.copy(alpha = 0.10f),
+                radius = size.minDimension * iconPulse,
+                center = Offset(size.width * 0.5f, size.height * 0.5f)
+            )
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(28.dp))
+            Icon(
+                Icons.Default.PlayArrow,
+                contentDescription = null,
+                tint = Color.Black,
+                modifier = Modifier.size(28.dp).graphicsLayer {
+                    scaleX = iconPulse
+                    scaleY = iconPulse
+                }
+            )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = "LAUNCH MINECRAFT",
@@ -381,7 +579,7 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
 
 @Composable
 private fun DurbinAccountCard(callbacks: DurbinMenuCallbacks) {
-    GlassCard(modifier = Modifier.fillMaxWidth().clickable { callbacks.onOpenAccounts() }) {
+    GlassCard(modifier = Modifier.fillMaxWidth().durbinClickable { callbacks.onOpenAccounts() }) {
         Row(
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -427,12 +625,13 @@ private fun DurbinAccountCard(callbacks: DurbinMenuCallbacks) {
 @Composable
 private fun DurbinQuickActions(callbacks: DurbinMenuCallbacks, onVersions: () -> Unit) {
     val actions = listOf(
-        Triple("Versions", Icons.Outlined.Extension, onVersions),
+        Triple("Saved Profiles", Icons.Default.Menu, callbacks.onOpenVersions),
+        Triple("New Profile", Icons.Outlined.Extension, onVersions),
         Triple("Controls", Icons.Default.Gamepad, callbacks.onOpenControls),
         Triple("Directory", Icons.Default.Folder, callbacks.onOpenDirectory),
         Triple("Logs", Icons.Default.Share, callbacks.onShareLogs),
         Triple("Install JAR", Icons.Default.Storage, callbacks.onInstallJar),
-        Triple("Profile", Icons.AutoMirrored.Filled.KeyboardArrowRight, callbacks.onEditProfile)
+        Triple("Edit Profile", Icons.AutoMirrored.Filled.KeyboardArrowRight, callbacks.onEditProfile)
     )
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("QUICK ACTIONS", color = DurbinMutedText, fontSize = 11.sp, letterSpacing = 1.sp)
@@ -449,7 +648,7 @@ private fun DurbinQuickActions(callbacks: DurbinMenuCallbacks, onVersions: () ->
 
 @Composable
 private fun QuickActionCard(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    GlassCard(modifier = modifier.clickable(onClick = onClick)) {
+    GlassCard(modifier = modifier.durbinClickable(onClick = onClick)) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -476,30 +675,46 @@ private fun DurbinFooter() {
 @Composable
 private fun DurbinVersionsSheet(callbacks: DurbinMenuCallbacks, onClose: () -> Unit) {
     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Select Profile", color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Text("Tap to switch your active Minecraft profile.", color = DurbinSecondaryText, fontSize = 13.sp)
-        GlassCard(modifier = Modifier.fillMaxWidth().clickable {
-            callbacks.versionSpinner.performClick()
+        Text("Profiles & Versions", color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Text("Open your saved profiles, edit the current one, or create a new profile.", color = DurbinSecondaryText, fontSize = 13.sp)
+
+        GlassCard(modifier = Modifier.fillMaxWidth().durbinClickable(DurbinSound.POPUP) {
+            callbacks.onOpenVersions()
             onClose()
         }) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Menu, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Open saved profiles", color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold)
+                    Text("Switch to any profile you already saved", color = DurbinMutedText, fontSize = 12.sp)
+                }
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = DurbinAccentOrange)
+            }
+        }
+
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Current profile", color = DurbinMutedText, fontSize = 11.sp)
                     Text(callbacks.getProfileName(), color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold)
                     Text(callbacks.getVersionId(), color = DurbinAccentOrange, fontSize = 13.sp)
                 }
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = DurbinAccentOrange)
             }
         }
-        GlassCard(modifier = Modifier.fillMaxWidth().clickable {
+
+        GlassCard(modifier = Modifier.fillMaxWidth().durbinClickable {
             callbacks.onEditProfile()
             onClose()
         }) {
-            Text(
-                "Edit current profile",
-                color = DurbinPrimaryText,
-                modifier = Modifier.padding(16.dp)
-            )
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Edit current profile", color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold)
+                    Text("Change profile settings", color = DurbinMutedText, fontSize = 12.sp)
+                }
+            }
         }
     }
 }
@@ -545,8 +760,8 @@ private fun LaunchModeRow(mode: LaunchModeOption) {
         modifier = Modifier
             .fillMaxWidth()
             .then(
-                if (mode.enabled) Modifier.clickable { mode.onClick() }
-                else Modifier.clickable { mode.onClick() }
+                if (mode.enabled) Modifier.durbinClickable { mode.onClick() }
+                else Modifier.durbinClickable(DurbinSound.POPUP) { mode.onClick() }
             ),
         color = bg,
         shape = RoundedCornerShape(14.dp),
@@ -604,7 +819,7 @@ private fun DurbinComingSoonSheet(onClose: () -> Unit) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(DurbinAccentOrange)
-                .clickable(onClick = onClose)
+                .durbinClickable(onClick = onClose)
                 .padding(vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -615,9 +830,21 @@ private fun DurbinComingSoonSheet(onClose: () -> Unit) {
 
 @Composable
 private fun DurbinBottomSheet(onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    var visible by remember { mutableStateOf(false) }
+    val sheetProgress by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = 260),
+        label = "durbinSheetProgress"
+    )
+
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .graphicsLayer { alpha = sheetProgress }
             .background(Color.Black.copy(alpha = 0.75f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -629,6 +856,12 @@ private fun DurbinBottomSheet(onDismiss: () -> Unit, content: @Composable () -> 
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .graphicsLayer {
+                    alpha = sheetProgress
+                    translationY = (1f - sheetProgress) * 180f
+                    scaleX = 0.98f + (sheetProgress * 0.02f)
+                    scaleY = 0.98f + (sheetProgress * 0.02f)
+                }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -650,13 +883,81 @@ private fun GlassCard(
     borderColor: Color = DurbinBorderColor,
     content: @Composable () -> Unit
 ) {
+    val transition = rememberInfiniteTransition(label = "cardGlow")
+    val glowPulse by transition.animateFloat(
+        initialValue = 0.72f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "cardGlowPulse"
+    )
+
     Surface(
-        modifier = modifier.glowOverlay(glowColor),
-        color = DurbinCardBg,
+        modifier = modifier.glowOverlay(glowColor.copy(alpha = glowColor.alpha * glowPulse)),
+        color = DurbinCardBg.copy(alpha = 0.86f),
         shape = RoundedCornerShape(18.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
     ) {
         content()
+    }
+}
+
+@Composable
+private fun Modifier.durbinClickable(
+    sound: DurbinSound = DurbinSound.CLICK,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+): Modifier {
+    val view = LocalView.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 0.965f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "durbinPress"
+    )
+
+    return this
+        .graphicsLayer {
+            scaleX = pressScale
+            scaleY = pressScale
+        }
+        .clickable(
+            enabled = enabled,
+            interactionSource = interactionSource,
+            indication = null
+        ) {
+            playDurbinSound(view, sound)
+            onClick()
+        }
+}
+
+private fun playDurbinSound(view: View, sound: DurbinSound) {
+    try {
+        view.playSoundEffect(SoundEffectConstants.CLICK)
+    } catch (_: Throwable) {
+        // Sound effects can be disabled by the system.
+    }
+
+    if (sound == DurbinSound.LAUNCH || sound == DurbinSound.POPUP) {
+        val tone = ToneGenerator(AudioManager.STREAM_MUSIC, if (sound == DurbinSound.LAUNCH) 36 else 22)
+        val toneType = if (sound == DurbinSound.LAUNCH) ToneGenerator.TONE_PROP_BEEP else ToneGenerator.TONE_PROP_ACK
+        val duration = if (sound == DurbinSound.LAUNCH) 130 else 70
+        try {
+            tone.startTone(toneType, duration)
+        } catch (_: Throwable) {
+            tone.release()
+            return
+        }
+        Handler(Looper.getMainLooper()).postDelayed({
+            try {
+                tone.release()
+            } catch (_: Throwable) {
+                // No-op.
+            }
+        }, (duration + 60).toLong())
     }
 }
 

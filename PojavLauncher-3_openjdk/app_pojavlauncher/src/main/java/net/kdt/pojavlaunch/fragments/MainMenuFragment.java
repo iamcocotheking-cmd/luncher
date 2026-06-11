@@ -104,7 +104,7 @@ public class MainMenuFragment extends Fragment {
                     return kotlin.Unit.INSTANCE;
                 },
                 () -> {
-                    mVersionSpinner.performClick();
+                    openSavedProfiles();
                     return kotlin.Unit.INSTANCE;
                 },
                 () -> {
@@ -137,6 +137,15 @@ public class MainMenuFragment extends Fragment {
                 () -> LauncherPreferences.PREF_RENDERER,
                 this::getRuntimeLabel
         );
+    }
+
+    private void openSavedProfiles() {
+        if (mVersionSpinner == null) return;
+        mVersionSpinner.reloadProfiles();
+        mVersionSpinner.post(() -> {
+            if (!isAdded()) return;
+            mVersionSpinner.performClick();
+        });
     }
 
     private void openGameDirectory() {

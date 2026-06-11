@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.kdt.DefocusableScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_app">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/fragment_padding_medium">
+
+        <TextView
+            android:id="@+id/title_textview"
+            style="@style/TextAppearance.AppCompat.Title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="@dimen/padding_large"
+            android:text="@string/durbin_launch_mode_title" />
+
+        <View
+            android:id="@+id/view"
+            style="@style/ThickDivider"
+            android:layout_width="match_parent"
+            android:layout_marginTop="@dimen/padding_large" />
+
+        <com.kdt.mcgui.MineButton
+            android:id="@+id/vanilla_profile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_large"
+            android:layout_marginTop="@dimen/padding_large"
+            android:text="@string/durbin_launch_mode_vanilla" />
+
+        <com.kdt.mcgui.MineButton
+            android:id="@+id/modded_profile_fabric"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_large"
+            android:layout_marginTop="@dimen/padding_large"
+            android:text="@string/durbin_launch_mode_fabric" />
+
+        <com.kdt.mcgui.MineButton
+            android:id="@+id/modded_profile_forge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_large"
+            android:layout_marginTop="@dimen/padding_large"
+            android:text="@string/durbin_launch_mode_forge" />
+
+        <com.kdt.mcgui.MineButton
+            android:id="@+id/durbin_client_profile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_large"
+            android:layout_marginTop="@dimen/padding_large"
+            android:alpha="0.55"
+            android:enabled="false"
+            android:text="@string/durbin_launch_mode_durbin_coming_soon" />
+
+        <TextView
+            android:id="@+id/durbin_coming_soon_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_large"
+            android:layout_marginTop="@dimen/padding_small"
+            android:gravity="center"
+            android:text="@string/durbin_launch_mode_durbin_hint"
+            android:textColor="@color/secondary_text"
+            android:textSize="12sp" />
+
+        <!-- Advanced loaders kept accessible but collapsed from primary flow -->
+        <TextView
+            android:id="@+id/title_modded_textview"
+            style="@style/TextAppearance.AppCompat.Title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="@dimen/padding_extra_extra_large"
+            android:text="@string/create_profile_modded_versions" />
+
+        <View
+            android:id="@+id/view_modded"
+            style="@style/ThickDivider"
+            android:layout_width="match_parent"
+            android:layout_marginTop="@dimen/padding_large" />
+
+        <com.kdt.mcgui.MineButton
+            android:id="@+id/optifine_profile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_large"
+            android:layout_marginTop="@dimen/padding_large"
+            android:text="@string/create_profile_optifine" />
+
+        <com.kdt.mcgui.MineButton
+            android:id="@+id/modded_profile_quilt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_large"
+            android:layout_marginTop="@dimen/padding_large"
+            android:text="@string/modloader_dl_install_quilt" />
+
+        <com.kdt.mcgui.MineButton
+            android:id="@+id/modded_profile_modpack"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_large"
+            android:layout_marginTop="@dimen/padding_large"
+            android:text="@string/modpack_install_button" />
+
+        <com.kdt.mcgui.MineButton
+            android:id="@+id/modded_profile_bta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_large"
+            android:layout_marginTop="@dimen/padding_large"
+            android:layout_marginBottom="@dimen/padding_large"
+            android:text="@string/create_bta_profile" />
+
+    </LinearLayout>
+</com.kdt.DefocusableScrollView>

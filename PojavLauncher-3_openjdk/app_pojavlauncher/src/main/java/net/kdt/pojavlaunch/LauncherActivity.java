@@ -20,6 +20,9 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentContainerView;
 import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.ViewTreeLifecycleOwner;
+import androidx.lifecycle.ViewTreeViewModelStoreOwner;
+import androidx.savedstate.ViewTreeSavedStateRegistryOwner;
 
 import com.kdt.mcgui.ProgressLayout;
 import com.kdt.mcgui.mcAccountSpinner;
@@ -181,10 +184,37 @@ public class LauncherActivity extends BaseActivity {
         return false;
     }
 
+    /**
+     * The original Pojav UI is an old Fragment/View based screen. Compose needs
+     * ViewTree owners on the window root before any ComposeView is attached,
+     * otherwise Android can crash with "ViewTreeLifecycleOwner not found".
+     */
+    private void installComposeViewTreeOwners() {
+        View decorView = getWindow().getDecorView();
+        View contentView = findViewById(android.R.id.content);
+        View fragmentContainer = findViewById(R.id.container_fragment);
+
+        ViewTreeLifecycleOwner.set(decorView, this);
+        ViewTreeViewModelStoreOwner.set(decorView, this);
+        ViewTreeSavedStateRegistryOwner.set(decorView, this);
+
+        if (contentView != null) {
+            ViewTreeLifecycleOwner.set(contentView, this);
+            ViewTreeViewModelStoreOwner.set(contentView, this);
+            ViewTreeSavedStateRegistryOwner.set(contentView, this);
+        }
+        if (fragmentContainer != null) {
+            ViewTreeLifecycleOwner.set(fragmentContainer, this);
+            ViewTreeViewModelStoreOwner.set(fragmentContainer, this);
+            ViewTreeSavedStateRegistryOwner.set(fragmentContainer, this);
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pojav_launcher);
+        installComposeViewTreeOwners();
         FragmentManager fragmentManager = getSupportFragmentManager();
         // If we don't have a back stack root yet...
         if(fragmentManager.getBackStackEntryCount() < 1) {

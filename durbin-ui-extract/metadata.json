@@ -1,6 +1,0 @@
-{
-  "name": "DURBIN Launcher",
-  "description": "Premium glassmorphic Minecraft client launcher dashboard with high-fidelity UI presets, orange accents, and diagnostic monitoring.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

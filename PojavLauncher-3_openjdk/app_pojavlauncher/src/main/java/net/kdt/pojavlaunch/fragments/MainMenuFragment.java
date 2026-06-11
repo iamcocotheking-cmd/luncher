@@ -51,23 +51,59 @@ public class MainMenuFragment extends Fragment {
 
     private DurbinMenuCallbacks buildCallbacks() {
         return new DurbinMenuCallbacks(
-                () -> ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true),
-                () -> Tools.swapFragment(requireActivity(), LauncherPreferenceFragment.class,
-                        LauncherActivity.SETTING_FRAGMENT_TAG, null),
-                () -> startActivity(new Intent(requireContext(), CustomControlsActivity.class)),
-                () -> openGameDirectory(),
-                () -> shareLog(requireContext()),
-                () -> runInstallerWithConfirmation(false),
-                () -> ExtraCore.setValue(ExtraConstants.SELECT_AUTH_METHOD, true),
-                () -> mVersionSpinner.performClick(),
-                () -> mVersionSpinner.openProfileEditor(requireActivity()),
-                () -> Tools.swapFragment(requireActivity(), ProfileEditorFragment.class,
-                        ProfileEditorFragment.TAG, new Bundle(1)),
-                () -> Tools.swapFragment(requireActivity(), FabricInstallFragment.class,
-                        FabricInstallFragment.TAG, null),
-                () -> Tools.swapFragment(requireActivity(), ForgeInstallFragment.class,
-                        ForgeInstallFragment.TAG, null),
-                () -> { /* shown in Compose coming soon sheet */ },
+                () -> {
+                    ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true);
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    Tools.swapFragment(requireActivity(), LauncherPreferenceFragment.class,
+                            LauncherActivity.SETTING_FRAGMENT_TAG, null);
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    startActivity(new Intent(requireContext(), CustomControlsActivity.class));
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    openGameDirectory();
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    shareLog(requireContext());
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    runInstallerWithConfirmation(false);
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    ExtraCore.setValue(ExtraConstants.SELECT_AUTH_METHOD, true);
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    mVersionSpinner.performClick();
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    mVersionSpinner.openProfileEditor(requireActivity());
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    Tools.swapFragment(requireActivity(), ProfileEditorFragment.class,
+                            ProfileEditorFragment.TAG, new Bundle(1));
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    Tools.swapFragment(requireActivity(), FabricInstallFragment.class,
+                            FabricInstallFragment.TAG, null);
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
+                    Tools.swapFragment(requireActivity(), ForgeInstallFragment.class,
+                            ForgeInstallFragment.TAG, null);
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> kotlin.Unit.INSTANCE,
                 mVersionSpinner,
                 this::getCurrentProfileName,
                 this::getCurrentVersionId,

@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.compose.ui.platform.ComposeView;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewTreeLifecycleOwner;
 
 import com.kdt.mcgui.mcAccountSpinner;
 import com.kdt.mcgui.mcVersionSpinner;
@@ -44,8 +45,15 @@ public class MainMenuFragment extends Fragment {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        // PojavLauncher uses some legacy view containers that do not always install
+        // a ViewTreeLifecycleOwner automatically. ComposeView needs this owner to
+        // create its lifecycle-aware recomposer, otherwise the home screen can crash
+        // with: "ViewTreeLifecycleOwner not found".
+        ViewTreeLifecycleOwner.set(view, getViewLifecycleOwner());
+
         mVersionSpinner = view.findViewById(R.id.mc_version_spinner);
         ComposeView composeView = view.findViewById(R.id.durbin_compose_view);
+        ViewTreeLifecycleOwner.set(composeView, getViewLifecycleOwner());
         DurbinDashboardKt.setDurbinDashboardContent(composeView, buildCallbacks());
     }
 

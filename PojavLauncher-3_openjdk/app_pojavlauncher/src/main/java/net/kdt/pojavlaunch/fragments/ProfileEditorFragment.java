@@ -164,9 +164,13 @@ public class ProfileEditorFragment extends Fragment implements CropperUtils.Crop
         if(mTempProfile == null){
             mTempProfile = getProfile(profile);
         }
-        mProfileIcon.setImageDrawable(
-                ProfileIconCache.fetchIcon(getResources(), mProfileKey, mTempProfile.icon)
-        );
+        if(mTempProfile.icon == null || mTempProfile.icon.trim().isEmpty()) {
+            mProfileIcon.setImageResource(R.drawable.durbin_logo);
+        } else {
+            mProfileIcon.setImageDrawable(
+                    ProfileIconCache.fetchIcon(getResources(), mProfileKey, mTempProfile.icon)
+            );
+        }
 
         // Runtime spinner
         List<Runtime> runtimes = MultiRTUtils.getRuntimes();

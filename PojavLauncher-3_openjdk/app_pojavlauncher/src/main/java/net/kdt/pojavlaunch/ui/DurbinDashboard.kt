@@ -1,5 +1,6 @@
 package net.kdt.pojavlaunch.ui
 
+import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.media.MediaPlayer
@@ -56,12 +57,14 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,12 +105,90 @@ import net.kdt.pojavlaunch.ui.theme.DurbinStrongBorderColor
 import net.kdt.pojavlaunch.ui.theme.DurbinTheme
 
 private enum class DurbinDialog {
-    NONE, VERSIONS, LAUNCH_MODE, COMING_SOON
+    NONE, VERSIONS, LAUNCH_MODE, COMING_SOON, THEME
 }
 
 private enum class DurbinSound {
     CLICK, LAUNCH, POPUP
 }
+
+private enum class DurbinUiTheme {
+    ORANGE, RED_WHITE, BLACK
+}
+
+private data class DurbinPalette(
+    val name: String,
+    val accent: Color,
+    val launch: Color,
+    val launchDark: Color,
+    val card: Color,
+    val cardActive: Color,
+    val border: Color,
+    val strongBorder: Color,
+    val glow: Color
+)
+
+private val OrangeDurbinPalette = DurbinPalette(
+    name = "Orange",
+    accent = Color(0xFFFF7A00),
+    launch = Color(0xFF1BD964),
+    launchDark = Color(0xFF138A3F),
+    card = Color(0x66101010),
+    cardActive = Color(0x66161616),
+    border = Color(0x24FFFFFF),
+    strongBorder = Color(0x33FFFFFF),
+    glow = Color(0x00FF7A00)
+)
+
+private val RedWhiteDurbinPalette = DurbinPalette(
+    name = "Red / White",
+    accent = Color(0xFFFF2E2E),
+    launch = Color(0xFFEFEFEF),
+    launchDark = Color(0xFFBDBDBD),
+    card = Color(0x55FFFFFF),
+    cardActive = Color(0x33FFFFFF),
+    border = Color(0x30FFFFFF),
+    strongBorder = Color(0x42FFFFFF),
+    glow = Color(0x00FF2E2E)
+)
+
+private val BlackDurbinPalette = DurbinPalette(
+    name = "Black",
+    accent = Color(0xFFFFFFFF),
+    launch = Color(0xFF1D1D1D),
+    launchDark = Color(0xFF000000),
+    card = Color(0x88111111),
+    cardActive = Color(0x99222222),
+    border = Color(0x24FFFFFF),
+    strongBorder = Color(0x38FFFFFF),
+    glow = Color(0x00000000)
+)
+
+private val LocalDurbinPalette = staticCompositionLocalOf { OrangeDurbinPalette }
+
+private fun paletteFor(theme: DurbinUiTheme): DurbinPalette = when (theme) {
+    DurbinUiTheme.ORANGE -> OrangeDurbinPalette
+    DurbinUiTheme.RED_WHITE -> RedWhiteDurbinPalette
+    DurbinUiTheme.BLACK -> BlackDurbinPalette
+}
+
+private fun loadDurbinUiTheme(context: Context): DurbinUiTheme {
+    val stored = context.getSharedPreferences("durbin_ui", Context.MODE_PRIVATE)
+        .getString("theme", DurbinUiTheme.ORANGE.name)
+    return try {
+        DurbinUiTheme.valueOf(stored ?: DurbinUiTheme.ORANGE.name)
+    } catch (_: Throwable) {
+        DurbinUiTheme.ORANGE
+    }
+}
+
+private fun saveDurbinUiTheme(context: Context, theme: DurbinUiTheme) {
+    context.getSharedPreferences("durbin_ui", Context.MODE_PRIVATE)
+        .edit()
+        .putString("theme", theme.name)
+        .apply()
+}
+
 
 private data class LaunchModeOption(
     val title: String,
@@ -133,13 +214,29 @@ fun setDurbinDashboardContent(composeView: ComposeView, callbacks: DurbinMenuCal
 
 @Composable
 fun DurbinDashboardHost(callbacks: DurbinMenuCallbacks) {
+    val context = LocalContext.current
+    var selectedTheme by remember { mutableStateOf(loadDurbinUiTheme(context)) }
+
     DurbinTheme {
-        DurbinDashboard(callbacks)
+        CompositionLocalProvider(LocalDurbinPalette provides paletteFor(selectedTheme)) {
+            DurbinDashboard(
+                callbacks = callbacks,
+                selectedTheme = selectedTheme,
+                onThemeSelected = { theme ->
+                    selectedTheme = theme
+                    saveDurbinUiTheme(context, theme)
+                }
+            )
+        }
     }
 }
 
 @Composable
-private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
+private fun DurbinDashboard(
+    callbacks: DurbinMenuCallbacks,
+    selectedTheme: DurbinUiTheme,
+    onThemeSelected: (DurbinUiTheme) -> Unit
+) {
     var activeDialog by remember { mutableStateOf(DurbinDialog.NONE) }
     var contentVisible by remember { mutableStateOf(false) }
     val entryProgress by animateFloatAsState(
@@ -189,7 +286,11 @@ private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         DurbinAccountCard(callbacks)
-                        DurbinQuickActions(callbacks) { activeDialog = DurbinDialog.LAUNCH_MODE }
+                        DurbinQuickActions(
+                            callbacks = callbacks,
+                            onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
+                            onThemePicker = { activeDialog = DurbinDialog.THEME }
+                        )
                         DurbinCommunityCard()
                         DurbinFooter()
                     }
@@ -198,7 +299,11 @@ private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
                 DurbinHeroCard(callbacks) { activeDialog = DurbinDialog.LAUNCH_MODE }
                 DurbinLaunchButton(callbacks.onLaunch)
                 DurbinAccountCard(callbacks)
-                DurbinQuickActions(callbacks) { activeDialog = DurbinDialog.LAUNCH_MODE }
+                DurbinQuickActions(
+                            callbacks = callbacks,
+                            onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
+                            onThemePicker = { activeDialog = DurbinDialog.THEME }
+                        )
                 DurbinCommunityCard()
                 DurbinFooter()
             }
@@ -220,6 +325,15 @@ private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
             }
             DurbinDialog.COMING_SOON -> DurbinBottomSheet(onDismiss = { activeDialog = DurbinDialog.NONE }) {
                 DurbinComingSoonSheet(onClose = { activeDialog = DurbinDialog.NONE })
+            }
+            DurbinDialog.THEME -> DurbinBottomSheet(onDismiss = { activeDialog = DurbinDialog.NONE }) {
+                DurbinThemePickerSheet(
+                    selectedTheme = selectedTheme,
+                    onThemeSelected = { theme ->
+                        onThemeSelected(theme)
+                        activeDialog = DurbinDialog.NONE
+                    }
+                )
             }
             DurbinDialog.NONE -> Unit
         }
@@ -363,7 +477,7 @@ private fun DurbinAnimatedBackgroundOverlay() {
             val y = ((base * 0.91f + phase * 0.28f) % 1f) * size.height
             val alpha = 0.10f + (index % 4) * 0.025f
             drawCircle(
-                color = if (index % 3 == 0) DurbinAccentOrange.copy(alpha = alpha) else Color.White.copy(alpha = alpha),
+                color = if (index % 3 == 0) LocalDurbinPalette.current.accent.copy(alpha = alpha) else Color.White.copy(alpha = alpha),
                 radius = 1.2f + (index % 3),
                 center = Offset(x, y)
             )
@@ -394,7 +508,7 @@ private fun DurbinTopBar(onSettings: () -> Unit, onAccounts: () -> Unit) {
         label = "logoPulseScale"
     )
 
-    GlassCard(modifier = Modifier.fillMaxWidth(), glowColor = DurbinOrangeGlow) {
+    GlassCard(modifier = Modifier.fillMaxWidth(), glowColor = LocalDurbinPalette.current.glow) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -443,7 +557,7 @@ private fun DurbinTopBar(onSettings: () -> Unit, onAccounts: () -> Unit) {
                 },
                 modifier = Modifier.size(38.dp)
             ) {
-                Icon(Icons.Default.AccountCircle, contentDescription = "Accounts", tint = DurbinAccentOrange)
+                Icon(Icons.Default.AccountCircle, contentDescription = "Accounts", tint = LocalDurbinPalette.current.accent)
             }
         }
     }
@@ -453,18 +567,18 @@ private fun DurbinTopBar(onSettings: () -> Unit, onAccounts: () -> Unit) {
 private fun DurbinHeroCard(callbacks: DurbinMenuCallbacks, onOpenLaunchMode: () -> Unit) {
     GlassCard(
         modifier = Modifier.fillMaxWidth().durbinClickable(DurbinSound.POPUP) { onOpenLaunchMode() },
-        glowColor = DurbinOrangeGlow,
-        borderColor = DurbinStrongBorderColor
+        glowColor = LocalDurbinPalette.current.glow,
+        borderColor = LocalDurbinPalette.current.strongBorder
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
-                    color = DurbinAccentOrange.copy(alpha = 0.15f),
+                    color = LocalDurbinPalette.current.accent.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = "SELECTED",
-                        color = DurbinAccentOrange,
+                        color = LocalDurbinPalette.current.accent,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -481,7 +595,7 @@ private fun DurbinHeroCard(callbacks: DurbinMenuCallbacks, onOpenLaunchMode: () 
             Text("CLIENT VERSION", color = DurbinMutedText, fontSize = 11.sp, letterSpacing = 1.sp)
             Text(
                 text = callbacks.getVersionId(),
-                color = DurbinAccentOrange,
+                color = LocalDurbinPalette.current.accent,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -503,28 +617,28 @@ private fun DurbinHeroCard(callbacks: DurbinMenuCallbacks, onOpenLaunchMode: () 
                 modifier = Modifier.fillMaxWidth().durbinClickable(DurbinSound.POPUP) { callbacks.onOpenVersions() },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Menu, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Menu, contentDescription = null, tint = LocalDurbinPalette.current.accent, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Open saved profiles", color = DurbinSecondaryText, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = DurbinAccentOrange
+                    tint = LocalDurbinPalette.current.accent
                 )
             }
             Row(
                 modifier = Modifier.fillMaxWidth().durbinClickable(DurbinSound.POPUP) { onOpenLaunchMode() },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Outlined.Extension, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(18.dp))
+                Icon(Icons.Outlined.Extension, contentDescription = null, tint = LocalDurbinPalette.current.accent, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Create / change launch mode", color = DurbinSecondaryText, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = DurbinAccentOrange
+                    tint = LocalDurbinPalette.current.accent
                 )
             }
         }
@@ -535,7 +649,7 @@ private fun DurbinHeroCard(callbacks: DurbinMenuCallbacks, onOpenLaunchMode: () 
 private fun DurbinStatTile(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        color = DurbinCardActiveBg.copy(alpha = 0.42f),
+        color = LocalDurbinPalette.current.cardActive.copy(alpha = 0.42f),
         shape = RoundedCornerShape(12.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
     ) {
@@ -583,13 +697,13 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
             .background(
                 Brush.horizontalGradient(
                     listOf(
-                        DurbinLaunchGreenDark.copy(alpha = 0.36f),
-                        DurbinLaunchGreen.copy(alpha = 0.28f),
-                        DurbinLaunchGreenDark.copy(alpha = 0.36f)
+                        LocalDurbinPalette.current.launchDark.copy(alpha = 0.36f),
+                        LocalDurbinPalette.current.launch.copy(alpha = 0.28f),
+                        LocalDurbinPalette.current.launchDark.copy(alpha = 0.36f)
                     )
                 )
             )
-            .border(1.dp, DurbinLaunchGreen.copy(alpha = 0.32f), RoundedCornerShape(18.dp))
+            .border(1.dp, LocalDurbinPalette.current.launch.copy(alpha = 0.32f), RoundedCornerShape(18.dp))
             .durbinClickable(DurbinSound.LAUNCH, onClick = onLaunch),
         contentAlignment = Alignment.Center
     ) {
@@ -645,11 +759,11 @@ private fun DurbinAccountCard(callbacks: DurbinMenuCallbacks) {
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(DurbinCardActiveBg)
-                    .border(1.dp, DurbinAccentOrange.copy(alpha = 0.4f), CircleShape),
+                    .background(LocalDurbinPalette.current.cardActive)
+                    .border(1.dp, LocalDurbinPalette.current.accent.copy(alpha = 0.4f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.AccountCircle, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(30.dp))
+                Icon(Icons.Default.AccountCircle, contentDescription = null, tint = LocalDurbinPalette.current.accent, modifier = Modifier.size(30.dp))
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -664,12 +778,12 @@ private fun DurbinAccountCard(callbacks: DurbinMenuCallbacks) {
                 )
             }
             Surface(
-                color = if (callbacks.isOfflineAccount()) DurbinAccentOrange.copy(alpha = 0.15f) else Color(0xFF1BD964).copy(alpha = 0.15f),
+                color = if (callbacks.isOfflineAccount()) LocalDurbinPalette.current.accent.copy(alpha = 0.15f) else Color(0xFF1BD964).copy(alpha = 0.15f),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
                     text = if (callbacks.isOfflineAccount()) "OFFLINE" else "ONLINE",
-                    color = if (callbacks.isOfflineAccount()) DurbinAccentOrange else DurbinLaunchGreen,
+                    color = if (callbacks.isOfflineAccount()) LocalDurbinPalette.current.accent else LocalDurbinPalette.current.launch,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -680,7 +794,11 @@ private fun DurbinAccountCard(callbacks: DurbinMenuCallbacks) {
 }
 
 @Composable
-private fun DurbinQuickActions(callbacks: DurbinMenuCallbacks, onVersions: () -> Unit) {
+private fun DurbinQuickActions(
+    callbacks: DurbinMenuCallbacks,
+    onVersions: () -> Unit,
+    onThemePicker: () -> Unit
+) {
     val context = LocalContext.current
     val actions = listOf(
         Triple("Saved Profiles", Icons.Default.Menu, callbacks.onOpenVersions),
@@ -689,6 +807,7 @@ private fun DurbinQuickActions(callbacks: DurbinMenuCallbacks, onVersions: () ->
         Triple("Directory", Icons.Default.Folder, callbacks.onOpenDirectory),
         Triple("Logs", Icons.Default.Share, callbacks.onShareLogs),
         Triple("Install JAR", Icons.Default.Storage, callbacks.onInstallJar),
+        Triple("Theme Picker", Icons.Default.Settings, onThemePicker),
         Triple("Join Discord", Icons.Default.Share) { openDurbinUrl(context, DurbinDiscordUrl) },
         Triple("Edit Profile", Icons.AutoMirrored.Filled.KeyboardArrowRight, callbacks.onEditProfile)
     )
@@ -712,7 +831,7 @@ private fun QuickActionCard(label: String, icon: ImageVector, onClick: () -> Uni
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = null, tint = LocalDurbinPalette.current.accent, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(
                 label,
@@ -740,7 +859,13 @@ private fun DurbinCommunityCard() {
                         .border(1.dp, Color.White.copy(alpha = 0.14f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("C", color = DurbinAccentOrange, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                    androidx.compose.foundation.Image(
+                        painter = painterResource(R.drawable.cosa_owner_logo),
+                        contentDescription = "COSA",
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                    )
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
@@ -786,7 +911,7 @@ private fun CommunityButton(label: String, icon: ImageVector, modifier: Modifier
                     modifier = Modifier.size(20.dp)
                 )
             } else {
-                Icon(icon, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(19.dp))
+                Icon(icon, contentDescription = null, tint = LocalDurbinPalette.current.accent, modifier = Modifier.size(19.dp))
             }
             Spacer(Modifier.width(8.dp))
             Text(label, color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
@@ -817,13 +942,13 @@ private fun DurbinVersionsSheet(callbacks: DurbinMenuCallbacks, onClose: () -> U
             onClose()
         }) {
             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Menu, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(22.dp))
+                Icon(Icons.Default.Menu, contentDescription = null, tint = LocalDurbinPalette.current.accent, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Open saved profiles", color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold)
                     Text("Switch to any profile you already saved", color = DurbinMutedText, fontSize = 12.sp)
                 }
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = DurbinAccentOrange)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = LocalDurbinPalette.current.accent)
             }
         }
 
@@ -832,7 +957,7 @@ private fun DurbinVersionsSheet(callbacks: DurbinMenuCallbacks, onClose: () -> U
                 Column(Modifier.weight(1f)) {
                     Text("Current profile", color = DurbinMutedText, fontSize = 11.sp)
                     Text(callbacks.getProfileName(), color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold)
-                    Text(callbacks.getVersionId(), color = DurbinAccentOrange, fontSize = 13.sp)
+                    Text(callbacks.getVersionId(), color = LocalDurbinPalette.current.accent, fontSize = 13.sp)
                 }
             }
         }
@@ -842,7 +967,7 @@ private fun DurbinVersionsSheet(callbacks: DurbinMenuCallbacks, onClose: () -> U
             onClose()
         }) {
             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(22.dp))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = LocalDurbinPalette.current.accent, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Edit current profile", color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold)
@@ -888,8 +1013,8 @@ private fun DurbinLaunchModeSheet(
 
 @Composable
 private fun LaunchModeRow(mode: LaunchModeOption) {
-    val bg = if (mode.enabled) DurbinCardBg else DurbinCardBg.copy(alpha = 0.5f)
-    val border = if (mode.enabled) DurbinBorderColor else DurbinBorderColor.copy(alpha = 0.5f)
+    val bg = if (mode.enabled) LocalDurbinPalette.current.card else LocalDurbinPalette.current.card.copy(alpha = 0.5f)
+    val border = if (mode.enabled) LocalDurbinPalette.current.border else LocalDurbinPalette.current.border.copy(alpha = 0.5f)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -912,15 +1037,90 @@ private fun LaunchModeRow(mode: LaunchModeOption) {
                 Text(mode.subtitle, color = DurbinMutedText, fontSize = 12.sp)
             }
             if (!mode.enabled) {
-                Surface(color = DurbinAccentOrange.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp)) {
+                Surface(color = LocalDurbinPalette.current.accent.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp)) {
                     Text(
                         "LOCKED",
-                        color = DurbinAccentOrange,
+                        color = LocalDurbinPalette.current.accent,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun DurbinThemePickerSheet(
+    selectedTheme: DurbinUiTheme,
+    onThemeSelected: (DurbinUiTheme) -> Unit
+) {
+    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Theme Picker", color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Text("Choose your DURBIN Launcher color style.", color = DurbinSecondaryText, fontSize = 13.sp)
+
+        DurbinThemeOptionRow(
+            title = "Orange",
+            subtitle = "Classic DURBIN orange glow",
+            theme = DurbinUiTheme.ORANGE,
+            selectedTheme = selectedTheme,
+            accent = OrangeDurbinPalette.accent,
+            onThemeSelected = onThemeSelected
+        )
+        DurbinThemeOptionRow(
+            title = "Red / White",
+            subtitle = "Clean red and white premium style",
+            theme = DurbinUiTheme.RED_WHITE,
+            selectedTheme = selectedTheme,
+            accent = RedWhiteDurbinPalette.accent,
+            onThemeSelected = onThemeSelected
+        )
+        DurbinThemeOptionRow(
+            title = "Black",
+            subtitle = "Dark minimal stealth style",
+            theme = DurbinUiTheme.BLACK,
+            selectedTheme = selectedTheme,
+            accent = BlackDurbinPalette.accent,
+            onThemeSelected = onThemeSelected
+        )
+    }
+}
+
+@Composable
+private fun DurbinThemeOptionRow(
+    title: String,
+    subtitle: String,
+    theme: DurbinUiTheme,
+    selectedTheme: DurbinUiTheme,
+    accent: Color,
+    onThemeSelected: (DurbinUiTheme) -> Unit
+) {
+    val selected = selectedTheme == theme
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .durbinClickable(DurbinSound.POPUP) { onThemeSelected(theme) },
+        color = if (selected) accent.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.055f),
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) accent.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.10f))
+    ) {
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(accent)
+                    .border(1.dp, Color.White.copy(alpha = 0.30f), CircleShape)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Text(subtitle, color = DurbinMutedText, fontSize = 12.sp)
+            }
+            if (selected) {
+                Text("SELECTED", color = accent, fontWeight = FontWeight.Bold, fontSize = 10.sp)
             }
         }
     }
@@ -933,7 +1133,7 @@ private fun DurbinComingSoonSheet(onClose: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("DURBIN Client", color = DurbinAccentOrange, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text("DURBIN Client", color = LocalDurbinPalette.current.accent, fontWeight = FontWeight.Bold, fontSize = 22.sp)
         Text(
             "The DURBIN Client mod system is not ready yet.\nVanilla, Fabric, and Forge are available now.",
             color = DurbinSecondaryText,
@@ -943,8 +1143,8 @@ private fun DurbinComingSoonSheet(onClose: () -> Unit) {
         )
         LinearProgressIndicator(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            color = DurbinAccentOrange,
-            trackColor = DurbinBorderColor
+            color = LocalDurbinPalette.current.accent,
+            trackColor = LocalDurbinPalette.current.border
         )
         Text("Coming Soon", color = DurbinMutedText, fontSize = 12.sp, letterSpacing = 2.sp)
         Spacer(Modifier.height(4.dp))
@@ -952,7 +1152,7 @@ private fun DurbinComingSoonSheet(onClose: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(DurbinAccentOrange)
+                .background(LocalDurbinPalette.current.accent)
                 .durbinClickable(onClick = onClose)
                 .padding(vertical = 12.dp),
             contentAlignment = Alignment.Center
@@ -1001,9 +1201,9 @@ private fun DurbinBottomSheet(onDismiss: () -> Unit, content: @Composable () -> 
                     indication = null,
                     onClick = {}
                 ),
-            color = DurbinCardBg,
+            color = LocalDurbinPalette.current.card,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, DurbinStrongBorderColor)
+            border = androidx.compose.foundation.BorderStroke(1.dp, LocalDurbinPalette.current.strongBorder)
         ) {
             content()
         }
@@ -1013,13 +1213,13 @@ private fun DurbinBottomSheet(onDismiss: () -> Unit, content: @Composable () -> 
 @Composable
 private fun GlassCard(
     modifier: Modifier = Modifier,
-    glowColor: Color = DurbinOrangeGlow,
-    borderColor: Color = DurbinBorderColor,
+    glowColor: Color = Color.Transparent,
+    borderColor: Color = Color.White.copy(alpha = 0.075f),
     content: @Composable () -> Unit
 ) {
     Surface(
         modifier = modifier,
-        color = DurbinCardBg.copy(alpha = 0.36f),
+        color = LocalDurbinPalette.current.card.copy(alpha = 0.36f),
         shape = RoundedCornerShape(18.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.075f))
     ) {
@@ -1037,7 +1237,7 @@ private fun GlassCard(
                 drawRect(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            DurbinAccentOrange.copy(alpha = 0.045f),
+                            LocalDurbinPalette.current.accent.copy(alpha = 0.045f),
                             Color.Transparent
                         ),
                         center = Offset(size.width * 0.08f, size.height * 0.05f),

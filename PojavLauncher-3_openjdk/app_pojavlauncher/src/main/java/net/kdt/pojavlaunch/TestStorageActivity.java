@@ -13,6 +13,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 import android.widget.VideoView;
+import android.view.View;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.AnimationSet;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.ScaleAnimation;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -66,6 +73,7 @@ public class TestStorageActivity extends Activity {
 
     private void startLoadingFlow() {
         setContentView(R.layout.activity_loading_animation);
+        startLoadingScreenAnimations();
         mLoadingVideo = findViewById(R.id.loading_video);
         try {
             Uri videoUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.durbin_loading);
@@ -94,6 +102,47 @@ public class TestStorageActivity extends Activity {
                 prepareLauncher();
             }
         }, "durbin-loading-prep").start();
+    }
+
+    private void startLoadingScreenAnimations() {
+        View content = findViewById(R.id.loading_content);
+        View subtitle = findViewById(R.id.loading_subtitle);
+        if (content != null) {
+            AnimationSet intro = new AnimationSet(true);
+            intro.setInterpolator(new DecelerateInterpolator());
+            AlphaAnimation fade = new AlphaAnimation(0f, 1f);
+            fade.setDuration(520);
+            ScaleAnimation scale = new ScaleAnimation(
+                    0.92f, 1f, 0.92f, 1f,
+                    Animation.RELATIVE_TO_SELF, 0.5f,
+                    Animation.RELATIVE_TO_SELF, 0.5f);
+            scale.setDuration(520);
+            intro.addAnimation(fade);
+            intro.addAnimation(scale);
+            content.startAnimation(intro);
+
+            ScaleAnimation pulse = new ScaleAnimation(
+                    1f, 1.035f, 1f, 1.035f,
+                    Animation.RELATIVE_TO_SELF, 0.5f,
+                    Animation.RELATIVE_TO_SELF, 0.5f);
+            pulse.setDuration(1150);
+            pulse.setRepeatMode(Animation.REVERSE);
+            pulse.setRepeatCount(Animation.INFINITE);
+            pulse.setInterpolator(new LinearInterpolator());
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (!mLaunched && !isFinishing()) content.startAnimation(pulse);
+                }
+            }, 620);
+        }
+        if (subtitle != null) {
+            AlphaAnimation blink = new AlphaAnimation(0.45f, 1f);
+            blink.setDuration(900);
+            blink.setRepeatMode(Animation.REVERSE);
+            blink.setRepeatCount(Animation.INFINITE);
+            subtitle.startAnimation(blink);
+        }
     }
 
     private void prepareLauncher() {

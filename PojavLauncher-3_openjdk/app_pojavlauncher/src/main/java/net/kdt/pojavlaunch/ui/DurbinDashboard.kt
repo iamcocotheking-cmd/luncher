@@ -69,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
@@ -113,7 +114,7 @@ private enum class DurbinSound {
 }
 
 private enum class DurbinUiTheme {
-    ORANGE, RED_WHITE, BLACK
+    ORANGE, RED_WHITE, BLACK, BLUE, PURPLE, CYAN, MINECRAFT, GOLD
 }
 
 private data class DurbinPalette(
@@ -164,12 +165,78 @@ private val BlackDurbinPalette = DurbinPalette(
     glow = Color(0x00000000)
 )
 
+
+private val BlueDurbinPalette = DurbinPalette(
+    name = "Blue",
+    accent = Color(0xFF31A8FF),
+    launch = Color(0xFF16D95C),
+    launchDark = Color(0xFF07963A),
+    card = Color(0x66101824),
+    cardActive = Color(0x66203246),
+    border = Color(0x2831A8FF),
+    strongBorder = Color(0x4431A8FF),
+    glow = Color(0x0031A8FF)
+)
+
+private val PurpleDurbinPalette = DurbinPalette(
+    name = "Purple",
+    accent = Color(0xFFB66BFF),
+    launch = Color(0xFF16D95C),
+    launchDark = Color(0xFF07963A),
+    card = Color(0x66150D24),
+    cardActive = Color(0x66281642),
+    border = Color(0x2DB66BFF),
+    strongBorder = Color(0x4DB66BFF),
+    glow = Color(0x00B66BFF)
+)
+
+private val CyanDurbinPalette = DurbinPalette(
+    name = "Cyan",
+    accent = Color(0xFF00E5FF),
+    launch = Color(0xFF16D95C),
+    launchDark = Color(0xFF07963A),
+    card = Color(0x66101618),
+    cardActive = Color(0x66203438),
+    border = Color(0x2600E5FF),
+    strongBorder = Color(0x4400E5FF),
+    glow = Color(0x0000E5FF)
+)
+
+private val MinecraftDurbinPalette = DurbinPalette(
+    name = "Minecraft",
+    accent = Color(0xFF65D84A),
+    launch = Color(0xFF19C95B),
+    launchDark = Color(0xFF087E38),
+    card = Color(0x66101810),
+    cardActive = Color(0x66203620),
+    border = Color(0x2E65D84A),
+    strongBorder = Color(0x4865D84A),
+    glow = Color(0x0065D84A)
+)
+
+private val GoldDurbinPalette = DurbinPalette(
+    name = "Gold",
+    accent = Color(0xFFFFC857),
+    launch = Color(0xFF16D95C),
+    launchDark = Color(0xFF07963A),
+    card = Color(0x661B1608),
+    cardActive = Color(0x66342612),
+    border = Color(0x2EFFC857),
+    strongBorder = Color(0x4AFFC857),
+    glow = Color(0x00FFC857)
+)
+
 private val LocalDurbinPalette = staticCompositionLocalOf { OrangeDurbinPalette }
 
 private fun paletteFor(theme: DurbinUiTheme): DurbinPalette = when (theme) {
     DurbinUiTheme.ORANGE -> OrangeDurbinPalette
     DurbinUiTheme.RED_WHITE -> RedWhiteDurbinPalette
     DurbinUiTheme.BLACK -> BlackDurbinPalette
+    DurbinUiTheme.BLUE -> BlueDurbinPalette
+    DurbinUiTheme.PURPLE -> PurpleDurbinPalette
+    DurbinUiTheme.CYAN -> CyanDurbinPalette
+    DurbinUiTheme.MINECRAFT -> MinecraftDurbinPalette
+    DurbinUiTheme.GOLD -> GoldDurbinPalette
 }
 
 private fun loadDurbinUiTheme(context: Context): DurbinUiTheme {
@@ -366,7 +433,12 @@ private fun DurbinVideoBackground() {
     var videoView by remember { mutableStateOf<VideoView?>(null) }
 
     AndroidView(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                scaleX = 1.7f
+                scaleY = 1.7f
+            },
         factory = { ctx ->
             VideoView(ctx).apply {
                 layoutParams = ViewGroup.LayoutParams(
@@ -678,66 +750,107 @@ private fun DurbinStatTile(label: String, value: String, modifier: Modifier = Mo
 
 @Composable
 private fun DurbinLaunchButton(onLaunch: () -> Unit) {
-    val transition = rememberInfiniteTransition(label = "launchPulse")
-    val iconPulse by transition.animateFloat(
-        initialValue = 0.94f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "launchIconPulse"
+    val view = LocalView.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val pressProgress by animateFloatAsState(
+        targetValue = if (pressed) 1f else 0f,
+        animationSpec = tween(durationMillis = 380),
+        label = "launchBlobProgress"
     )
-    val rainbowSweep by transition.animateFloat(
-        initialValue = -0.6f,
-        targetValue = 1.6f,
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 0.988f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "launchBlobScale"
+    )
+    val rainbowMotion by rememberInfiniteTransition(label = "launchRainbow").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = LinearEasing),
+            animation = tween(durationMillis = 3600, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "launchRainbowSweep"
+        label = "launchRainbowShift"
     )
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(58.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        Color(0xFF07963A),
-                        Color(0xFF16D95C),
-                        Color(0xFF07963A)
-                    )
-                )
-            )
-            .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(18.dp))
-            .durbinClickable(DurbinSound.LAUNCH, onClick = onLaunch),
+            .height(60.dp)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
+            .clickable(
+                enabled = true,
+                interactionSource = interactionSource,
+                indication = null
+            ) {
+                try {
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                } catch (_: Throwable) { }
+                playDurbinSound(view, DurbinSound.LAUNCH)
+                onLaunch()
+            },
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val sweepCenter = size.width * rainbowSweep
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color.Red.copy(alpha = 0.25f),
-                        Color.Yellow.copy(alpha = 0.25f),
-                        Color.Green.copy(alpha = 0.20f),
-                        Color.Cyan.copy(alpha = 0.25f),
-                        Color.Blue.copy(alpha = 0.22f),
-                        Color.Magenta.copy(alpha = 0.25f),
-                        Color.Transparent
-                    ),
-                    startX = sweepCenter - size.width * 0.42f,
-                    endX = sweepCenter + size.width * 0.42f
-                )
+            val radius = size.height / 2f
+            val borderWidth = 3.dp.toPx()
+            val rainbowColors = listOf(
+                Color(0xFFFF4D4D),
+                Color(0xFFFF9F1C),
+                Color(0xFFFFE45E),
+                Color(0xFF56F000),
+                Color(0xFF00E5FF),
+                Color(0xFF4D7CFF),
+                Color(0xFFB26BFF),
+                Color(0xFFFF4D4D)
             )
-            drawCircle(
-                color = Color.White.copy(alpha = 0.12f),
-                radius = size.minDimension * iconPulse,
-                center = Offset(size.width * 0.5f, size.height * 0.5f)
+            val shift = size.width * 2f * rainbowMotion
+            drawRoundRect(
+                brush = Brush.linearGradient(
+                    colors = rainbowColors,
+                    start = Offset(-size.width + shift, 0f),
+                    end = Offset(shift, size.height)
+                ),
+                cornerRadius = CornerRadius(radius, radius)
+            )
+            drawRoundRect(
+                color = Color(0xFF0D9A42),
+                topLeft = Offset(borderWidth, borderWidth),
+                size = androidx.compose.ui.geometry.Size(size.width - borderWidth * 2f, size.height - borderWidth * 2f),
+                cornerRadius = CornerRadius(radius, radius)
+            )
+
+            val blobColors = listOf(
+                Color(0xFF39FF88),
+                Color(0xFF17D860),
+                Color(0xFF83FFB2),
+                Color(0xFF10B84C)
+            )
+            for (i in 0 until 4) {
+                val section = size.width / 4f
+                val cx = section * (i + 0.5f)
+                val startY = size.height * 1.48f
+                val targetY = size.height * 0.54f
+                val cy = startY + (targetY - startY) * pressProgress
+                drawCircle(
+                    color = blobColors[i].copy(alpha = 0.42f + pressProgress * 0.18f),
+                    radius = size.height * (0.74f + i * 0.03f),
+                    center = Offset(cx, cy)
+                )
+            }
+
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.18f),
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.14f)
+                    )
+                ),
+                cornerRadius = CornerRadius(radius, radius)
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -745,10 +858,7 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
                 Icons.Default.PlayArrow,
                 contentDescription = null,
                 tint = Color.White,
-                modifier = Modifier.size(28.dp).graphicsLayer {
-                    scaleX = iconPulse
-                    scaleY = iconPulse
-                }
+                modifier = Modifier.size(28.dp)
             )
             Spacer(Modifier.width(8.dp))
             Text(
@@ -1094,7 +1204,12 @@ private fun DurbinThemePickerSheet(
     selectedTheme: DurbinUiTheme,
     onThemeSelected: (DurbinUiTheme) -> Unit
 ) {
-    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        modifier = Modifier
+            .padding(20.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         Text("Theme Picker", color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         Text("Choose your DURBIN Launcher color style.", color = DurbinSecondaryText, fontSize = 13.sp)
 
@@ -1120,6 +1235,46 @@ private fun DurbinThemePickerSheet(
             theme = DurbinUiTheme.BLACK,
             selectedTheme = selectedTheme,
             accent = BlackDurbinPalette.accent,
+            onThemeSelected = onThemeSelected
+        )
+        DurbinThemeOptionRow(
+            title = "Blue",
+            subtitle = "Cool blue client style",
+            theme = DurbinUiTheme.BLUE,
+            selectedTheme = selectedTheme,
+            accent = BlueDurbinPalette.accent,
+            onThemeSelected = onThemeSelected
+        )
+        DurbinThemeOptionRow(
+            title = "Purple",
+            subtitle = "Neon purple premium style",
+            theme = DurbinUiTheme.PURPLE,
+            selectedTheme = selectedTheme,
+            accent = PurpleDurbinPalette.accent,
+            onThemeSelected = onThemeSelected
+        )
+        DurbinThemeOptionRow(
+            title = "Cyan",
+            subtitle = "Clean cyan glass style",
+            theme = DurbinUiTheme.CYAN,
+            selectedTheme = selectedTheme,
+            accent = CyanDurbinPalette.accent,
+            onThemeSelected = onThemeSelected
+        )
+        DurbinThemeOptionRow(
+            title = "Minecraft",
+            subtitle = "Green Minecraft inspired style",
+            theme = DurbinUiTheme.MINECRAFT,
+            selectedTheme = selectedTheme,
+            accent = MinecraftDurbinPalette.accent,
+            onThemeSelected = onThemeSelected
+        )
+        DurbinThemeOptionRow(
+            title = "Gold",
+            subtitle = "Warm gold premium style",
+            theme = DurbinUiTheme.GOLD,
+            selectedTheme = selectedTheme,
+            accent = GoldDurbinPalette.accent,
             onThemeSelected = onThemeSelected
         )
     }

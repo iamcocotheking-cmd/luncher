@@ -30,14 +30,15 @@ import java.util.zip.ZipFile;
 public class ModrinthApi implements ModpackApi{
     private final ApiHandler mApiHandler;
     public ModrinthApi(){
-        mApiHandler = new ApiHandler("https://api.modrinth.com/v2");
+        HashMap<String, String> headers = new HashMap<>();
+        headers.put("User-Agent", "DurbinLauncher/1.0 (Minecraft Android Launcher; owner=COSA)");
+        mApiHandler = new ApiHandler("https://api.modrinth.com/v2", headers);
     }
 
     @Override
     public SearchResult searchMod(SearchFilters searchFilters, SearchResult previousPageResult) {
         ModrinthSearchResult modrinthSearchResult = (ModrinthSearchResult) previousPageResult;
 
-        // Fixes an issue where the offset being equal or greater than total_hits is ignored
         if (modrinthSearchResult != null && modrinthSearchResult.previousOffset >= modrinthSearchResult.totalResultCount) {
             ModrinthSearchResult emptyResult = new ModrinthSearchResult();
             emptyResult.results = new ModItem[0];
@@ -46,46 +47,82 @@ public class ModrinthApi implements ModpackApi{
             return emptyResult;
         }
 
+        SearchResult strictResult = performModrinthSearch(searchFilters, modrinthSearchResult, true, true);
+        if (hasUsefulResults(strictResult) || modrinthSearchResult != null) return strictResult;
 
-        // Build the facets filters
+        // If the current profile version was detected incorrectly, do not show a broken screen.
+        // Fall back to loader-only search, then to all mods.
+        if (!searchFilters.isModpack && searchFilters.mcVersion != null) {
+            SearchResult loaderOnlyResult = performModrinthSearch(searchFilters, null, false, true);
+            if (hasUsefulResults(loaderOnlyResult)) return loaderOnlyResult;
+        }
+        if (!searchFilters.isModpack && searchFilters.loader != null) {
+            SearchResult allModsResult = performModrinthSearch(searchFilters, null, false, false);
+            if (allModsResult != null) return allModsResult;
+        }
+        return strictResult;
+    }
+
+    private boolean hasUsefulResults(SearchResult result) {
+        return result != null && result.results != null && result.results.length > 0;
+    }
+
+    private SearchResult performModrinthSearch(SearchFilters searchFilters, ModrinthSearchResult previousResult, boolean includeVersion, boolean includeLoader) {
         HashMap<String, Object> params = new HashMap<>();
         StringBuilder facetString = new StringBuilder();
         facetString.append("[");
-        facetString.append(String.format("[\"project_type:%s\"]", searchFilters.isModpack ? "modpack" : "mod"));
-        if(searchFilters.mcVersion != null && !searchFilters.mcVersion.isEmpty())
-            facetString.append(String.format(",[\"versions:%s\"]", searchFilters.mcVersion));
-        if(!searchFilters.isModpack && searchFilters.loader != null && !searchFilters.loader.isEmpty())
-            facetString.append(String.format(",[\"categories:%s\"]", searchFilters.loader.toLowerCase(Locale.ROOT)));
+        facetString.append(String.format("["project_type:%s"]", searchFilters.isModpack ? "modpack" : "mod"));
+        if(includeVersion && searchFilters.mcVersion != null && !searchFilters.mcVersion.isEmpty()) {
+            facetString.append(String.format(",["versions:%s"]", searchFilters.mcVersion));
+        }
+        if(!searchFilters.isModpack && includeLoader && searchFilters.loader != null && !searchFilters.loader.isEmpty()) {
+            facetString.append(String.format(",["categories:%s"]", searchFilters.loader.toLowerCase(Locale.ROOT)));
+        }
         facetString.append("]");
         params.put("facets", facetString.toString());
-        params.put("query", searchFilters.name);
+        params.put("query", searchFilters.name == null ? "" : searchFilters.name);
         params.put("limit", 50);
-        params.put("index", "relevance");
-        if(modrinthSearchResult != null)
-            params.put("offset", modrinthSearchResult.previousOffset);
+        params.put("index", searchFilters.name == null || searchFilters.name.trim().isEmpty() ? "downloads" : "relevance");
+        if(previousResult != null) params.put("offset", previousResult.previousOffset);
 
         JsonObject response = mApiHandler.get("search", params, JsonObject.class);
         if(response == null) return null;
         JsonArray responseHits = response.getAsJsonArray("hits");
         if(responseHits == null) return null;
 
-        ModItem[] items = new ModItem[responseHits.size()];
+        ArrayList<ModItem> itemList = new ArrayList<>();
         for(int i=0; i<responseHits.size(); ++i){
             JsonObject hit = responseHits.get(i).getAsJsonObject();
-            items[i] = new ModItem(
-                    Constants.SOURCE_MODRINTH,
-                    hit.get("project_type").getAsString().equals("modpack"),
-                    hit.get("project_id").getAsString(),
-                    hit.get("title").getAsString(),
-                    hit.get("description").getAsString(),
-                    hit.get("icon_url").getAsString()
-            );
+            try {
+                String projectType = safeString(hit, "project_type", searchFilters.isModpack ? "modpack" : "mod");
+                String iconUrl = safeString(hit, "icon_url", "");
+                itemList.add(new ModItem(
+                        Constants.SOURCE_MODRINTH,
+                        "modpack".equals(projectType),
+                        safeString(hit, "project_id", ""),
+                        safeString(hit, "title", "Unnamed Mod"),
+                        safeString(hit, "description", "No description available."),
+                        iconUrl
+                ));
+            } catch (Throwable ignored) {
+                // Skip one bad Modrinth row instead of failing the whole downloader screen.
+            }
         }
-        if(modrinthSearchResult == null) modrinthSearchResult = new ModrinthSearchResult();
-        modrinthSearchResult.previousOffset += responseHits.size();
-        modrinthSearchResult.results = items;
-        modrinthSearchResult.totalResultCount = response.get("total_hits").getAsInt();
-        return modrinthSearchResult;
+
+        ModrinthSearchResult result = previousResult == null ? new ModrinthSearchResult() : previousResult;
+        result.previousOffset += responseHits.size();
+        result.results = itemList.toArray(new ModItem[0]);
+        result.totalResultCount = response.has("total_hits") ? response.get("total_hits").getAsInt() : result.results.length;
+        return result;
+    }
+
+    private static String safeString(JsonObject object, String key, String fallback) {
+        if(object == null || !object.has(key) || object.get(key) == null || object.get(key).isJsonNull()) return fallback;
+        try {
+            return object.get(key).getAsString();
+        } catch (Throwable ignored) {
+            return fallback;
+        }
     }
 
     @Override
@@ -223,7 +260,7 @@ public class ModrinthApi implements ModpackApi{
             if (!Tools.isValidString(currentProfile) || LauncherProfiles.mainProfileJson == null) return null;
             MinecraftProfile profile = LauncherProfiles.mainProfileJson.profiles.get(currentProfile);
             if (profile == null || !Tools.isValidString(profile.lastVersionId)) return null;
-            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\d+\\.\\d+(?:\\.\\d+)?").matcher(profile.lastVersionId);
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(?<!\\d)1\\.\\d+(?:\\.\\d+)?(?!\\d)").matcher(profile.lastVersionId);
             if (matcher.find()) return matcher.group();
         } catch (Throwable ignored) { }
         return null;

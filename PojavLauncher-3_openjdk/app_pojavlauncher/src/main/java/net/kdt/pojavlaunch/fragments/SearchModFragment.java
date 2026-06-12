@@ -149,11 +149,15 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
         switch (error) {
             case ERROR_INTERNAL:
                 mStatusTextView.setTextColor(Color.RED);
-                mStatusTextView.setText(R.string.search_modpack_error);
+                mStatusTextView.setText(mSearchFilters.isModpack
+                        ? getString(R.string.search_modpack_error)
+                        : "Could not connect to Modrinth. Check internet or clear filters.");
                 break;
             case ERROR_NO_RESULTS:
                 mStatusTextView.setTextColor(mDefaultTextColor);
-                mStatusTextView.setText(R.string.search_modpack_no_result);
+                mStatusTextView.setText(mSearchFilters.isModpack
+                        ? getString(R.string.search_modpack_no_result)
+                        : "No compatible mods found. Try search, clear filters, or choose another version.");
                 break;
         }
     }
@@ -172,7 +176,7 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
             if (!Tools.isValidString(currentProfile) || LauncherProfiles.mainProfileJson == null) return null;
             MinecraftProfile profile = LauncherProfiles.mainProfileJson.profiles.get(currentProfile);
             if (profile == null || !Tools.isValidString(profile.lastVersionId)) return null;
-            Matcher matcher = Pattern.compile("\\d+\\.\\d+(?:\\.\\d+)?").matcher(profile.lastVersionId);
+            Matcher matcher = Pattern.compile("(?<!\\d)1\\.\\d+(?:\\.\\d+)?(?!\\d)").matcher(profile.lastVersionId);
             if (matcher.find()) return matcher.group();
         } catch (Throwable ignored) { }
         return null;

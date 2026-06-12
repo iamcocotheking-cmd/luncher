@@ -21,7 +21,9 @@ import net.kdt.pojavlaunch.utils.ZipUtils;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.zip.ZipFile;
 
@@ -52,6 +54,8 @@ public class ModrinthApi implements ModpackApi{
         facetString.append(String.format("[\"project_type:%s\"]", searchFilters.isModpack ? "modpack" : "mod"));
         if(searchFilters.mcVersion != null && !searchFilters.mcVersion.isEmpty())
             facetString.append(String.format(",[\"versions:%s\"]", searchFilters.mcVersion));
+        if(!searchFilters.isModpack && searchFilters.loader != null && !searchFilters.loader.isEmpty())
+            facetString.append(String.format(",[\"categories:%s\"]", searchFilters.loader.toLowerCase(Locale.ROOT)));
         facetString.append("]");
         params.put("facets", facetString.toString());
         params.put("query", searchFilters.name);
@@ -90,28 +94,55 @@ public class ModrinthApi implements ModpackApi{
         JsonArray response = mApiHandler.get(String.format("project/%s/version", item.id), JsonArray.class);
         if(response == null) return null;
         System.out.println(response);
-        String[] names = new String[response.size()];
-        String[] mcNames = new String[response.size()];
-        String[] urls = new String[response.size()];
-        String[] hashes = new String[response.size()];
+        String currentMcVersion = getCurrentMinecraftVersion();
+        String currentLoader = getCurrentModLoader();
+        ArrayList<String> namesList = new ArrayList<>();
+        ArrayList<String> mcNamesList = new ArrayList<>();
+        ArrayList<String> urlsList = new ArrayList<>();
+        ArrayList<String> hashesList = new ArrayList<>();
 
         for (int i=0; i<response.size(); ++i) {
             JsonObject version = response.get(i).getAsJsonObject();
-            names[i] = version.get("name").getAsString();
-            mcNames[i] = version.get("game_versions").getAsJsonArray().get(0).getAsString();
-            urls[i] = version.get("files").getAsJsonArray().get(0).getAsJsonObject().get("url").getAsString();
-            // Assume there may not be hashes, in case the API changes
-            JsonObject hashesMap = version.getAsJsonArray("files").get(0).getAsJsonObject()
-                    .get("hashes").getAsJsonObject();
-            if(hashesMap == null || hashesMap.get("sha1") == null){
-                hashes[i] = null;
+            if(!item.isModpack && currentMcVersion != null && version.has("game_versions")
+                    && !version.get("game_versions").getAsJsonArray().toString().contains("\"" + currentMcVersion + "\"")) {
                 continue;
             }
-
-            hashes[i] = hashesMap.get("sha1").getAsString();
+            if(!item.isModpack && currentLoader != null && version.has("loaders")
+                    && !version.get("loaders").getAsJsonArray().toString().toLowerCase(Locale.ROOT).contains("\"" + currentLoader + "\"")) {
+                continue;
+            }
+            JsonArray files = version.get("files").getAsJsonArray();
+            if(files.size() == 0) continue;
+            JsonObject primaryFile = files.get(0).getAsJsonObject();
+            namesList.add(version.get("name").getAsString());
+            mcNamesList.add(version.get("game_versions").getAsJsonArray().get(0).getAsString());
+            urlsList.add(primaryFile.get("url").getAsString());
+            JsonObject hashesMap = primaryFile.get("hashes") == null ? null : primaryFile.get("hashes").getAsJsonObject();
+            hashesList.add(hashesMap == null || hashesMap.get("sha1") == null ? null : hashesMap.get("sha1").getAsString());
         }
 
-        return new ModDetail(item, names, mcNames, urls, hashes);
+        // If Modrinth has no exact loader/version match, fall back to the full list instead of showing a broken empty card.
+        if(namesList.isEmpty()) {
+            for (int i=0; i<response.size(); ++i) {
+                JsonObject version = response.get(i).getAsJsonObject();
+                JsonArray files = version.get("files").getAsJsonArray();
+                if(files.size() == 0) continue;
+                JsonObject primaryFile = files.get(0).getAsJsonObject();
+                namesList.add(version.get("name").getAsString());
+                mcNamesList.add(version.get("game_versions").getAsJsonArray().get(0).getAsString());
+                urlsList.add(primaryFile.get("url").getAsString());
+                JsonObject hashesMap = primaryFile.get("hashes") == null ? null : primaryFile.get("hashes").getAsJsonObject();
+                hashesList.add(hashesMap == null || hashesMap.get("sha1") == null ? null : hashesMap.get("sha1").getAsString());
+            }
+        }
+
+        return new ModDetail(
+                item,
+                namesList.toArray(new String[0]),
+                mcNamesList.toArray(new String[0]),
+                urlsList.toArray(new String[0]),
+                hashesList.toArray(new String[0])
+        );
     }
 
     @Override
@@ -182,6 +213,35 @@ public class ModrinthApi implements ModpackApi{
 
         String versionName = modDetail.versionNames[selectedVersion] == null ? "latest" : modDetail.versionNames[selectedVersion];
         return (modDetail.title + "-" + versionName + extension).replaceAll("[^a-zA-Z0-9._-]", "_");
+    }
+
+
+    private static String getCurrentMinecraftVersion() {
+        try {
+            LauncherProfiles.load();
+            String currentProfile = LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, null);
+            if (!Tools.isValidString(currentProfile) || LauncherProfiles.mainProfileJson == null) return null;
+            MinecraftProfile profile = LauncherProfiles.mainProfileJson.profiles.get(currentProfile);
+            if (profile == null || !Tools.isValidString(profile.lastVersionId)) return null;
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\d+\\.\\d+(?:\\.\\d+)?").matcher(profile.lastVersionId);
+            if (matcher.find()) return matcher.group();
+        } catch (Throwable ignored) { }
+        return null;
+    }
+
+    private static String getCurrentModLoader() {
+        try {
+            LauncherProfiles.load();
+            String currentProfile = LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, null);
+            if (!Tools.isValidString(currentProfile) || LauncherProfiles.mainProfileJson == null) return null;
+            MinecraftProfile profile = LauncherProfiles.mainProfileJson.profiles.get(currentProfile);
+            if (profile == null || profile.lastVersionId == null) return null;
+            String id = profile.lastVersionId.toLowerCase(Locale.ROOT);
+            if (id.contains("fabric") || id.contains("durbin")) return "fabric";
+            if (id.contains("forge")) return "forge";
+            if (id.contains("quilt")) return "quilt";
+        } catch (Throwable ignored) { }
+        return null;
     }
 
     private static ModLoader createInfo(ModrinthIndex modrinthIndex) {

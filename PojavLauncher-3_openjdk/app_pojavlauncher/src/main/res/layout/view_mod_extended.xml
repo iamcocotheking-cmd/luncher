@@ -1,39 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools">
-
+    android:paddingTop="12dp">
 
     <TextView
         android:id="@+id/mod_extended_error_textview"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/search_modpack_download_error"
-        android:textColor="#FFFF0000"
+        android:text="Could not load versions. Try another mod or check internet."
+        android:textColor="#FFFF5555"
+        android:textSize="12sp"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/mod_extended_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Version"
+        android:textColor="#B8FFFFFF"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/mod_extended_error_textview" />
 
     <androidx.appcompat.widget.AppCompatSpinner
         android:id="@+id/mod_extended_version_spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minHeight="@dimen/_30sdp"
-        android:layout_marginVertical="@dimen/padding_moderate"
-        app:layout_constraintTop_toBottomOf="@+id/mod_extended_error_textview"
-        />
+        android:layout_marginTop="6dp"
+        android:background="@drawable/background_line"
+        android:minHeight="@dimen/_34sdp"
+        app:layout_constraintTop_toBottomOf="@+id/mod_extended_label" />
 
-    <com.kdt.mcgui.MineButton
+    <Button
         android:id="@+id/mod_extended_select_version_button"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="52dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/durbin_mod_install_button"
         android:enabled="false"
-        android:text="@string/generic_install"
-        android:layout_marginHorizontal="@dimen/padding_large"
-        android:layout_marginTop="@dimen/padding_moderate"
-        android:layout_marginBottom="@dimen/padding_large"
-
+        android:text="INSTALL TO MODS FOLDER"
+        android:textColor="#FFFFFFFF"
+        android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@id/mod_extended_version_spinner" />
 

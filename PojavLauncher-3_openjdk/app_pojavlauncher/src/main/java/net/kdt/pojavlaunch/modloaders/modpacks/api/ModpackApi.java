@@ -2,6 +2,7 @@ package net.kdt.pojavlaunch.modloaders.modpacks.api;
 
 
 import android.content.Context;
+import android.widget.Toast;
 
 import com.kdt.mcgui.ProgressLayout;
 
@@ -54,7 +55,10 @@ public interface ModpackApi {
         PojavApplication.sExecutorService.execute(() -> {
             try {
                 ModLoader loaderInfo = installMod(modDetail, selectedVersion);
-                if (loaderInfo == null) return;
+                if (loaderInfo == null) {
+                    Tools.runOnUiThread(() -> Toast.makeText(context, "Mod downloaded to the current profile mods folder", Toast.LENGTH_LONG).show());
+                    return;
+                }
                 loaderInfo.getDownloadTask(new NotificationDownloadListener(context, loaderInfo)).run();
             }catch (IOException e) {
                 Tools.showErrorRemote(context, R.string.modpack_install_download_failed, e);

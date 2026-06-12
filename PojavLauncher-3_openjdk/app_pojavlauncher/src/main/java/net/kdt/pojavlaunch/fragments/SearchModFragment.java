@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import net.kdt.pojavlaunch.R;
+import net.kdt.pojavlaunch.Tools;
 import net.kdt.pojavlaunch.modloaders.modpacks.ModItemAdapter;
 import net.kdt.pojavlaunch.modloaders.modpacks.api.CommonApi;
 import net.kdt.pojavlaunch.modloaders.modpacks.api.ModpackApi;
@@ -27,6 +28,13 @@ import net.kdt.pojavlaunch.modloaders.modpacks.api.ModrinthApi;
 import net.kdt.pojavlaunch.modloaders.modpacks.models.SearchFilters;
 import net.kdt.pojavlaunch.profiles.VersionSelectorDialog;
 import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
+import net.kdt.pojavlaunch.prefs.LauncherPreferences;
+import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
+import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
+
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class SearchModFragment extends Fragment implements ModItemAdapter.SearchResultCallback {
 
@@ -67,6 +75,10 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
         Bundle args = getArguments();
         if (args != null) {
             mSearchFilters.isModpack = args.getBoolean(ARG_IS_MODPACK, true);
+        }
+        if (!mSearchFilters.isModpack) {
+            mSearchFilters.mcVersion = getCurrentMinecraftVersion();
+            mSearchFilters.loader = getCurrentModLoader();
         }
         boolean modrinthOnly = args != null && args.getBoolean(ARG_MODRINTH_ONLY, false);
         modpackApi = modrinthOnly ? new ModrinthApi() : new CommonApi(context.getString(R.string.curseforge_api_key));
@@ -109,7 +121,9 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
         mFilterButton.setOnClickListener(v -> displayFilterDialog());
 
         if (!mSearchFilters.isModpack) {
-            mSearchEditText.setHint("Search Modrinth mods");
+            String loader = mSearchFilters.loader == null ? "modded" : mSearchFilters.loader.toUpperCase(Locale.ROOT);
+            String version = mSearchFilters.mcVersion == null ? "current version" : mSearchFilters.mcVersion;
+            mSearchEditText.setHint("Search " + loader + " mods for " + version);
         }
 
         searchMods(null);
@@ -148,6 +162,35 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
         mSearchProgressBar.setVisibility(View.VISIBLE);
         mSearchFilters.name = name == null ? "" : name;
         mModItemAdapter.performSearchQuery(mSearchFilters);
+    }
+
+
+    private String getCurrentMinecraftVersion() {
+        try {
+            LauncherProfiles.load();
+            String currentProfile = LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, null);
+            if (!Tools.isValidString(currentProfile) || LauncherProfiles.mainProfileJson == null) return null;
+            MinecraftProfile profile = LauncherProfiles.mainProfileJson.profiles.get(currentProfile);
+            if (profile == null || !Tools.isValidString(profile.lastVersionId)) return null;
+            Matcher matcher = Pattern.compile("\\d+\\.\\d+(?:\\.\\d+)?").matcher(profile.lastVersionId);
+            if (matcher.find()) return matcher.group();
+        } catch (Throwable ignored) { }
+        return null;
+    }
+
+    private String getCurrentModLoader() {
+        try {
+            LauncherProfiles.load();
+            String currentProfile = LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, null);
+            if (!Tools.isValidString(currentProfile) || LauncherProfiles.mainProfileJson == null) return null;
+            MinecraftProfile profile = LauncherProfiles.mainProfileJson.profiles.get(currentProfile);
+            if (profile == null || profile.lastVersionId == null) return null;
+            String id = profile.lastVersionId.toLowerCase(Locale.ROOT);
+            if (id.contains("fabric") || id.contains("durbin")) return "fabric";
+            if (id.contains("forge")) return "forge";
+            if (id.contains("quilt")) return "quilt";
+        } catch (Throwable ignored) { }
+        return null;
     }
 
     private void displayFilterDialog() {

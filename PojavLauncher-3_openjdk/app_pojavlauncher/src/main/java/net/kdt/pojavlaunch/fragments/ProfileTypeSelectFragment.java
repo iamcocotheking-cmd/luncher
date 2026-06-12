@@ -52,10 +52,9 @@ public class ProfileTypeSelectFragment extends Fragment {
     }
 
     private void tryInstall(Class<? extends Fragment> fragmentClass, String tag) {
-        if (Tools.isLocalProfile(requireContext()) || Tools.isDemoProfile(requireContext())) {
-            Toast.makeText(requireContext(), R.string.toast_not_available_demo, Toast.LENGTH_LONG).show();
-        } else {
-            Tools.swapFragment(requireActivity(), fragmentClass, tag, null);
-        }
+        // DURBIN Launcher: allow creating Fabric/Forge/Quilt/Modpack profiles even when the
+        // current account is offline/local. The old demo-mode guard blocked every mod loader
+        // screen, which made only Vanilla work.
+        Tools.swapFragment(requireActivity(), fragmentClass, tag, null);
     }
 }

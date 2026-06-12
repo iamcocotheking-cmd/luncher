@@ -435,6 +435,7 @@ private fun DurbinAnimatedBackgroundOverlay() {
         ),
         label = "phase"
     )
+    val palette = LocalDurbinPalette.current
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         drawRect(Color(0xB8050505))
@@ -477,7 +478,7 @@ private fun DurbinAnimatedBackgroundOverlay() {
             val y = ((base * 0.91f + phase * 0.28f) % 1f) * size.height
             val alpha = 0.10f + (index % 4) * 0.025f
             drawCircle(
-                color = if (index % 3 == 0) LocalDurbinPalette.current.accent.copy(alpha = alpha) else Color.White.copy(alpha = alpha),
+                color = if (index % 3 == 0) palette.accent.copy(alpha = alpha) else Color.White.copy(alpha = alpha),
                 radius = 1.2f + (index % 3),
                 center = Offset(x, y)
             )
@@ -1217,11 +1218,13 @@ private fun GlassCard(
     borderColor: Color = Color.White.copy(alpha = 0.075f),
     content: @Composable () -> Unit
 ) {
+    val palette = LocalDurbinPalette.current
+
     Surface(
         modifier = modifier,
-        color = LocalDurbinPalette.current.card.copy(alpha = 0.36f),
+        color = palette.card.copy(alpha = 0.36f),
         shape = RoundedCornerShape(18.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.075f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
     ) {
         Box {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1237,7 +1240,7 @@ private fun GlassCard(
                 drawRect(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            LocalDurbinPalette.current.accent.copy(alpha = 0.045f),
+                            palette.accent.copy(alpha = 0.045f),
                             Color.Transparent
                         ),
                         center = Offset(size.width * 0.08f, size.height * 0.05f),

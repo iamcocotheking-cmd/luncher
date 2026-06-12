@@ -436,8 +436,8 @@ private fun DurbinVideoBackground() {
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer {
-                scaleX = 1.7f
-                scaleY = 1.7f
+                scaleX = 3.3f
+                scaleY = 3.3f
             },
         factory = { ctx ->
             VideoView(ctx).apply {
@@ -753,30 +753,25 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
     val view = LocalView.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val pressProgress by animateFloatAsState(
-        targetValue = if (pressed) 1f else 0f,
-        animationSpec = tween(durationMillis = 380),
-        label = "launchBlobProgress"
-    )
     val pressScale by animateFloatAsState(
-        targetValue = if (pressed) 0.988f else 1f,
-        animationSpec = tween(durationMillis = 120),
-        label = "launchBlobScale"
+        targetValue = if (pressed) 0.985f else 1f,
+        animationSpec = tween(durationMillis = 110),
+        label = "launchPressScale"
     )
-    val rainbowMotion by rememberInfiniteTransition(label = "launchRainbow").animateFloat(
+    val rainbowMotion by rememberInfiniteTransition(label = "launchRainbowClean").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3600, easing = LinearEasing),
+            animation = tween(durationMillis = 4200, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "launchRainbowShift"
+        label = "launchRainbowBorder"
     )
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(62.dp)
             .graphicsLayer {
                 scaleX = pressScale
                 scaleY = pressScale
@@ -796,18 +791,17 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val radius = size.height / 2f
-            val borderWidth = 3.dp.toPx()
+            val borderWidth = 4.dp.toPx()
             val rainbowColors = listOf(
-                Color(0xFFFF4D4D),
-                Color(0xFFFF9F1C),
-                Color(0xFFFFE45E),
-                Color(0xFF56F000),
-                Color(0xFF00E5FF),
-                Color(0xFF4D7CFF),
-                Color(0xFFB26BFF),
-                Color(0xFFFF4D4D)
+                Color(0xFF4A7BFF),
+                Color(0xFF8B5CFF),
+                Color(0xFFFF5BB7),
+                Color(0xFFFF6B6B),
+                Color(0xFFFFB84A),
+                Color(0xFF46F27E),
+                Color(0xFF4A7BFF)
             )
-            val shift = size.width * 2f * rainbowMotion
+            val shift = size.width * 1.8f * rainbowMotion
             drawRoundRect(
                 brush = Brush.linearGradient(
                     colors = rainbowColors,
@@ -817,40 +811,28 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
                 cornerRadius = CornerRadius(radius, radius)
             )
             drawRoundRect(
-                color = Color(0xFF0D9A42),
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF20D86B),
+                        Color(0xFF0EA34A),
+                        Color(0xFF087E39)
+                    )
+                ),
                 topLeft = Offset(borderWidth, borderWidth),
                 size = androidx.compose.ui.geometry.Size(size.width - borderWidth * 2f, size.height - borderWidth * 2f),
-                cornerRadius = CornerRadius(radius, radius)
+                cornerRadius = CornerRadius(radius - borderWidth, radius - borderWidth)
             )
-
-            val blobColors = listOf(
-                Color(0xFF39FF88),
-                Color(0xFF17D860),
-                Color(0xFF83FFB2),
-                Color(0xFF10B84C)
-            )
-            for (i in 0 until 4) {
-                val section = size.width / 4f
-                val cx = section * (i + 0.5f)
-                val startY = size.height * 1.48f
-                val targetY = size.height * 0.54f
-                val cy = startY + (targetY - startY) * pressProgress
-                drawCircle(
-                    color = blobColors[i].copy(alpha = 0.42f + pressProgress * 0.18f),
-                    radius = size.height * (0.74f + i * 0.03f),
-                    center = Offset(cx, cy)
-                )
-            }
-
             drawRoundRect(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.18f),
+                        Color.White.copy(alpha = 0.22f),
                         Color.Transparent,
-                        Color.Black.copy(alpha = 0.14f)
+                        Color.Black.copy(alpha = 0.18f)
                     )
                 ),
-                cornerRadius = CornerRadius(radius, radius)
+                topLeft = Offset(borderWidth, borderWidth),
+                size = androidx.compose.ui.geometry.Size(size.width - borderWidth * 2f, size.height - borderWidth * 2f),
+                cornerRadius = CornerRadius(radius - borderWidth, radius - borderWidth)
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -858,15 +840,15 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
                 Icons.Default.PlayArrow,
                 contentDescription = null,
                 tint = Color.White,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(30.dp)
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(10.dp))
             Text(
                 text = "LAUNCH MINECRAFT",
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                letterSpacing = 1.sp
+                fontSize = 17.sp,
+                letterSpacing = 1.1.sp
             )
         }
     }
@@ -1290,29 +1272,57 @@ private fun DurbinThemeOptionRow(
     onThemeSelected: (DurbinUiTheme) -> Unit
 ) {
     val selected = selectedTheme == theme
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.985f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "themeButtonScale"
+    )
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .durbinClickable(DurbinSound.POPUP) { onThemeSelected(theme) },
-        color = if (selected) accent.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.055f),
-        shape = RoundedCornerShape(14.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) accent.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.10f))
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onThemeSelected(theme) },
+        color = if (selected) accent.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.055f),
+        shape = RoundedCornerShape(18.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) accent.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.12f))
     ) {
         Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(38.dp)
                     .clip(CircleShape)
-                    .background(accent)
-                    .border(1.dp, Color.White.copy(alpha = 0.30f), CircleShape)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(accent, Color.White.copy(alpha = 0.72f), accent.copy(alpha = 0.72f))
+                        )
+                    )
+                    .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                Text(subtitle, color = DurbinMutedText, fontSize = 12.sp)
+                Text(title, color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(subtitle, color = DurbinMutedText, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (selected) {
-                Text("SELECTED", color = accent, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+            Surface(
+                color = if (selected) accent.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.09f),
+                shape = RoundedCornerShape(999.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Color.White.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.14f))
+            ) {
+                Text(
+                    text = if (selected) "ACTIVE" else "APPLY",
+                    color = if (selected) Color.Black else DurbinPrimaryText,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                )
             }
         }
     }

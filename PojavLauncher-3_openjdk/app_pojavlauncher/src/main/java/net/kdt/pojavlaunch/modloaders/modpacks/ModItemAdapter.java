@@ -105,6 +105,14 @@ public class ModItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         switch (getItemViewType(position)) {
             case VIEW_TYPE_MOD_ITEM:
                 ((ModItemAdapter.ViewHolder)holder).setStateLimited(mModItems[position]);
+                holder.itemView.setAlpha(0f);
+                holder.itemView.setTranslationY(28f);
+                holder.itemView.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .setDuration(260)
+                        .setStartDelay(Math.min(position * 35L, 220L))
+                        .start();
                 break;
             case VIEW_TYPE_LOADING:
                 loadMoreResults();
@@ -288,6 +296,9 @@ public class ModItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
 
         private void openDetailedView() {
             mExtendedLayout.setVisibility(View.VISIBLE);
+            mExtendedLayout.setAlpha(0f);
+            mExtendedLayout.setTranslationY(-12f);
+            mExtendedLayout.animate().alpha(1f).translationY(0f).setDuration(220).start();
             mDescription.setMaxLines(99);
 
             // We need to align to the longer section

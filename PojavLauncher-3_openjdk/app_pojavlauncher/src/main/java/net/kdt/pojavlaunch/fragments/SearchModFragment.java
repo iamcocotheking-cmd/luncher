@@ -3,6 +3,8 @@ package net.kdt.pojavlaunch.fragments;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -10,6 +12,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.VideoView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -42,6 +45,7 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
     public static final String ARG_IS_MODPACK = "is_modpack";
     public static final String ARG_MODRINTH_ONLY = "modrinth_only";
     private View mOverlay;
+    private VideoView mBackgroundVideo;
     private float mOverlayTopCache; // Padding cache reduce resource lookup
 
     private final RecyclerView.OnScrollListener mOverlayPositionListener = new RecyclerView.OnScrollListener() {
@@ -97,11 +101,18 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
         mRecyclerview = view.findViewById(R.id.search_mod_list);
         mStatusTextView = view.findViewById(R.id.search_mod_status_text);
         mFilterButton = view.findViewById(R.id.search_mod_filter);
+        mBackgroundVideo = view.findViewById(R.id.search_mod_background_video);
+        setupBackgroundVideo();
+        animateModrinthEntrance();
 
         mDefaultTextColor = mStatusTextView.getTextColors();
 
         mRecyclerview.setLayoutManager(new LinearLayoutManager(getContext()));
         mRecyclerview.setAdapter(mModItemAdapter);
+        mRecyclerview.setHasFixedSize(false);
+        try {
+            mRecyclerview.setItemAnimator(new androidx.recyclerview.widget.DefaultItemAnimator());
+        } catch (Throwable ignored) { }
 
         mRecyclerview.addOnScrollListener(mOverlayPositionListener);
 
@@ -123,17 +134,76 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
         if (!mSearchFilters.isModpack) {
             String loader = mSearchFilters.loader == null ? "modded" : mSearchFilters.loader.toUpperCase(Locale.ROOT);
             String version = mSearchFilters.mcVersion == null ? "current version" : mSearchFilters.mcVersion;
-            mSearchEditText.setHint("Search " + loader + " mods for " + version);
+            mSearchEditText.setHint(loader + " mods for " + version);
         }
 
         searchMods(null);
     }
 
+
+    private void setupBackgroundVideo() {
+        if (mBackgroundVideo == null) return;
+        try {
+            Uri videoUri = Uri.parse("android.resource://" + requireContext().getPackageName() + "/" + R.raw.durbin_background);
+            mBackgroundVideo.setVideoURI(videoUri);
+            mBackgroundVideo.setOnPreparedListener(mp -> {
+                mp.setLooping(true);
+                mp.setVolume(0f, 0f);
+                try {
+                    mp.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
+                } catch (Throwable ignored) { }
+                mBackgroundVideo.start();
+            });
+            mBackgroundVideo.setOnErrorListener((mp, what, extra) -> true);
+        } catch (Throwable ignored) { }
+    }
+
+    private void animateModrinthEntrance() {
+        if (mOverlay != null) {
+            mOverlay.setAlpha(0f);
+            mOverlay.setTranslationY(-36f);
+            mOverlay.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(360)
+                    .setStartDelay(80)
+                    .start();
+        }
+        if (mRecyclerview != null) {
+            mRecyclerview.setAlpha(0f);
+            mRecyclerview.setTranslationY(40f);
+            mRecyclerview.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(420)
+                    .setStartDelay(160)
+                    .start();
+        }
+    }
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        try {
+            if (mBackgroundVideo != null) mBackgroundVideo.stopPlayback();
+        } catch (Throwable ignored) { }
         ProgressKeeper.removeTaskCountListener(mModItemAdapter);
         mRecyclerview.removeOnScrollListener(mOverlayPositionListener);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        try {
+            if (mBackgroundVideo != null && mBackgroundVideo.isPlaying()) mBackgroundVideo.pause();
+        } catch (Throwable ignored) { }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        try {
+            if (mBackgroundVideo != null && !mBackgroundVideo.isPlaying()) mBackgroundVideo.start();
+        } catch (Throwable ignored) { }
     }
 
     @Override
@@ -157,7 +227,7 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
                 mStatusTextView.setTextColor(mDefaultTextColor);
                 mStatusTextView.setText(mSearchFilters.isModpack
                         ? getString(R.string.search_modpack_no_result)
-                        : "No compatible mods found. Try search, clear filters, or choose another version.");
+                        : "No compatible mods found. Try a mod name like Sodium, Iris, or Fabric API.");
                 break;
         }
     }

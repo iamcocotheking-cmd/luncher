@@ -4,42 +4,81 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_app"
-    android:paddingHorizontal="@dimen/fragment_padding_medium">
+    android:background="#000000">
+
+    <VideoView
+        android:id="@+id/search_mod_background_video"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.46"
+        android:scaleX="3.3"
+        android:scaleY="3.3"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/search_mod_dark_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#E6050507"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/search_mod_overlay"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/fragment_padding_medium"
-        android:layout_marginTop="@dimen/fragment_padding_medium"
+        android:layout_marginStart="22dp"
+        android:layout_marginTop="22dp"
+        android:layout_marginEnd="22dp"
         android:background="@drawable/durbin_mod_search_panel"
         android:elevation="10dp"
-        android:paddingHorizontal="@dimen/padding_large"
-        android:paddingVertical="@dimen/padding_large"
+        android:paddingStart="18dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="18dp"
         android:translationZ="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/search_mod_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/durbin_mod_chip"
+            android:text="MODRINTH"
+            android:textColor="#FFFF7A00"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
             android:id="@+id/search_mod_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="MODRINTH MOD DOWNLOADER"
+            android:layout_marginTop="10dp"
+            android:text="Mod Downloader"
             android:textColor="#FFFFFFFF"
-            android:textSize="18sp"
+            android:textSize="24sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@id/search_mod_badge" />
 
         <TextView
             android:id="@+id/search_mod_subtitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Search, pick a version, and install directly into your selected profile mods folder."
+            android:layout_marginTop="5dp"
+            android:text="Search mods, choose a version, then install straight into your selected profile."
             android:textColor="#B8FFFFFF"
-            android:textSize="12sp"
+            android:textSize="13sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/search_mod_title" />
@@ -47,42 +86,45 @@
         <EditText
             android:id="@+id/search_mod_edittext"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/background_line"
+            android:layout_height="54dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/durbin_mod_search_field"
             android:ems="10"
-            android:hint="Search Modrinth mods"
+            android:hint="Search mods"
             android:inputType="textPersonName"
-            android:paddingHorizontal="@dimen/padding_heavy"
+            android:singleLine="true"
             android:textColor="#FFFFFFFF"
             android:textColorHint="#88FFFFFF"
-            android:textSize="@dimen/_13ssp"
-            android:translationZ="2dp"
+            android:textSize="16sp"
             app:layout_constraintEnd_toStartOf="@id/search_mod_filter"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/search_mod_subtitle" />
 
         <ImageButton
             android:id="@+id/search_mod_filter"
-            android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:background="?android:attr/selectableItemBackground"
-            android:minWidth="@dimen/_38sdp"
-            android:paddingHorizontal="@dimen/padding_medium"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/durbin_filter_button_bg"
+            android:padding="14dp"
             android:src="@drawable/ic_filter"
-            app:tint="#FFFF7A00"
             app:layout_constraintBottom_toBottomOf="@id/search_mod_edittext"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/search_mod_edittext" />
+            app:layout_constraintStart_toEndOf="@id/search_mod_edittext"
+            app:layout_constraintTop_toTopOf="@id/search_mod_edittext"
+            app:tint="#FFFF7A00" />
 
         <ProgressBar
             android:id="@+id/search_mod_progressbar"
             style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_width="0dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="14dp"
             android:indeterminate="true"
             android:indeterminateTint="#FFFF7A00"
             android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/search_mod_edittext"
             tools:layout_editor_absoluteX="13dp" />
 
@@ -93,15 +135,18 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:paddingTop="@dimen/_15sdp"
-        android:paddingBottom="24dp"
+        android:paddingStart="22dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="22dp"
+        android:paddingBottom="40dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/search_mod_status_text"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="36dp"
         android:gravity="center"
         android:text="No mods found"
         android:textColor="#B8FFFFFF"

@@ -1,5 +1,6 @@
 package net.kdt.pojavlaunch.ui
 
+import android.content.Intent
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.ToneGenerator
@@ -115,6 +116,9 @@ private data class LaunchModeOption(
     val onClick: () -> Unit
 )
 
+private const val DurbinYoutubeUrl = "https://www.youtube.com/@Cosa_5023_YT"
+private const val DurbinDiscordUrl = "https://discord.gg/PqnbXNrtHR"
+
 
 /**
  * Java-friendly entry point used by MainMenuFragment.
@@ -186,6 +190,7 @@ private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
                     ) {
                         DurbinAccountCard(callbacks)
                         DurbinQuickActions(callbacks) { activeDialog = DurbinDialog.LAUNCH_MODE }
+                        DurbinCommunityCard()
                         DurbinFooter()
                     }
                 }
@@ -194,6 +199,7 @@ private fun DurbinDashboard(callbacks: DurbinMenuCallbacks) {
                 DurbinLaunchButton(callbacks.onLaunch)
                 DurbinAccountCard(callbacks)
                 DurbinQuickActions(callbacks) { activeDialog = DurbinDialog.LAUNCH_MODE }
+                DurbinCommunityCard()
                 DurbinFooter()
             }
         }
@@ -341,10 +347,34 @@ private fun DurbinAnimatedBackgroundOverlay() {
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    Color(0x88000000),
-                    Color.Transparent,
-                    Color(0xCC000000)
+                    Color(0x8E000000),
+                    Color(0x33000000),
+                    Color(0xD8000000)
                 )
+            )
+        )
+
+        // Lightweight animated particles. This is drawn in Compose, so no image assets
+        // or heavy animation engine is needed.
+        val particleCount = 22
+        for (index in 0 until particleCount) {
+            val base = index / particleCount.toFloat()
+            val x = ((base * 1.73f + phase) % 1f) * size.width
+            val y = ((base * 0.91f + phase * 0.28f) % 1f) * size.height
+            val alpha = 0.10f + (index % 4) * 0.025f
+            drawCircle(
+                color = if (index % 3 == 0) DurbinAccentOrange.copy(alpha = alpha) else Color.White.copy(alpha = alpha),
+                radius = 1.2f + (index % 3),
+                center = Offset(x, y)
+            )
+        }
+
+        // Very soft top shine so the transparent cards feel more premium.
+        drawRect(
+            brush = Brush.linearGradient(
+                colors = listOf(Color.White.copy(alpha = 0.055f), Color.Transparent),
+                start = Offset(0f, 0f),
+                end = Offset(size.width, size.height * 0.55f)
             )
         )
     }
@@ -505,9 +535,9 @@ private fun DurbinHeroCard(callbacks: DurbinMenuCallbacks, onOpenLaunchMode: () 
 private fun DurbinStatTile(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        color = DurbinCardActiveBg,
+        color = DurbinCardActiveBg.copy(alpha = 0.42f),
         shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DurbinBorderColor)
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Text(label, color = DurbinMutedText, fontSize = 9.sp, letterSpacing = 0.8.sp)
@@ -535,6 +565,15 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
         ),
         label = "launchIconPulse"
     )
+    val sweep by transition.animateFloat(
+        initialValue = -0.4f,
+        targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "launchSweep"
+    )
 
     Box(
         modifier = Modifier
@@ -542,9 +581,15 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
             .height(58.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(
-                Brush.horizontalGradient(listOf(DurbinLaunchGreenDark, DurbinLaunchGreen, DurbinLaunchGreenDark))
+                Brush.horizontalGradient(
+                    listOf(
+                        DurbinLaunchGreenDark.copy(alpha = 0.36f),
+                        DurbinLaunchGreen.copy(alpha = 0.28f),
+                        DurbinLaunchGreenDark.copy(alpha = 0.36f)
+                    )
+                )
             )
-            .glowOverlay(DurbinLaunchGreen.copy(alpha = 0.25f))
+            .border(1.dp, DurbinLaunchGreen.copy(alpha = 0.32f), RoundedCornerShape(18.dp))
             .durbinClickable(DurbinSound.LAUNCH, onClick = onLaunch),
         contentAlignment = Alignment.Center
     ) {
@@ -554,12 +599,24 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
                 radius = size.minDimension * iconPulse,
                 center = Offset(size.width * 0.5f, size.height * 0.5f)
             )
+            val sweepCenter = size.width * sweep
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        Color.White.copy(alpha = 0.20f),
+                        Color.Transparent
+                    ),
+                    startX = sweepCenter - size.width * 0.18f,
+                    endX = sweepCenter + size.width * 0.18f
+                )
+            )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 Icons.Default.PlayArrow,
                 contentDescription = null,
-                tint = Color.Black,
+                tint = Color.White,
                 modifier = Modifier.size(28.dp).graphicsLayer {
                     scaleX = iconPulse
                     scaleY = iconPulse
@@ -568,7 +625,7 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
             Spacer(Modifier.width(8.dp))
             Text(
                 text = "LAUNCH MINECRAFT",
-                color = Color.Black,
+                color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 letterSpacing = 1.sp
@@ -624,6 +681,7 @@ private fun DurbinAccountCard(callbacks: DurbinMenuCallbacks) {
 
 @Composable
 private fun DurbinQuickActions(callbacks: DurbinMenuCallbacks, onVersions: () -> Unit) {
+    val context = LocalContext.current
     val actions = listOf(
         Triple("Saved Profiles", Icons.Default.Menu, callbacks.onOpenVersions),
         Triple("New Profile", Icons.Outlined.Extension, onVersions),
@@ -631,12 +689,13 @@ private fun DurbinQuickActions(callbacks: DurbinMenuCallbacks, onVersions: () ->
         Triple("Directory", Icons.Default.Folder, callbacks.onOpenDirectory),
         Triple("Logs", Icons.Default.Share, callbacks.onShareLogs),
         Triple("Install JAR", Icons.Default.Storage, callbacks.onInstallJar),
+        Triple("Join Discord", Icons.Default.Share) { openDurbinUrl(context, DurbinDiscordUrl) },
         Triple("Edit Profile", Icons.AutoMirrored.Filled.KeyboardArrowRight, callbacks.onEditProfile)
     )
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("QUICK ACTIONS", color = DurbinMutedText, fontSize = 11.sp, letterSpacing = 1.sp)
         actions.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { (label, icon, action) ->
                     QuickActionCard(label, icon, action, Modifier.weight(1f))
                 }
@@ -648,14 +707,89 @@ private fun DurbinQuickActions(callbacks: DurbinMenuCallbacks, onVersions: () ->
 
 @Composable
 private fun QuickActionCard(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    GlassCard(modifier = modifier.durbinClickable(onClick = onClick)) {
+    GlassCard(modifier = modifier.height(56.dp).durbinClickable(onClick = onClick)) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(icon, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
-            Text(label, color = DurbinPrimaryText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(
+                label,
+                color = DurbinPrimaryText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun DurbinCommunityCard() {
+    val context = LocalContext.current
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.07f))
+                        .border(1.dp, Color.White.copy(alpha = 0.14f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("C", color = DurbinAccentOrange, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("AUTHOR / OWNER", color = DurbinMutedText, fontSize = 10.sp, letterSpacing = 1.sp)
+                    Text("COSA", color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CommunityButton(
+                    label = "YouTube",
+                    icon = Icons.Default.PlayArrow,
+                    modifier = Modifier.weight(1f)
+                ) { openDurbinUrl(context, DurbinYoutubeUrl) }
+                CommunityButton(
+                    label = "Join Discord",
+                    icon = Icons.Default.Share,
+                    modifier = Modifier.weight(1f)
+                ) { openDurbinUrl(context, DurbinDiscordUrl) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommunityButton(label: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Surface(
+        modifier = modifier
+            .height(46.dp)
+            .durbinClickable(DurbinSound.POPUP, onClick = onClick),
+        color = Color.White.copy(alpha = 0.06f),
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (label.contains("Discord")) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(R.drawable.ic_discord),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+            } else {
+                Icon(icon, contentDescription = null, tint = DurbinAccentOrange, modifier = Modifier.size(19.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(label, color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         }
     }
 }
@@ -663,7 +797,7 @@ private fun QuickActionCard(label: String, icon: ImageVector, onClick: () -> Uni
 @Composable
 private fun DurbinFooter() {
     Text(
-        text = "DURBIN LAUNCHER • MOBILE",
+        text = "DURBIN LAUNCHER • OWNER COSA",
         color = DurbinMutedText,
         fontSize = 10.sp,
         letterSpacing = 1.5.sp,
@@ -883,24 +1017,36 @@ private fun GlassCard(
     borderColor: Color = DurbinBorderColor,
     content: @Composable () -> Unit
 ) {
-    val transition = rememberInfiniteTransition(label = "cardGlow")
-    val glowPulse by transition.animateFloat(
-        initialValue = 0.72f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "cardGlowPulse"
-    )
-
     Surface(
-        modifier = modifier.glowOverlay(glowColor.copy(alpha = glowColor.alpha * glowPulse)),
-        color = DurbinCardBg.copy(alpha = 0.86f),
+        modifier = modifier,
+        color = DurbinCardBg.copy(alpha = 0.36f),
         shape = RoundedCornerShape(18.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.075f))
     ) {
-        content()
+        Box {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.055f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.12f)
+                        )
+                    )
+                )
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            DurbinAccentOrange.copy(alpha = 0.045f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.08f, size.height * 0.05f),
+                        radius = size.maxDimension * 0.75f
+                    )
+                )
+            }
+            content()
+        }
     }
 }
 
@@ -929,9 +1075,25 @@ private fun Modifier.durbinClickable(
             interactionSource = interactionSource,
             indication = null
         ) {
+            try {
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+            } catch (_: Throwable) {
+                // Haptics can be disabled by device settings.
+            }
             playDurbinSound(view, sound)
             onClick()
         }
+}
+
+private fun openDurbinUrl(context: android.content.Context, url: String) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    } catch (_: Throwable) {
+        // Keep launcher stable even if there is no browser installed.
+    }
 }
 
 private fun playDurbinSound(view: View, sound: DurbinSound) {

@@ -12,11 +12,15 @@ import net.kdt.pojavlaunch.modloaders.modpacks.models.ModItem;
 import net.kdt.pojavlaunch.modloaders.modpacks.models.ModrinthIndex;
 import net.kdt.pojavlaunch.modloaders.modpacks.models.SearchFilters;
 import net.kdt.pojavlaunch.modloaders.modpacks.models.SearchResult;
+import net.kdt.pojavlaunch.prefs.LauncherPreferences;
+import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
+import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
 import net.kdt.pojavlaunch.progresskeeper.DownloaderProgressWrapper;
 import net.kdt.pojavlaunch.utils.ZipUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.ZipFile;
@@ -112,8 +116,72 @@ public class ModrinthApi implements ModpackApi{
 
     @Override
     public ModLoader installMod(ModDetail modDetail, int selectedVersion) throws IOException{
-        //TODO considering only modpacks for now
+        if(!modDetail.isModpack) {
+            installSingleMod(modDetail, selectedVersion);
+            return null;
+        }
         return ModpackInstaller.installModpack(modDetail, selectedVersion, this::installMrpack);
+    }
+
+    private void installSingleMod(ModDetail modDetail, int selectedVersion) throws IOException {
+        if (selectedVersion < 0 || selectedVersion >= modDetail.versionUrls.length) {
+            throw new IOException("Invalid Modrinth version selection");
+        }
+
+        File modsDirectory = getCurrentModsDirectory();
+        String url = modDetail.versionUrls[selectedVersion];
+        String fileName = buildSafeFileName(modDetail, selectedVersion, url);
+
+        ModDownloader modDownloader = new ModDownloader(modsDirectory, true);
+        modDownloader.submitDownload(() -> new ModDownloader.FileInfo(
+                url,
+                fileName,
+                modDetail.versionHashes[selectedVersion]
+        ));
+        modDownloader.awaitFinish(new DownloaderProgressWrapper(
+                R.string.modpack_download_downloading_mods,
+                ProgressLayout.INSTALL_MODPACK
+        ));
+    }
+
+    private static File getCurrentModsDirectory() throws IOException {
+        File gameDirectory = new File(Tools.DIR_GAME_NEW);
+        try {
+            LauncherProfiles.load();
+            String currentProfile = LauncherPreferences.DEFAULT_PREF.getString(
+                    LauncherPreferences.PREF_KEY_CURRENT_PROFILE,
+                    null
+            );
+            if (Tools.isValidString(currentProfile) && LauncherProfiles.mainProfileJson != null) {
+                MinecraftProfile profile = LauncherProfiles.mainProfileJson.profiles.get(currentProfile);
+                if (profile != null) gameDirectory = Tools.getGameDirPath(profile);
+            }
+        } catch (Throwable ignored) {
+            // Fall back to the default .minecraft directory.
+        }
+
+        File modsDirectory = new File(gameDirectory, "mods");
+        if (!modsDirectory.exists() && !modsDirectory.mkdirs()) {
+            throw new IOException("Could not create mods folder: " + modsDirectory.getAbsolutePath());
+        }
+        return modsDirectory;
+    }
+
+    private static String buildSafeFileName(ModDetail modDetail, int selectedVersion, String url) {
+        String extension = ".jar";
+        try {
+            String path = new URI(url).getPath();
+            int slash = path.lastIndexOf('/');
+            String remoteName = slash >= 0 ? path.substring(slash + 1) : path;
+            if (remoteName.endsWith(".jar") || remoteName.endsWith(".zip")) {
+                return remoteName.replaceAll("[^a-zA-Z0-9._-]", "_");
+            }
+        } catch (Throwable ignored) {
+            // Build fallback below.
+        }
+
+        String versionName = modDetail.versionNames[selectedVersion] == null ? "latest" : modDetail.versionNames[selectedVersion];
+        return (modDetail.title + "-" + versionName + extension).replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 
     private static ModLoader createInfo(ModrinthIndex modrinthIndex) {

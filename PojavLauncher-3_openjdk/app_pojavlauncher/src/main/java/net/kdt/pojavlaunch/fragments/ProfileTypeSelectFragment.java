@@ -6,7 +6,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import net.kdt.pojavlaunch.R;
@@ -42,16 +41,14 @@ public class ProfileTypeSelectFragment extends Fragment {
                 tryInstall(BTAInstallFragment.class, BTAInstallFragment.TAG));
 
         View durbinButton = view.findViewById(R.id.durbin_client_profile);
-        durbinButton.setOnClickListener(v -> showDurbinComingSoonDialog());
-        view.findViewById(R.id.durbin_coming_soon_hint).setOnClickListener(v -> showDurbinComingSoonDialog());
-    }
-
-    private void showDurbinComingSoonDialog() {
-        new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.durbin_coming_soon_title)
-                .setMessage(R.string.durbin_coming_soon_message)
-                .setPositiveButton(android.R.string.ok, null)
-                .show();
+        durbinButton.setOnClickListener(v -> {
+            Toast.makeText(requireContext(), "DURBIN Client uses Fabric for now. Add your client mod later.", Toast.LENGTH_LONG).show();
+            tryInstall(FabricInstallFragment.class, FabricInstallFragment.TAG);
+        });
+        view.findViewById(R.id.durbin_coming_soon_hint).setOnClickListener(v -> {
+            Toast.makeText(requireContext(), "DURBIN Client uses Fabric for now.", Toast.LENGTH_LONG).show();
+            tryInstall(FabricInstallFragment.class, FabricInstallFragment.TAG);
+        });
     }
 
     private void tryInstall(Class<? extends Fragment> fragmentClass, String tag) {

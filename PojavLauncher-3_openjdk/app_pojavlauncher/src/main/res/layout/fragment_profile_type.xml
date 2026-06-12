@@ -56,9 +56,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="@dimen/padding_large"
             android:layout_marginTop="@dimen/padding_large"
-            android:alpha="0.55"
-            android:enabled="false"
-            android:text="@string/durbin_launch_mode_durbin_coming_soon" />
+            android:text="@string/durbin_launch_mode_durbin_fabric" />
 
         <TextView
             android:id="@+id/durbin_coming_soon_hint"

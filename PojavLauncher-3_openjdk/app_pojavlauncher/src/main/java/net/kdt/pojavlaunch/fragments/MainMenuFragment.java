@@ -100,6 +100,10 @@ public class MainMenuFragment extends Fragment {
                     return kotlin.Unit.INSTANCE;
                 },
                 () -> {
+                    openModrinthMods();
+                    return kotlin.Unit.INSTANCE;
+                },
+                () -> {
                     ExtraCore.setValue(ExtraConstants.SELECT_AUTH_METHOD, true);
                     return kotlin.Unit.INSTANCE;
                 },
@@ -126,6 +130,12 @@ public class MainMenuFragment extends Fragment {
                             ForgeInstallFragment.TAG, null);
                     return kotlin.Unit.INSTANCE;
                 },
+                () -> {
+                    Toast.makeText(requireContext(), "DURBIN Client will use Fabric for now. Add your DURBIN mod later.", Toast.LENGTH_LONG).show();
+                    Tools.swapFragment(requireActivity(), FabricInstallFragment.class,
+                            FabricInstallFragment.TAG, null);
+                    return kotlin.Unit.INSTANCE;
+                },
                 () -> kotlin.Unit.INSTANCE,
                 mVersionSpinner,
                 this::getCurrentProfileName,
@@ -137,6 +147,19 @@ public class MainMenuFragment extends Fragment {
                 () -> LauncherPreferences.PREF_RENDERER,
                 this::getRuntimeLabel
         );
+    }
+
+    private void openModrinthMods() {
+        String loader = getCurrentLoaderLabel();
+        if ("Vanilla".equalsIgnoreCase(loader)) {
+            Toast.makeText(requireContext(), "Choose Fabric, Forge, or DURBIN before downloading mods.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        Bundle bundle = new Bundle(2);
+        bundle.putBoolean(SearchModFragment.ARG_IS_MODPACK, false);
+        bundle.putBoolean(SearchModFragment.ARG_MODRINTH_ONLY, true);
+        Tools.swapFragment(requireActivity(), SearchModFragment.class, SearchModFragment.TAG, bundle);
     }
 
     private void openSavedProfiles() {

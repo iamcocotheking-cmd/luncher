@@ -23,6 +23,7 @@ import net.kdt.pojavlaunch.R;
 import net.kdt.pojavlaunch.modloaders.modpacks.ModItemAdapter;
 import net.kdt.pojavlaunch.modloaders.modpacks.api.CommonApi;
 import net.kdt.pojavlaunch.modloaders.modpacks.api.ModpackApi;
+import net.kdt.pojavlaunch.modloaders.modpacks.api.ModrinthApi;
 import net.kdt.pojavlaunch.modloaders.modpacks.models.SearchFilters;
 import net.kdt.pojavlaunch.profiles.VersionSelectorDialog;
 import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
@@ -30,6 +31,8 @@ import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
 public class SearchModFragment extends Fragment implements ModItemAdapter.SearchResultCallback {
 
     public static final String TAG = "SearchModFragment";
+    public static final String ARG_IS_MODPACK = "is_modpack";
+    public static final String ARG_MODRINTH_ONLY = "modrinth_only";
     private View mOverlay;
     private float mOverlayTopCache; // Padding cache reduce resource lookup
 
@@ -61,7 +64,12 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
-        modpackApi = new CommonApi(context.getString(R.string.curseforge_api_key));
+        Bundle args = getArguments();
+        if (args != null) {
+            mSearchFilters.isModpack = args.getBoolean(ARG_IS_MODPACK, true);
+        }
+        boolean modrinthOnly = args != null && args.getBoolean(ARG_MODRINTH_ONLY, false);
+        modpackApi = modrinthOnly ? new ModrinthApi() : new CommonApi(context.getString(R.string.curseforge_api_key));
     }
 
     @Override
@@ -99,6 +107,10 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
                    mRecyclerview.getPaddingBottom());
         });
         mFilterButton.setOnClickListener(v -> displayFilterDialog());
+
+        if (!mSearchFilters.isModpack) {
+            mSearchEditText.setHint("Search Modrinth mods");
+        }
 
         searchMods(null);
     }

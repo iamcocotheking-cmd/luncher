@@ -109,7 +109,7 @@ private enum class DurbinDialog {
 }
 
 private enum class DurbinSound {
-    CLICK, LAUNCH, POPUP
+    CLICK, LAUNCH, POPUP, LINK
 }
 
 private enum class DurbinUiTheme {
@@ -143,8 +143,8 @@ private val OrangeDurbinPalette = DurbinPalette(
 private val RedWhiteDurbinPalette = DurbinPalette(
     name = "Red / White",
     accent = Color(0xFFFF2E2E),
-    launch = Color(0xFFEFEFEF),
-    launchDark = Color(0xFFBDBDBD),
+    launch = Color(0xFF1BD964),
+    launchDark = Color(0xFF0D8F3C),
     card = Color(0x55FFFFFF),
     cardActive = Color(0x33FFFFFF),
     border = Color(0x30FFFFFF),
@@ -155,8 +155,8 @@ private val RedWhiteDurbinPalette = DurbinPalette(
 private val BlackDurbinPalette = DurbinPalette(
     name = "Black",
     accent = Color(0xFFFFFFFF),
-    launch = Color(0xFF1D1D1D),
-    launchDark = Color(0xFF000000),
+    launch = Color(0xFF1BD964),
+    launchDark = Color(0xFF0D8F3C),
     card = Color(0x88111111),
     cardActive = Color(0x99222222),
     border = Color(0x24FFFFFF),
@@ -195,6 +195,14 @@ private data class LaunchModeOption(
     val subtitle: String,
     val enabled: Boolean,
     val onClick: () -> Unit
+)
+
+private data class DurbinQuickAction(
+    val label: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+    val sound: DurbinSound = DurbinSound.CLICK,
+    val visible: Boolean = true
 )
 
 private const val DurbinYoutubeUrl = "https://www.youtube.com/@Cosa_5023_YT"
@@ -680,14 +688,14 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
         ),
         label = "launchIconPulse"
     )
-    val sweep by transition.animateFloat(
-        initialValue = -0.4f,
-        targetValue = 1.4f,
+    val rainbowSweep by transition.animateFloat(
+        initialValue = -0.6f,
+        targetValue = 1.6f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2600, easing = LinearEasing),
+            animation = tween(1800, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "launchSweep"
+        label = "launchRainbowSweep"
     )
 
     Box(
@@ -698,33 +706,38 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
             .background(
                 Brush.horizontalGradient(
                     listOf(
-                        LocalDurbinPalette.current.launchDark.copy(alpha = 0.36f),
-                        LocalDurbinPalette.current.launch.copy(alpha = 0.28f),
-                        LocalDurbinPalette.current.launchDark.copy(alpha = 0.36f)
+                        Color(0xFF07963A),
+                        Color(0xFF16D95C),
+                        Color(0xFF07963A)
                     )
                 )
             )
-            .border(1.dp, LocalDurbinPalette.current.launch.copy(alpha = 0.32f), RoundedCornerShape(18.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(18.dp))
             .durbinClickable(DurbinSound.LAUNCH, onClick = onLaunch),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(
-                color = Color.White.copy(alpha = 0.10f),
-                radius = size.minDimension * iconPulse,
-                center = Offset(size.width * 0.5f, size.height * 0.5f)
-            )
-            val sweepCenter = size.width * sweep
+            val sweepCenter = size.width * rainbowSweep
             drawRect(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
                         Color.Transparent,
-                        Color.White.copy(alpha = 0.20f),
+                        Color.Red.copy(alpha = 0.25f),
+                        Color.Yellow.copy(alpha = 0.25f),
+                        Color.Green.copy(alpha = 0.20f),
+                        Color.Cyan.copy(alpha = 0.25f),
+                        Color.Blue.copy(alpha = 0.22f),
+                        Color.Magenta.copy(alpha = 0.25f),
                         Color.Transparent
                     ),
-                    startX = sweepCenter - size.width * 0.18f,
-                    endX = sweepCenter + size.width * 0.18f
+                    startX = sweepCenter - size.width * 0.42f,
+                    endX = sweepCenter + size.width * 0.42f
                 )
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.12f),
+                radius = size.minDimension * iconPulse,
+                center = Offset(size.width * 0.5f, size.height * 0.5f)
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -801,23 +814,39 @@ private fun DurbinQuickActions(
     onThemePicker: () -> Unit
 ) {
     val context = LocalContext.current
+    val loaderLabel = callbacks.getLoaderLabel()
+    val showModrinth = loaderLabel.equals("Fabric", ignoreCase = true) ||
+            loaderLabel.equals("Forge", ignoreCase = true) ||
+            loaderLabel.equals("Durbin", ignoreCase = true) ||
+            loaderLabel.contains("Fabric", ignoreCase = true) ||
+            loaderLabel.contains("Forge", ignoreCase = true) ||
+            loaderLabel.contains("Durbin", ignoreCase = true)
+
     val actions = listOf(
-        Triple("Saved Profiles", Icons.Default.Menu, callbacks.onOpenVersions),
-        Triple("New Profile", Icons.Outlined.Extension, onVersions),
-        Triple("Controls", Icons.Default.Gamepad, callbacks.onOpenControls),
-        Triple("Directory", Icons.Default.Folder, callbacks.onOpenDirectory),
-        Triple("Logs", Icons.Default.Share, callbacks.onShareLogs),
-        Triple("Install JAR", Icons.Default.Storage, callbacks.onInstallJar),
-        Triple("Theme Picker", Icons.Default.Settings, onThemePicker),
-        Triple("Join Discord", Icons.Default.Share) { openDurbinUrl(context, DurbinDiscordUrl) },
-        Triple("Edit Profile", Icons.AutoMirrored.Filled.KeyboardArrowRight, callbacks.onEditProfile)
-    )
+        DurbinQuickAction("Saved Profiles", Icons.Default.Menu, callbacks.onOpenVersions),
+        DurbinQuickAction("New Profile", Icons.Outlined.Extension, onVersions),
+        DurbinQuickAction("Modrinth Mods", Icons.Outlined.Extension, callbacks.onOpenModDownloader, visible = showModrinth),
+        DurbinQuickAction("Controls", Icons.Default.Gamepad, callbacks.onOpenControls),
+        DurbinQuickAction("Directory", Icons.Default.Folder, callbacks.onOpenDirectory),
+        DurbinQuickAction("Logs", Icons.Default.Share, callbacks.onShareLogs),
+        DurbinQuickAction("Install JAR", Icons.Default.Storage, callbacks.onInstallJar),
+        DurbinQuickAction("Theme Picker", Icons.Default.Settings, onThemePicker),
+        DurbinQuickAction("Join Discord", Icons.Default.Share, { openDurbinUrl(context, DurbinDiscordUrl) }, DurbinSound.LINK),
+        DurbinQuickAction("Edit Profile", Icons.AutoMirrored.Filled.KeyboardArrowRight, callbacks.onEditProfile)
+    ).filter { it.visible }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("QUICK ACTIONS", color = DurbinMutedText, fontSize = 11.sp, letterSpacing = 1.sp)
         actions.chunked(2).forEach { row ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { (label, icon, action) ->
-                    QuickActionCard(label, icon, action, Modifier.weight(1f))
+                row.forEach { action ->
+                    QuickActionCard(
+                        label = action.label,
+                        icon = action.icon,
+                        onClick = action.onClick,
+                        sound = action.sound,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
@@ -826,8 +855,14 @@ private fun DurbinQuickActions(
 }
 
 @Composable
-private fun QuickActionCard(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    GlassCard(modifier = modifier.height(56.dp).durbinClickable(onClick = onClick)) {
+private fun QuickActionCard(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    sound: DurbinSound = DurbinSound.CLICK,
+    modifier: Modifier = Modifier
+) {
+    GlassCard(modifier = modifier.height(56.dp).durbinClickable(sound = sound, onClick = onClick)) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -895,7 +930,7 @@ private fun CommunityButton(label: String, icon: ImageVector, modifier: Modifier
     Surface(
         modifier = modifier
             .height(46.dp)
-            .durbinClickable(DurbinSound.POPUP, onClick = onClick),
+            .durbinClickable(DurbinSound.LINK, onClick = onClick),
         color = Color.White.copy(alpha = 0.06f),
         shape = RoundedCornerShape(14.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
@@ -998,8 +1033,9 @@ private fun DurbinLaunchModeSheet(
             callbacks.onSelectForge()
             onClose()
         },
-        LaunchModeOption("DURBIN Client", "Coming Soon", false) {
-            onComingSoon()
+        LaunchModeOption("DURBIN Client", "Fabric base for DURBIN Client mod", true) {
+            callbacks.onSelectDurbin()
+            onClose()
         }
     )
 
@@ -1300,29 +1336,34 @@ private fun openDurbinUrl(context: android.content.Context, url: String) {
 }
 
 private fun playDurbinSound(view: View, sound: DurbinSound) {
+    val rawSound = when (sound) {
+        DurbinSound.LINK -> R.raw.durbin_teleport
+        else -> R.raw.durbin_orb
+    }
+
+    try {
+        val player = MediaPlayer.create(view.context.applicationContext, rawSound)
+        if (player != null) {
+            val volume = if (sound == DurbinSound.LINK) 0.72f else 0.55f
+            player.setVolume(volume, volume)
+            player.setOnCompletionListener {
+                try {
+                    it.release()
+                } catch (_: Throwable) {
+                    // No-op.
+                }
+            }
+            player.start()
+            return
+        }
+    } catch (_: Throwable) {
+        // Fall back to Android click sound below.
+    }
+
     try {
         view.playSoundEffect(SoundEffectConstants.CLICK)
     } catch (_: Throwable) {
         // Sound effects can be disabled by the system.
-    }
-
-    if (sound == DurbinSound.LAUNCH || sound == DurbinSound.POPUP) {
-        val tone = ToneGenerator(AudioManager.STREAM_MUSIC, if (sound == DurbinSound.LAUNCH) 36 else 22)
-        val toneType = if (sound == DurbinSound.LAUNCH) ToneGenerator.TONE_PROP_BEEP else ToneGenerator.TONE_PROP_ACK
-        val duration = if (sound == DurbinSound.LAUNCH) 130 else 70
-        try {
-            tone.startTone(toneType, duration)
-        } catch (_: Throwable) {
-            tone.release()
-            return
-        }
-        Handler(Looper.getMainLooper()).postDelayed({
-            try {
-                tone.release()
-            } catch (_: Throwable) {
-                // No-op.
-            }
-        }, (duration + 60).toLong())
     }
 }
 

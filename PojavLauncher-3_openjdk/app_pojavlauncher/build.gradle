@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application' version '8.7.2'
     id 'org.jetbrains.kotlin.android' version '2.0.21'
     id 'org.jetbrains.kotlin.plugin.compose' version '2.0.21'
+    id 'com.google.gms.google-services'
 }
 
 static def getDate() { return new Date().format('yyyyMMdd') }
@@ -242,5 +243,8 @@ dependencies {
     implementation 'androidx.compose.material:material-icons-extended'
     implementation 'androidx.activity:activity-compose:1.9.3'
     implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-firestore'
+
     debugImplementation 'androidx.compose.ui:ui-tooling'
 }

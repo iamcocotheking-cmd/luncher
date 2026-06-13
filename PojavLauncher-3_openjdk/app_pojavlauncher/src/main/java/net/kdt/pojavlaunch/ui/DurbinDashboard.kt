@@ -314,6 +314,9 @@ private fun DurbinDashboard(
 ) {
     var activeDialog by remember { mutableStateOf(DurbinDialog.NONE) }
     var contentVisible by remember { mutableStateOf(false) }
+    var newsItems by remember { mutableStateOf<List<DurbinNewsItem>>(emptyList()) }
+    var newsLoading by remember { mutableStateOf(true) }
+    var newsError by remember { mutableStateOf<String?>(null) }
     val entryProgress by animateFloatAsState(
         targetValue = if (contentVisible) 1f else 0f,
         animationSpec = tween(durationMillis = 520),
@@ -323,6 +326,16 @@ private fun DurbinDashboard(
 
     LaunchedEffect(Unit) {
         contentVisible = true
+        DurbinNewsRepository.loadNews(
+            onResult = { items ->
+                newsItems = items
+                newsLoading = false
+            },
+            onError = { error ->
+                newsError = error.message ?: "Offline"
+                newsLoading = false
+            }
+        )
     }
 
     Box(modifier = Modifier.fillMaxSize().background(DurbinBackground)) {
@@ -361,6 +374,11 @@ private fun DurbinDashboard(
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         DurbinAccountCard(callbacks)
+                        DurbinNewsCard(
+                            items = newsItems,
+                            loading = newsLoading,
+                            error = newsError
+                        )
                         DurbinQuickActions(
                             callbacks = callbacks,
                             onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
@@ -374,6 +392,11 @@ private fun DurbinDashboard(
                 DurbinHeroCard(callbacks) { activeDialog = DurbinDialog.LAUNCH_MODE }
                 DurbinLaunchButton(callbacks.onLaunch)
                 DurbinAccountCard(callbacks)
+                DurbinNewsCard(
+                    items = newsItems,
+                    loading = newsLoading,
+                    error = newsError
+                )
                 DurbinQuickActions(
                             callbacks = callbacks,
                             onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
@@ -969,6 +992,89 @@ private fun QuickActionCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+    }
+}
+
+@Composable
+private fun DurbinNewsCard(
+    items: List<DurbinNewsItem>,
+    loading: Boolean,
+    error: String?
+) {
+    val context = LocalContext.current
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    color = LocalDurbinPalette.current.accent.copy(alpha = 0.16f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, LocalDurbinPalette.current.accent.copy(alpha = 0.35f))
+                ) {
+                    Text(
+                        "NEWS",
+                        color = LocalDurbinPalette.current.accent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Text("DURBIN Updates", color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+
+            if (loading) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = LocalDurbinPalette.current.accent,
+                    trackColor = Color.White.copy(alpha = 0.08f)
+                )
+                Text("Loading Firebase news...", color = DurbinMutedText, fontSize = 12.sp)
+            } else {
+                val first = items.firstOrNull() ?: DurbinNewsRepository.fallbackNews().first()
+                Text(
+                    first.title,
+                    color = DurbinPrimaryText,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (first.description.isNotBlank()) {
+                    Text(
+                        first.description,
+                        color = DurbinSecondaryText,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (error != null) {
+                    Text("Showing fallback news", color = DurbinMutedText, fontSize = 11.sp)
+                }
+                if (first.buttonText.isNotBlank() && first.buttonUrl.isNotBlank()) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .durbinClickable(DurbinSound.LINK) { openDurbinUrl(context, first.buttonUrl) },
+                        color = LocalDurbinPalette.current.accent.copy(alpha = 0.18f),
+                        shape = RoundedCornerShape(14.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, LocalDurbinPalette.current.accent.copy(alpha = 0.35f))
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                first.buttonText,
+                                color = DurbinPrimaryText,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

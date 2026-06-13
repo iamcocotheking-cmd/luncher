@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "207243018045",
+    "project_id": "durbin-news-7cff2",
+    "storage_bucket": "durbin-news-7cff2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:207243018045:android:8d11496cbec10a09848f54",
+        "android_client_info": {
+          "package_name": "net.kdt.pojavlaunch.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCw5gIsrV9DBwQVZaCg-_RxAXJztKs30ec"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

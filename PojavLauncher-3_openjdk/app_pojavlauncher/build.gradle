@@ -234,6 +234,8 @@ dependencies {
     // implementation 'net.sourceforge.streamsupport:streamsupport-cfuture:1.7.0'
 
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'], exclude: ['gson-*.jar'])
+    // Use one Maven Gson version for all app code. The old local gson-2.8.6.jar is excluded above to avoid duplicate classes.
+    implementation 'com.google.code.gson:gson:2.10.1'
 
     def composeBom = platform('androidx.compose:compose-bom:2024.10.01')
     implementation composeBom

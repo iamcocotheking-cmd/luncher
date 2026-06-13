@@ -233,7 +233,7 @@ dependencies {
 
     // implementation 'net.sourceforge.streamsupport:streamsupport-cfuture:1.7.0'
 
-    implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+    implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'], exclude: ['gson-*.jar'])
 
     def composeBom = platform('androidx.compose:compose-bom:2024.10.01')
     implementation composeBom

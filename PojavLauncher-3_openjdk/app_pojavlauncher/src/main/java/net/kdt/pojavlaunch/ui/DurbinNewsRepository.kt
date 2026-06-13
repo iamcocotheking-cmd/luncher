@@ -6,6 +6,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 internal data class DurbinNewsItem(
     val title: String,
     val description: String,
+    val imageUrl: String = "",
     val buttonText: String = "",
     val buttonUrl: String = "",
     val pinned: Boolean = false,
@@ -30,6 +31,7 @@ internal object DurbinNewsRepository {
                         DurbinNewsItem(
                             title = title,
                             description = doc.getString("description")?.trim().orEmpty(),
+                            imageUrl = doc.getString("imageUrl")?.trim().orEmpty(),
                             buttonText = doc.getString("buttonText")?.trim().orEmpty(),
                             buttonUrl = doc.getString("buttonUrl")?.trim().orEmpty(),
                             pinned = doc.getBoolean("pinned") ?: false,

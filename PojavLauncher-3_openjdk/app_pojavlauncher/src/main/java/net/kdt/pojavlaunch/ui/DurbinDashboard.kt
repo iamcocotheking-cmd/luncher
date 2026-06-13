@@ -2,6 +2,7 @@ package net.kdt.pojavlaunch.ui
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.ToneGenerator
@@ -20,12 +21,14 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,6 +65,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -71,6 +75,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -79,6 +84,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -90,6 +96,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.URL
 import net.kdt.pojavlaunch.R
 import net.kdt.pojavlaunch.ui.theme.DurbinAccentOrange
 import net.kdt.pojavlaunch.ui.theme.DurbinBackground
@@ -1033,6 +1042,13 @@ private fun DurbinNewsCard(
                 Text("Loading Firebase news...", color = DurbinMutedText, fontSize = 12.sp)
             } else {
                 val first = items.firstOrNull() ?: DurbinNewsRepository.fallbackNews().first()
+                DurbinNewsImage(
+                    imageUrl = first.imageUrl,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(16.dp))
+                )
                 Text(
                     first.title,
                     color = DurbinPrimaryText,
@@ -1075,6 +1091,46 @@ private fun DurbinNewsCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DurbinNewsImage(imageUrl: String, modifier: Modifier = Modifier) {
+    val bitmapState = produceState<android.graphics.Bitmap?>(initialValue = null, key1 = imageUrl) {
+        value = if (imageUrl.isBlank()) {
+            null
+        } else {
+            withContext(Dispatchers.IO) {
+                try {
+                    URL(imageUrl).openStream().use { stream -> BitmapFactory.decodeStream(stream) }
+                } catch (_: Throwable) {
+                    null
+                }
+            }
+        }
+    }
+
+    if (bitmapState.value != null) {
+        Image(
+            bitmap = bitmapState.value!!.asImageBitmap(),
+            contentDescription = "News image",
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Box(
+            modifier = modifier
+                .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(16.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(R.drawable.durbin_logo),
+                contentDescription = "DURBIN news placeholder",
+                modifier = Modifier.size(88.dp),
+                contentScale = ContentScale.Fit
+            )
         }
     }
 }

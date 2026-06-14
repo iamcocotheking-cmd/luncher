@@ -109,6 +109,8 @@ android {
         versionCode 10000000
         versionName getVersionName()
         multiDexEnabled true //important
+        // DURBIN build stability: package English resources only to avoid old broken translations from dependencies.
+        resourceConfigurations += ['en']
         resValue 'string', 'curseforge_api_key', getCFApiKey()
         externalNativeBuild {
             ndkBuild {
@@ -210,8 +212,8 @@ android {
 // Newer Android resource merger fails these unless they are marked formatted=false.
 tasks.register("durbinFixStringFormatResources") {
     doLast {
-        def formatPattern = java.util.regex.Pattern.compile("(?<!%)%(?:\\d+\\$)?[-#+ 0,(<]*\\d*(?:\\.\\d+)?[a-zA-Z]")
-        def stringPattern = java.util.regex.Pattern.compile("<string(?![^>]*\\bformatted=)([^>]*\\bname=\"[^\"]+\"[^>]*)>(.*?)</string>", java.util.regex.Pattern.DOTALL)
+        def formatPattern = java.util.regex.Pattern.compile('(?<!%)%(?:[0-9]+[$])?[-#+ 0,(<]*[0-9]*(?:[.][0-9]+)?[a-zA-Z]')
+        def stringPattern = java.util.regex.Pattern.compile('<string(?![^>]*formatted=)([^>]*name="[^"]+"[^>]*)>(.*?)</string>', java.util.regex.Pattern.DOTALL)
 
         def patchXml = { File xmlFile ->
             if (!xmlFile.exists() || !xmlFile.isFile()) return

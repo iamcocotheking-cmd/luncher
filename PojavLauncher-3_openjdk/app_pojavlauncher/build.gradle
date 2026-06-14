@@ -203,10 +203,29 @@ android {
     buildToolsVersion = '34.0.0'
 }
 
+
+// DURBIN safety clean: if GitHub upload merged old files, remove duplicate .webp icons before Android resources merge.
+tasks.register("durbinCleanDuplicateIconResources") {
+    doLast {
+        def resDir = file("src/main/res")
+        delete fileTree(resDir) {
+            include "drawable/ic_pojav_full.webp"
+            include "mipmap-*/ic_launcher.webp"
+            include "mipmap-*/ic_launcher_round.webp"
+            include "mipmap-*/ic_launcher_foreground.webp"
+        }
+    }
+}
+
 afterEvaluate {
     // Explicit dependencies for which the apk relies on
     tasks.mergeDebugAssets.dependsOn(":forge_installer:jar", ":arc_dns_injector:jar", ":methods_injector_agent:jar", ":jre_lwjgl3glfw:jar")
     tasks.mergeReleaseAssets.dependsOn(":forge_installer:jar", ":arc_dns_injector:jar", ":methods_injector_agent:jar", ":jre_lwjgl3glfw:jar")
+
+    // Run before resource merge so stale duplicate .webp icons from old uploads cannot break Actions.
+    tasks.matching { it.name == "mergeDebugResources" || it.name == "mergeReleaseResources" }.configureEach {
+        dependsOn(tasks.named("durbinCleanDuplicateIconResources"))
+    }
 }
 
 dependencies {

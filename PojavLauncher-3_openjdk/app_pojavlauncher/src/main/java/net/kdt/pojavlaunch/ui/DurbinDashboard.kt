@@ -20,6 +20,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -96,6 +98,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.URL
@@ -123,7 +128,7 @@ private enum class DurbinSound {
 }
 
 private enum class DurbinUiTheme {
-    ORANGE, RED_WHITE, BLACK, BLUE, PURPLE, CYAN, MINECRAFT, GOLD
+    ORANGE, RED_WHITE, BLACK, BLUE, PURPLE, PINK, CYAN, MINECRAFT, GOLD
 }
 
 private data class DurbinPalette(
@@ -199,6 +204,18 @@ private val PurpleDurbinPalette = DurbinPalette(
     glow = Color(0x00B66BFF)
 )
 
+private val PinkDurbinPalette = DurbinPalette(
+    name = "Pink",
+    accent = Color(0xFFFF4FD8),
+    launch = Color(0xFFFF4FA3),
+    launchDark = Color(0xFFC41472),
+    card = Color(0x661E0B19),
+    cardActive = Color(0x6638182F),
+    border = Color(0x33FF4FD8),
+    strongBorder = Color(0x55FF4FD8),
+    glow = Color(0x00FF4FD8)
+)
+
 private val CyanDurbinPalette = DurbinPalette(
     name = "Cyan",
     accent = Color(0xFF00E5FF),
@@ -243,6 +260,7 @@ private fun paletteFor(theme: DurbinUiTheme): DurbinPalette = when (theme) {
     DurbinUiTheme.BLACK -> BlackDurbinPalette
     DurbinUiTheme.BLUE -> BlueDurbinPalette
     DurbinUiTheme.PURPLE -> PurpleDurbinPalette
+    DurbinUiTheme.PINK -> PinkDurbinPalette
     DurbinUiTheme.CYAN -> CyanDurbinPalette
     DurbinUiTheme.MINECRAFT -> MinecraftDurbinPalette
     DurbinUiTheme.GOLD -> GoldDurbinPalette
@@ -336,6 +354,7 @@ private fun DurbinDashboard(
     LaunchedEffect(Unit) {
         contentVisible = true
         DurbinNewsRepository.loadNews(
+            context = context,
             onResult = { items ->
                 newsItems = items
                 newsLoading = false
@@ -393,6 +412,7 @@ private fun DurbinDashboard(
                             onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
                             onThemePicker = { activeDialog = DurbinDialog.THEME }
                         )
+                        DurbinTierCard()
                         DurbinCommunityCard()
                         DurbinFooter()
                     }
@@ -411,6 +431,7 @@ private fun DurbinDashboard(
                             onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
                             onThemePicker = { activeDialog = DurbinDialog.THEME }
                         )
+                DurbinTierCard()
                 DurbinCommunityCard()
                 DurbinFooter()
             }
@@ -786,18 +807,9 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
-        targetValue = if (pressed) 0.985f else 1f,
+        targetValue = if (pressed) 0.986f else 1f,
         animationSpec = tween(durationMillis = 110),
         label = "launchPressScale"
-    )
-    val rainbowMotion by rememberInfiniteTransition(label = "launchRainbowClean").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "launchRainbowBorder"
     )
 
     Box(
@@ -808,6 +820,20 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
                 scaleX = pressScale
                 scaleY = pressScale
             }
+            .clip(RoundedCornerShape(31.dp))
+            .background(LocalDurbinPalette.current.accent.copy(alpha = 0.22f))
+            .padding(2.dp)
+            .clip(RoundedCornerShape(29.dp))
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF26D86C),
+                        Color(0xFF15B455),
+                        Color(0xFF119145)
+                    )
+                )
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(29.dp))
             .clickable(
                 enabled = true,
                 interactionSource = interactionSource,
@@ -821,52 +847,21 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
             },
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val radius = size.height / 2f
-            val borderWidth = 4.dp.toPx()
-            val rainbowColors = listOf(
-                Color(0xFF4A7BFF),
-                Color(0xFF8B5CFF),
-                Color(0xFFFF5BB7),
-                Color(0xFFFF6B6B),
-                Color(0xFFFFB84A),
-                Color(0xFF46F27E),
-                Color(0xFF4A7BFF)
-            )
-            val shift = size.width * 1.8f * rainbowMotion
-            drawRoundRect(
-                brush = Brush.linearGradient(
-                    colors = rainbowColors,
-                    start = Offset(-size.width + shift, 0f),
-                    end = Offset(shift, size.height)
-                ),
-                cornerRadius = CornerRadius(radius, radius)
-            )
-            drawRoundRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF20D86B),
-                        Color(0xFF0EA34A),
-                        Color(0xFF087E39)
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .clip(RoundedCornerShape(25.dp))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.16f),
+                            Color.Transparent,
+                            Color.Transparent
+                        )
                     )
-                ),
-                topLeft = Offset(borderWidth, borderWidth),
-                size = androidx.compose.ui.geometry.Size(size.width - borderWidth * 2f, size.height - borderWidth * 2f),
-                cornerRadius = CornerRadius(radius - borderWidth, radius - borderWidth)
-            )
-            drawRoundRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.22f),
-                        Color.Transparent,
-                        Color.Black.copy(alpha = 0.18f)
-                    )
-                ),
-                topLeft = Offset(borderWidth, borderWidth),
-                size = androidx.compose.ui.geometry.Size(size.width - borderWidth * 2f, size.height - borderWidth * 2f),
-                cornerRadius = CornerRadius(radius - borderWidth, radius - borderWidth)
-            )
-        }
+                )
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 Icons.Default.PlayArrow,
@@ -893,16 +888,10 @@ private fun DurbinAccountCard(callbacks: DurbinMenuCallbacks) {
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(LocalDurbinPalette.current.cardActive)
-                    .border(1.dp, LocalDurbinPalette.current.accent.copy(alpha = 0.4f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.AccountCircle, contentDescription = null, tint = LocalDurbinPalette.current.accent, modifier = Modifier.size(30.dp))
-            }
+            DurbinMinecraftHead(
+                username = callbacks.getAccountName(),
+                modifier = Modifier.size(44.dp)
+            )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("ACCOUNT", color = DurbinMutedText, fontSize = 10.sp)
@@ -1006,6 +995,236 @@ private fun QuickActionCard(
 }
 
 @Composable
+private fun DurbinTierCard() {
+    val context = LocalContext.current
+    var profile by remember { mutableStateOf(DurbinTierRepository.loadSavedProfile(context)) }
+    var myTier by remember { mutableStateOf<DurbinTierAssignment?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+
+    val googleSignInClient = remember(context) {
+        GoogleSignIn.getClient(
+            context,
+            GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .requestProfile()
+                .build()
+        )
+    }
+
+    fun refreshTier(forProfile: DurbinGoogleProfile? = profile) {
+        val signedProfile = forProfile ?: return
+        message = null
+        loading = true
+        DurbinTierRepository.loadMyTier(
+            email = signedProfile.email,
+            onResult = { assignment ->
+                myTier = assignment
+                loading = false
+                if (assignment == null) message = "No tier assigned yet. Join Discord for a tier test."
+            },
+            onError = {
+                loading = false
+                message = "Could not load your tier"
+            }
+        )
+    }
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        try {
+            val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                .getResult(ApiException::class.java)
+            val newProfile = DurbinTierRepository.profileFromGoogle(account)
+            if (newProfile == null) {
+                message = "Google login failed"
+            } else {
+                DurbinTierRepository.saveProfile(context, newProfile)
+                profile = newProfile
+                refreshTier(newProfile)
+            }
+        } catch (_: Throwable) {
+            message = "Google login failed. Add SHA-1 in Firebase if needed."
+        }
+    }
+
+    LaunchedEffect(profile?.email) {
+        if (profile != null) refreshTier(profile)
+    }
+
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    color = LocalDurbinPalette.current.accent.copy(alpha = 0.16f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, LocalDurbinPalette.current.accent.copy(alpha = 0.35f))
+                ) {
+                    Text(
+                        "TIER",
+                        color = LocalDurbinPalette.current.accent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Text("DURBIN Tier Test", color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+
+            Text(
+                if (profile == null)
+                    "Click login with Google, then join Discord for your tier test. Owner can assign Tank, Crystal, NetPot, Sword, Axe, UHC, SMP and Pot tiers."
+                else
+                    "For Tank, Crystal, NetPot or other tier tests, join the DURBIN Discord server.",
+                color = DurbinSecondaryText,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+
+            if (profile == null) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TierActionButton("Login with Google", Modifier.weight(1f)) {
+                        launcher.launch(googleSignInClient.signInIntent)
+                    }
+                    TierActionButton("Join Discord", Modifier.weight(1f)) {
+                        openDurbinUrl(context, DurbinDiscordUrl)
+                    }
+                }
+            } else {
+                val tierText = myTier?.tier ?: "UNRANKED"
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DurbinMinecraftHead(
+                        username = profile?.displayName?.ifBlank { callbacksSafeUsername(profile?.email.orEmpty()) } ?: "Steve",
+                        modifier = Modifier.size(42.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(profile?.displayName?.ifBlank { "Google Player" } ?: "Google Player", color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(profile?.email.orEmpty(), color = DurbinMutedText, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    TierChip(tierText)
+                }
+                if (loading) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = LocalDurbinPalette.current.accent,
+                        trackColor = Color.White.copy(alpha = 0.08f)
+                    )
+                }
+                val modeTiers = myTier?.modeTiers.orEmpty()
+                if (modeTiers.isNotEmpty()) {
+                    Text("MODE TIERS", color = DurbinMutedText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    ModeTierGrid(modeTiers)
+                }
+                val note = myTier?.note.orEmpty()
+                if (note.isNotBlank()) {
+                    Text(note, color = DurbinSecondaryText, fontSize = 12.sp, lineHeight = 17.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TierActionButton("Refresh", Modifier.weight(1f)) { refreshTier(profile) }
+                    TierActionButton("Join Discord", Modifier.weight(1f)) { openDurbinUrl(context, DurbinDiscordUrl) }
+                    TierActionButton("Sign out", Modifier.weight(1f)) {
+                        googleSignInClient.signOut()
+                        DurbinTierRepository.clearProfile(context)
+                        profile = null
+                        myTier = null
+                        message = null
+                    }
+                }
+            }
+
+            if (message != null) {
+                Text(message.orEmpty(), color = DurbinMutedText, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModeTierGrid(modeTiers: List<DurbinModeTier>) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        modeTiers.chunked(2).forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { item ->
+                    ModeTierCard(item, Modifier.weight(1f))
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModeTierCard(item: DurbinModeTier, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .background(Color.White.copy(alpha = 0.035f), RoundedCornerShape(12.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 9.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            item.mode,
+            color = DurbinSecondaryText,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(6.dp))
+        TierChip(item.tier)
+    }
+}
+
+@Composable
+private fun TierChip(tier: String) {
+    val label = tier.ifBlank { "UNRANKED" }.uppercase()
+    val palette = LocalDurbinPalette.current
+    Surface(
+        color = when {
+            label.startsWith("HT") -> Color(0xFF1BD964).copy(alpha = 0.18f)
+            label.startsWith("LT") -> palette.accent.copy(alpha = 0.18f)
+            else -> Color.White.copy(alpha = 0.08f)
+        },
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            when {
+                label.startsWith("HT") -> Color(0xFF1BD964).copy(alpha = 0.38f)
+                label.startsWith("LT") -> palette.accent.copy(alpha = 0.38f)
+                else -> Color.White.copy(alpha = 0.12f)
+            }
+        )
+    ) {
+        Text(
+            label,
+            color = DurbinPrimaryText,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun TierActionButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Surface(
+        modifier = modifier
+            .height(42.dp)
+            .durbinClickable(DurbinSound.LINK, onClick = onClick),
+        color = LocalDurbinPalette.current.accent.copy(alpha = 0.16f),
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, LocalDurbinPalette.current.accent.copy(alpha = 0.32f))
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(label, color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
 private fun DurbinNewsCard(
     items: List<DurbinNewsItem>,
     loading: Boolean,
@@ -1091,6 +1310,44 @@ private fun DurbinNewsCard(
                     }
                 }
             }
+        }
+    }
+}
+
+private fun callbacksSafeUsername(email: String): String {
+    val prefix = email.substringBefore('@').trim()
+    return if (prefix.isBlank()) "Steve" else prefix
+}
+
+@Composable
+private fun DurbinMinecraftHead(username: String, modifier: Modifier = Modifier) {
+    val safeName = username.ifBlank { "Steve" }.trim().replace(" ", "%20")
+    val bitmapState = produceState<android.graphics.Bitmap?>(initialValue = null, key1 = safeName) {
+        value = withContext(Dispatchers.IO) {
+            try {
+                URL("https://mc-heads.net/avatar/$safeName/96").openStream().use { stream -> BitmapFactory.decodeStream(stream) }
+            } catch (_: Throwable) {
+                null
+            }
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(LocalDurbinPalette.current.cardActive)
+            .border(1.dp, LocalDurbinPalette.current.accent.copy(alpha = 0.40f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bitmapState.value != null) {
+            Image(
+                bitmap = bitmapState.value!!.asImageBitmap(),
+                contentDescription = "Minecraft head",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(Icons.Default.AccountCircle, contentDescription = null, tint = LocalDurbinPalette.current.accent, modifier = Modifier.size(30.dp))
         }
     }
 }
@@ -1395,6 +1652,14 @@ private fun DurbinThemePickerSheet(
             theme = DurbinUiTheme.PURPLE,
             selectedTheme = selectedTheme,
             accent = PurpleDurbinPalette.accent,
+            onThemeSelected = onThemeSelected
+        )
+        DurbinThemeOptionRow(
+            title = "Pink",
+            subtitle = "Hot pink neon style",
+            theme = DurbinUiTheme.PINK,
+            selectedTheme = selectedTheme,
+            accent = PinkDurbinPalette.accent,
             onThemeSelected = onThemeSelected
         )
         DurbinThemeOptionRow(

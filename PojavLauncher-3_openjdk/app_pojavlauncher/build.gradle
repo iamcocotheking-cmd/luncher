@@ -204,6 +204,55 @@ android {
 }
 
 
+
+
+// DURBIN safety clean: fix old Amethyst/Pojav translation strings that have multiple non-positional % placeholders.
+// Newer Android resource merger fails these unless they are marked formatted=false.
+tasks.register("durbinFixStringFormatResources") {
+    doLast {
+        def formatPattern = java.util.regex.Pattern.compile("(?<!%)%(?:\\d+\\$)?[-#+ 0,(<]*\\d*(?:\\.\\d+)?[a-zA-Z]")
+        def stringPattern = java.util.regex.Pattern.compile("<string(?![^>]*\\bformatted=)([^>]*\\bname=\"[^\"]+\"[^>]*)>(.*?)</string>", java.util.regex.Pattern.DOTALL)
+
+        def patchXml = { File xmlFile ->
+            if (!xmlFile.exists() || !xmlFile.isFile()) return
+            String source = xmlFile.getText("UTF-8")
+            def matcher = stringPattern.matcher(source)
+            StringBuffer out = new StringBuffer()
+            boolean changed = false
+            while (matcher.find()) {
+                String attrs = matcher.group(1)
+                String body = matcher.group(2)
+                def fmt = formatPattern.matcher(body)
+                int count = 0
+                while (fmt.find()) count++
+                if (count > 1) {
+                    String replacement = "<string formatted=\"false\"" + attrs + ">" + body + "</string>"
+                    matcher.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(replacement))
+                    changed = true
+                } else {
+                    matcher.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(matcher.group(0)))
+                }
+            }
+            matcher.appendTail(out)
+            if (changed) xmlFile.write(out.toString(), "UTF-8")
+        }
+
+        // Patch project resources.
+        fileTree(file("src/main/res")) {
+            include "values*/strings.xml"
+        }.each { patchXml(it) }
+
+        // Patch already-transformed AAR resource XMLs too, because some dependencies include old translations.
+        def gradleCache = new File(System.getProperty("user.home"), ".gradle/caches")
+        if (gradleCache.exists()) {
+            fileTree(gradleCache) {
+                include "**/transformed/**/res/values*/values*.xml"
+                include "**/transformed/**/res/values*/strings.xml"
+            }.each { patchXml(it) }
+        }
+    }
+}
+
 // DURBIN safety clean: if GitHub upload merged old files, remove duplicate .webp icons before Android resources merge.
 tasks.register("durbinCleanDuplicateIconResources") {
     doLast {
@@ -225,6 +274,7 @@ afterEvaluate {
     // Run before resource merge so stale duplicate .webp icons from old uploads cannot break Actions.
     tasks.matching { it.name == "mergeDebugResources" || it.name == "mergeReleaseResources" }.configureEach {
         dependsOn(tasks.named("durbinCleanDuplicateIconResources"))
+        dependsOn(tasks.named("durbinFixStringFormatResources"))
     }
 }
 

@@ -27,7 +27,7 @@
     <!-- MCLauncherActivity: Strings -->
     <string name="mcl_launch_cleancache">Keş faylları təmizlənir</string>
     <string name="mcl_launch_downloading">Endirilir %s</string>
-    <string name="mcl_launch_downloading_progress">"Endirilir %s (%.2f MB / %.2f MB)"</string>
+    <string formatted="false" name="mcl_launch_downloading_progress">"Endirilir %s (%.2f MB / %.2f MB)"</string>
     <string name="mcl_launch_download_assets">Resursları endirməyə hazırlanır</string>
     <string name="mcl_options">Seçimlər</string>
     <string name="mcl_setting_title_use_surface_view">Alternativ səth renderindən istifadə edin</string>
@@ -103,7 +103,7 @@
     <string name="mcl_setting_subtitle_mousespeed">Virtual siçanın sürətini dəyişir.</string>
     <string name="customctrl_passthru">Siçan keçidi</string>
     <string name="customctrl_absolute_tracking">Mütləq barmaq izləmə</string>
-    <string name="memory_warning_msg">Boş RAM-ın cari miqdarı (%d) ayrılmış RAM-dan (%d) azdır və bu, çökmələrə səbəb ola bilər. Oyun qəzaya uğrayarsa, yeri dəyişdirin.</string>
+    <string formatted="false" name="memory_warning_msg">Boş RAM-ın cari miqdarı (%d) ayrılmış RAM-dan (%d) azdır və bu, çökmələrə səbəb ola bilər. Oyun qəzaya uğrayarsa, yeri dəyişdirin.</string>
     <string name="mcl_memory_allocation">Yaddaşın ayrılması</string>
     <string name="mcl_memory_allocation_subtitle">Minecraft-a nə qədər yaddaş verildiyinə nəzarət edir.</string>
     <string name="multirt_runtime_corrupt">Zədələnmiş Java Runtime</string>
@@ -224,10 +224,10 @@
     <string name="search_modpack_no_result">Heç bir modpaket tapılmadı</string>
     <string name="search_modpack_error">Mod paketləri tapmaq alınmadı</string>
     <string name="search_modpack_download_error">Modpack metadatasını endirmək alınmadı</string>
-    <string name="modpack_download_downloading_metadata">Modpack metadatası endirilir (%.2f MB / %.2f MB)</string>
-    <string name="modpack_download_downloading_mods">Modlar endirilir (%.2f MB / %.2f MB)</string>
-    <string name="modpack_download_downloading_mods_fc">Modlar endirilir (%d fayldan %d fayl)</string>
-    <string name="modpack_download_applying_overrides">Ləğvetmələr tətbiq edilir (%d/%d)</string>
+    <string formatted="false" name="modpack_download_downloading_metadata">Modpack metadatası endirilir (%.2f MB / %.2f MB)</string>
+    <string formatted="false" name="modpack_download_downloading_mods">Modlar endirilir (%.2f MB / %.2f MB)</string>
+    <string formatted="false" name="modpack_download_downloading_mods_fc">Modlar endirilir (%d fayldan %d fayl)</string>
+    <string formatted="false" name="modpack_download_applying_overrides">Ləğvetmələr tətbiq edilir (%d/%d)</string>
     <string name="modpack_install_notification_title">Pojav Mod paket quraşdırıcısı</string>
     <string name="modpack_install_notification_success">Modpack quraşdırılmasını başa çatdırmaq üçün bura klikləyin</string>
     <string name="modpack_install_notification_data_not_available">Mod yükləyicisi məlumatını endirmək alınmadı</string>

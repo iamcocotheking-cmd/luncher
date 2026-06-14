@@ -339,6 +339,7 @@ private fun DurbinDashboard(
     selectedTheme: DurbinUiTheme,
     onThemeSelected: (DurbinUiTheme) -> Unit
 ) {
+    val context = LocalContext.current
     var activeDialog by remember { mutableStateOf(DurbinDialog.NONE) }
     var contentVisible by remember { mutableStateOf(false) }
     var newsItems by remember { mutableStateOf<List<DurbinNewsItem>>(emptyList()) }

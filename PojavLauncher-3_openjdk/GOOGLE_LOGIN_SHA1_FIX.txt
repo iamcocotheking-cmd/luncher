@@ -1,0 +1,16 @@
+DURBIN Google Login SHA-1 Fix
+
+Your debug APK is signed with this included debug.keystore:
+
+SHA-1:
+17:D6:F8:A1:A3:8E:B2:EF:B7:B2:C7:A7:75:99:9C:F4:0D:46:84:10
+
+Firebase steps:
+1. Firebase Console -> Project settings
+2. Your apps -> Android app: net.kdt.pojavlaunch.debug
+3. Add fingerprint
+4. Paste the SHA-1 above
+5. Save
+6. Download the updated google-services.json
+7. Replace app_pojavlauncher/google-services.json if Firebase gives a new file
+8. Rebuild the APK

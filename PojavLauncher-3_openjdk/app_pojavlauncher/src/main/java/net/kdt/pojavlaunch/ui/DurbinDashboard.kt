@@ -1044,7 +1044,7 @@ private fun DurbinTierCard() {
                 refreshTier(newProfile)
             }
         } catch (_: Throwable) {
-            message = "Google login failed. Add SHA-1 in Firebase if needed."
+            message = "Google login failed. Add SHA-1 in Firebase: 17:D6:F8:A1:A3:8E:B2:EF:B7:B2:C7:A7:75:99:9C:F4:0D:46:84:10"
         }
     }
 

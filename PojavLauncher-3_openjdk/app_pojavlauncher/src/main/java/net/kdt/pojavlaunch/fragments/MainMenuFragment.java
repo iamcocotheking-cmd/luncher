@@ -144,7 +144,7 @@ public class MainMenuFragment extends Fragment {
                 this::getAccountName,
                 this::isOfflineAccount,
                 this::getRamAllocation,
-                () -> LauncherPreferences.PREF_RENDERER,
+                this::getRendererLabel,
                 this::getRuntimeLabel
         );
     }
@@ -232,6 +232,13 @@ public class MainMenuFragment extends Fragment {
 
     private String getRamAllocation() {
         return LauncherPreferences.PREF_RAM_ALLOCATION + " MB";
+    }
+
+
+    private String getRendererLabel() {
+        String renderer = Tools.LOCAL_RENDERER;
+        if (renderer == null || renderer.trim().isEmpty()) return "Auto";
+        return renderer;
     }
 
     private String getRuntimeLabel() {

@@ -30,6 +30,8 @@ import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
 public class SearchModFragment extends Fragment implements ModItemAdapter.SearchResultCallback {
 
     public static final String TAG = "SearchModFragment";
+    public static final String ARG_IS_MODPACK = "is_modpack";
+    public static final String ARG_MODRINTH_ONLY = "modrinth_only";
     private View mOverlay;
     private float mOverlayTopCache; // Padding cache reduce resource lookup
 
@@ -67,6 +69,13 @@ public class SearchModFragment extends Fragment implements ModItemAdapter.Search
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         // You can only access resources after attaching to current context
+        Bundle args = getArguments();
+        if (args != null) {
+            mSearchFilters.isModpack = args.getBoolean(ARG_IS_MODPACK, mSearchFilters.isModpack);
+            if (args.getBoolean(ARG_MODRINTH_ONLY, false)) {
+                modpackApi = new CommonApi("");
+            }
+        }
         mModItemAdapter = new ModItemAdapter(getResources(), modpackApi, this);
         ProgressKeeper.addTaskCountListener(mModItemAdapter);
         mOverlayTopCache = getResources().getDimension(R.dimen.fragment_padding_medium);

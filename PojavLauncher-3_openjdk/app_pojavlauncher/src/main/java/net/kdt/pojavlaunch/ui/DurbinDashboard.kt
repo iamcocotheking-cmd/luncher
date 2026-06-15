@@ -438,7 +438,6 @@ private fun DurbinDashboard(
                             onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
                             onThemePicker = { activeDialog = DurbinDialog.THEME }
                         )
-                        DurbinSmartToolsCard(callbacks)
                         DurbinAccountCard(callbacks)
                         DurbinTierCard()
                         DurbinCommunityCard()
@@ -458,7 +457,6 @@ private fun DurbinDashboard(
                     onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
                     onThemePicker = { activeDialog = DurbinDialog.THEME }
                 )
-                DurbinSmartToolsCard(callbacks)
                 DurbinAccountCard(callbacks)
                 DurbinTierCard()
                 DurbinCommunityCard()

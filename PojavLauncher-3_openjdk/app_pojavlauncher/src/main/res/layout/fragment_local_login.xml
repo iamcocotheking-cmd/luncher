@@ -38,8 +38,8 @@
         android:layout_marginHorizontal="@dimen/_25sdp"
 
         android:layout_marginTop="@dimen/_60sdp"
-        android:imeOptions="flagNoExtractUi"
-        android:inputType="textEmailAddress"
+        android:imeOptions="flagNoExtractUi|actionDone"
+        android:inputType="textNoSuggestions"
         android:textSize="@dimen/_16ssp"
 
         app:layout_constraintEnd_toEndOf="@+id/login_menu"

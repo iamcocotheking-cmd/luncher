@@ -1,6 +1,10 @@
 package net.kdt.pojavlaunch.ui
 
 import android.content.Context
+import android.widget.Toast
+import android.os.Build
+import android.content.ClipboardManager
+import android.content.ClipData
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.media.AudioManager
@@ -105,6 +109,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.URL
 import net.kdt.pojavlaunch.R
+import net.kdt.pojavlaunch.PojavProfile
 import net.kdt.pojavlaunch.ui.theme.DurbinAccentOrange
 import net.kdt.pojavlaunch.ui.theme.DurbinBackground
 import net.kdt.pojavlaunch.ui.theme.DurbinBorderColor
@@ -129,6 +134,10 @@ private enum class DurbinSound {
 
 private enum class DurbinUiTheme {
     ORANGE, RED_WHITE, BLACK, BLUE, PURPLE, PINK, CYAN, MINECRAFT, GOLD
+}
+
+private enum class DurbinPerfPreset {
+    FPS_BOOST, BALANCED, BATTERY
 }
 
 private data class DurbinPalette(
@@ -283,6 +292,23 @@ private fun saveDurbinUiTheme(context: Context, theme: DurbinUiTheme) {
         .apply()
 }
 
+private fun loadDurbinPerfPreset(context: Context): DurbinPerfPreset {
+    val stored = context.getSharedPreferences("durbin_ui", Context.MODE_PRIVATE)
+        .getString("perf_preset", DurbinPerfPreset.BALANCED.name)
+    return try {
+        DurbinPerfPreset.valueOf(stored ?: DurbinPerfPreset.BALANCED.name)
+    } catch (_: Throwable) {
+        DurbinPerfPreset.BALANCED
+    }
+}
+
+private fun saveDurbinPerfPreset(context: Context, preset: DurbinPerfPreset) {
+    context.getSharedPreferences("durbin_ui", Context.MODE_PRIVATE)
+        .edit()
+        .putString("perf_preset", preset.name)
+        .apply()
+}
+
 
 private data class LaunchModeOption(
     val title: String,
@@ -402,7 +428,6 @@ private fun DurbinDashboard(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        DurbinAccountCard(callbacks)
                         DurbinNewsCard(
                             items = newsItems,
                             loading = newsLoading,
@@ -413,6 +438,8 @@ private fun DurbinDashboard(
                             onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
                             onThemePicker = { activeDialog = DurbinDialog.THEME }
                         )
+                        DurbinSmartToolsCard(callbacks)
+                        DurbinAccountCard(callbacks)
                         DurbinTierCard()
                         DurbinCommunityCard()
                         DurbinFooter()
@@ -421,17 +448,18 @@ private fun DurbinDashboard(
             } else {
                 DurbinHeroCard(callbacks) { activeDialog = DurbinDialog.LAUNCH_MODE }
                 DurbinLaunchButton(callbacks.onLaunch)
-                DurbinAccountCard(callbacks)
                 DurbinNewsCard(
                     items = newsItems,
                     loading = newsLoading,
                     error = newsError
                 )
                 DurbinQuickActions(
-                            callbacks = callbacks,
-                            onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
-                            onThemePicker = { activeDialog = DurbinDialog.THEME }
-                        )
+                    callbacks = callbacks,
+                    onVersions = { activeDialog = DurbinDialog.LAUNCH_MODE },
+                    onThemePicker = { activeDialog = DurbinDialog.THEME }
+                )
+                DurbinSmartToolsCard(callbacks)
+                DurbinAccountCard(callbacks)
                 DurbinTierCard()
                 DurbinCommunityCard()
                 DurbinFooter()
@@ -882,6 +910,158 @@ private fun DurbinLaunchButton(onLaunch: () -> Unit) {
     }
 }
 
+
+@Composable
+private fun DurbinSmartToolsCard(callbacks: DurbinMenuCallbacks) {
+    val context = LocalContext.current
+    var preset by remember { mutableStateOf(loadDurbinPerfPreset(context)) }
+    val presetTitle = when (preset) {
+        DurbinPerfPreset.FPS_BOOST -> "FPS Boost"
+        DurbinPerfPreset.BALANCED -> "Balanced"
+        DurbinPerfPreset.BATTERY -> "Battery Saver"
+    }
+    val presetTip = when (preset) {
+        DurbinPerfPreset.FPS_BOOST -> "Best for PvP: lower graphics, use a light renderer, and keep fewer background apps open."
+        DurbinPerfPreset.BALANCED -> "Good daily setup: stable FPS, normal battery drain, and safe RAM usage."
+        DurbinPerfPreset.BATTERY -> "Good for long play: lower render distance, lower brightness, and avoid heavy modpacks."
+    }
+
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    color = LocalDurbinPalette.current.accent.copy(alpha = 0.16f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, LocalDurbinPalette.current.accent.copy(alpha = 0.35f))
+                ) {
+                    Text(
+                        "TOOLS",
+                        color = LocalDurbinPalette.current.accent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Text("Player tools", color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+
+            if (callbacks.isOfflineAccount()) {
+                Text(
+                    "Offline mode is active. It can launch versions that already exist on this phone. Use Microsoft once if files are missing.",
+                    color = DurbinSecondaryText,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
+            } else {
+                Text(
+                    "Online account detected. You can download versions, mods, and share support info faster.",
+                    color = DurbinSecondaryText,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
+            }
+
+            Text("Performance preset: $presetTitle", color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text(presetTip, color = DurbinMutedText, fontSize = 12.sp, lineHeight = 16.sp)
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PerfPresetButton("FPS", preset == DurbinPerfPreset.FPS_BOOST, Modifier.weight(1f)) {
+                    preset = DurbinPerfPreset.FPS_BOOST
+                    saveDurbinPerfPreset(context, preset)
+                    toastDurbin(context, "FPS Boost preset saved")
+                }
+                PerfPresetButton("Balanced", preset == DurbinPerfPreset.BALANCED, Modifier.weight(1f)) {
+                    preset = DurbinPerfPreset.BALANCED
+                    saveDurbinPerfPreset(context, preset)
+                    toastDurbin(context, "Balanced preset saved")
+                }
+                PerfPresetButton("Battery", preset == DurbinPerfPreset.BATTERY, Modifier.weight(1f)) {
+                    preset = DurbinPerfPreset.BATTERY
+                    saveDurbinPerfPreset(context, preset)
+                    toastDurbin(context, "Battery preset saved")
+                }
+            }
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ToolActionButton("Copy Info", Modifier.weight(1f)) {
+                    copyDurbinSupportInfo(context, callbacks, preset)
+                }
+                ToolActionButton("Share Logs", Modifier.weight(1f)) {
+                    callbacks.onShareLogs()
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ToolActionButton("Game Folder", Modifier.weight(1f)) {
+                    callbacks.onOpenDirectory()
+                }
+                ToolActionButton("Controls", Modifier.weight(1f)) {
+                    callbacks.onOpenControls()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PerfPresetButton(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Surface(
+        modifier = modifier
+            .height(38.dp)
+            .durbinClickable(DurbinSound.CLICK, onClick = onClick),
+        color = if (selected) LocalDurbinPalette.current.accent.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.045f),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (selected) LocalDurbinPalette.current.accent.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.10f)
+        )
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(label, color = DurbinPrimaryText, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
+private fun ToolActionButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Surface(
+        modifier = modifier
+            .height(42.dp)
+            .durbinClickable(DurbinSound.LINK, onClick = onClick),
+        color = Color.White.copy(alpha = 0.055f),
+        shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(label, color = DurbinPrimaryText, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        }
+    }
+}
+
+private fun copyDurbinSupportInfo(context: Context, callbacks: DurbinMenuCallbacks, preset: DurbinPerfPreset) {
+    val info = buildString {
+        appendLine("DURBIN Launcher Support Info")
+        appendLine("Profile: ${callbacks.getProfileName()}")
+        appendLine("Version: ${callbacks.getVersionId()}")
+        appendLine("Loader: ${callbacks.getLoaderLabel()}")
+        appendLine("Runtime: ${callbacks.getRuntime()}")
+        appendLine("RAM: ${callbacks.getRamAllocation()}")
+        appendLine("Renderer: ${callbacks.getRenderer()}")
+        appendLine("Account: ${callbacks.getAccountName()} (${if (callbacks.isOfflineAccount()) "Offline" else "Online"})")
+        appendLine("Preset: ${preset.name}")
+        appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
+        appendLine("Android: ${Build.VERSION.RELEASE} / SDK ${Build.VERSION.SDK_INT}")
+    }
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+    clipboard?.setPrimaryClip(ClipData.newPlainText("DURBIN Support Info", info))
+    toastDurbin(context, "Support info copied")
+}
+
+private fun toastDurbin(context: Context, text: String) {
+    Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+}
+
 @Composable
 private fun DurbinAccountCard(callbacks: DurbinMenuCallbacks) {
     GlassCard(modifier = Modifier.fillMaxWidth().durbinClickable { callbacks.onOpenAccounts() }) {
@@ -1002,7 +1182,6 @@ private fun DurbinTierCard() {
     var myTier by remember { mutableStateOf<DurbinTierAssignment?>(null) }
     var loading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
-
     val googleSignInClient = remember(context) {
         GoogleSignIn.getClient(
             context,
@@ -1043,8 +1222,8 @@ private fun DurbinTierCard() {
                 profile = newProfile
                 refreshTier(newProfile)
             }
-        } catch (_: Throwable) {
-            message = "Google login failed. Add SHA-1 in Firebase: 17:D6:F8:A1:A3:8E:B2:EF:B7:B2:C7:A7:75:99:9C:F4:0D:46:84:10"
+        } catch (error: Throwable) {
+            message = "Google sign-in is not ready yet. Use Local Tier, or add SHA-1 in Firebase for Google login."
         }
     }
 
@@ -1075,7 +1254,7 @@ private fun DurbinTierCard() {
 
             Text(
                 if (profile == null)
-                    "Click login with Google, then join Discord for your tier test. Owner can assign Tank, Crystal, NetPot, Sword, Axe, UHC, SMP and Pot tiers."
+                    "Use Local Tier to test fast with your launcher account, or use Google after Firebase SHA-1 is added. Owner can assign Tank, Crystal, NetPot, Sword, Axe, UHC, SMP and Pot tiers."
                 else
                     "For Tank, Crystal, NetPot or other tier tests, join the DURBIN Discord server.",
                 color = DurbinSecondaryText,
@@ -1084,11 +1263,24 @@ private fun DurbinTierCard() {
             )
 
             if (profile == null) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TierActionButton("Login with Google", Modifier.weight(1f)) {
-                        launcher.launch(googleSignInClient.signInIntent)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TierActionButton("Local Tier", Modifier.weight(1f)) {
+                            val local = localTierProfileFromLauncherAccount(context)
+                            if (local == null) {
+                                message = "Create or select a local account first, then tap Local Tier."
+                            } else {
+                                DurbinTierRepository.saveProfile(context, local)
+                                profile = local
+                                refreshTier(local)
+                            }
+                        }
+                        TierActionButton("Google", Modifier.weight(1f)) {
+                            message = null
+                            launcher.launch(googleSignInClient.signInIntent)
+                        }
                     }
-                    TierActionButton("Join Discord", Modifier.weight(1f)) {
+                    TierActionButton("Join Discord", Modifier.fillMaxWidth()) {
                         openDurbinUrl(context, DurbinDiscordUrl)
                     }
                 }
@@ -1125,7 +1317,7 @@ private fun DurbinTierCard() {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TierActionButton("Refresh", Modifier.weight(1f)) { refreshTier(profile) }
                     TierActionButton("Join Discord", Modifier.weight(1f)) { openDurbinUrl(context, DurbinDiscordUrl) }
-                    TierActionButton("Sign out", Modifier.weight(1f)) {
+                    TierActionButton("Disconnect", Modifier.weight(1f)) {
                         googleSignInClient.signOut()
                         DurbinTierRepository.clearProfile(context)
                         profile = null
@@ -1312,6 +1504,24 @@ private fun DurbinNewsCard(
                 }
             }
         }
+    }
+}
+
+private fun localTierProfileFromLauncherAccount(context: Context): DurbinGoogleProfile? {
+    return try {
+        val account = PojavProfile.getCurrentProfileContent(context, null)
+        val username = account?.username?.trim().orEmpty()
+        if (username.isBlank() || username.equals("Steve", ignoreCase = true)) {
+            null
+        } else {
+            DurbinGoogleProfile(
+                email = username.lowercase(),
+                displayName = username,
+                photoUrl = ""
+            )
+        }
+    } catch (_: Throwable) {
+        null
     }
 }
 

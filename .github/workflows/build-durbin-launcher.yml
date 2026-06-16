@@ -34,12 +34,6 @@ jobs:
           echo "Root files:"
           ls -la
 
-          echo "Searching for gradlew:"
-          find . -maxdepth 6 -type f -name "gradlew" -print || true
-
-          echo "Searching for settings.gradle/settings.gradle.kts:"
-          find . -maxdepth 6 -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print || true
-
           PROJECT_DIR=""
 
           if [ -f "gradlew" ] || [ -f "settings.gradle" ] || [ -f "settings.gradle.kts" ]; then
@@ -65,7 +59,6 @@ jobs:
           echo "Using project folder: $PROJECT_DIR"
 
           cd "$PROJECT_DIR"
-          echo "Project files:"
           ls -la
 
           if [ -f "gradlew" ]; then
@@ -74,15 +67,34 @@ jobs:
             echo "Using Gradle wrapper"
           else
             echo "GRADLE_CMD=gradle" >> "$GITHUB_ENV"
-            echo "No gradlew found, using installed Gradle 8.11.1"
+            echo "Using installed Gradle 8.11.1"
           fi
+
+      - name: Patch Gradle properties
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          touch gradle.properties
+
+          grep -q '^android.useAndroidX=' gradle.properties \
+            && sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties \
+            || echo 'android.useAndroidX=true' >> gradle.properties
+
+          grep -q '^android.enableJetifier=' gradle.properties \
+            && sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' gradle.properties \
+            || echo 'android.enableJetifier=true' >> gradle.properties
+
+          grep -q '^org.gradle.jvmargs=' gradle.properties \
+            || echo 'org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' >> gradle.properties
+
+          echo "Final gradle.properties:"
+          cat gradle.properties
 
       - name: Patch missing forge_installer Java classes
         shell: bash
         run: |
           cd "$PROJECT_DIR"
-
-          echo "Patching missing forge_installer classes..."
 
           BASE_DIR="forge_installer/src/main/java/git/artdeell/installer_agent"
           mkdir -p "$BASE_DIR"
@@ -139,7 +151,6 @@ jobs:
             '}' \
             > "$BASE_DIR/MainWindowFilter.java"
 
-          echo "forge_installer files now:"
           ls -la "$BASE_DIR"
 
       - name: Patch Gradle wrapper to 8.11.1 if wrapper exists
@@ -148,11 +159,8 @@ jobs:
           cd "$PROJECT_DIR"
 
           if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
-            echo "Patching gradle-wrapper.properties to Gradle 8.11.1..."
             sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#g' gradle/wrapper/gradle-wrapper.properties
             cat gradle/wrapper/gradle-wrapper.properties
-          else
-            echo "No Gradle wrapper properties found. Skipping wrapper patch."
           fi
 
       - name: Check Firebase config
@@ -164,7 +172,6 @@ jobs:
             echo "Firebase google-services.json found"
           else
             echo "WARNING: app_pojavlauncher/google-services.json not found"
-            echo "Google login may not work until you add it."
           fi
 
       - name: Show SHA-1 fingerprint for Firebase
@@ -173,8 +180,6 @@ jobs:
           cd "$PROJECT_DIR"
 
           $GRADLE_CMD signingReport --no-daemon > "$GITHUB_WORKSPACE/signing-report.txt" || true
-
-          echo "SHA-1 fingerprints:"
           grep "SHA1:" "$GITHUB_WORKSPACE/signing-report.txt" || true
 
       - name: Upload SHA-1 report
@@ -190,13 +195,8 @@ jobs:
         run: |
           cd "$PROJECT_DIR"
 
-          echo "Gradle version:"
           $GRADLE_CMD --version
 
-          echo "Gradle projects:"
-          $GRADLE_CMD projects --no-daemon || true
-
-          echo "Building APK..."
           $GRADLE_CMD :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace \
           || $GRADLE_CMD :app_pojavlauncher:assembleDebug --no-daemon --stacktrace \
           || $GRADLE_CMD assembleDebug --no-daemon --stacktrace
@@ -217,15 +217,11 @@ jobs:
 
           if [ -z "$APK_PATH" ]; then
             echo "ERROR: No installable APK found."
-            echo "Showing output folders:"
             find "$PROJECT_DIR" -type d | grep -E "build|outputs|apk" || true
             exit 1
           fi
 
           cp "$APK_PATH" apk-output/DURBIN-Launcher.apk
-
-          echo "Chosen APK:"
-          echo "$APK_PATH"
           ls -lh apk-output/DURBIN-Launcher.apk
 
       - name: Sign APK if unsigned
@@ -237,8 +233,6 @@ jobs:
             echo "APK already signed"
             exit 0
           fi
-
-          echo "APK is unsigned. Signing with debug key..."
 
           mkdir -p ~/.android
 

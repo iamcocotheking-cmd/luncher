@@ -1,4 +1,4 @@
-name: Build DURBIN Launcher
+name: Build DURBIN Launcher FINAL
 
 on:
   workflow_dispatch:
@@ -25,6 +25,16 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.11.1
+
+      - name: Install native build tools
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+          echo "CMake:"
+          cmake --version || true
+          echo "Ninja:"
+          ninja --version || true
 
       - name: Find launcher Gradle project
         shell: bash
@@ -64,11 +74,27 @@ jobs:
           if [ -f "gradlew" ]; then
             chmod +x gradlew
             echo "GRADLE_CMD=./gradlew" >> "$GITHUB_ENV"
-            echo "Using Gradle wrapper"
           else
             echo "GRADLE_CMD=gradle" >> "$GITHUB_ENV"
-            echo "Using installed Gradle 8.11.1"
           fi
+
+      - name: Remove stale Windows native build cache
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          echo "Removing stale native build cache that can contain Windows ninja.exe paths..."
+          rm -rf .cxx
+          rm -rf app_pojavlauncher/.cxx
+          rm -rf dnbglfw/.cxx
+          rm -rf forge_installer/.cxx
+          rm -rf app_pojavlauncher/build/intermediates/cxx
+          rm -rf dnbglfw/build/intermediates/cxx
+          rm -rf app_pojavlauncher/build/.cxx
+          rm -rf dnbglfw/build/.cxx
+
+          find . -type f \( -name "CMakeCache.txt" -o -name "build_command.txt" \) -delete || true
+          find . -type f | grep -i "ninja.exe" || true
 
       - name: Patch Gradle properties
         shell: bash
@@ -95,8 +121,6 @@ jobs:
         shell: bash
         run: |
           cd "$PROJECT_DIR"
-
-          echo "Patching missing resources..."
 
           RES_DIR="app_pojavlauncher/src/main/res"
           mkdir -p "$RES_DIR/values"
@@ -127,9 +151,6 @@ jobs:
           </vector>
           EOF
           fi
-
-          echo "Missing values file:"
-          cat "$RES_DIR/values/durbin_missing_values.xml"
 
       - name: Patch missing forge_installer Java classes
         shell: bash
@@ -191,8 +212,6 @@ jobs:
             '}' \
             > "$BASE_DIR/MainWindowFilter.java"
 
-          ls -la "$BASE_DIR"
-
       - name: Patch Gradle wrapper to 8.11.1 if wrapper exists
         shell: bash
         run: |
@@ -200,7 +219,6 @@ jobs:
 
           if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
             sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#g' gradle/wrapper/gradle-wrapper.properties
-            cat gradle/wrapper/gradle-wrapper.properties
           fi
 
       - name: Check Firebase config
@@ -230,16 +248,18 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Build APK
+      - name: Build APK without Gradle clean
         shell: bash
         run: |
           cd "$PROJECT_DIR"
 
           $GRADLE_CMD --version
 
-          $GRADLE_CMD clean :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace \
-          || $GRADLE_CMD clean :app_pojavlauncher:assembleDebug --no-daemon --stacktrace \
-          || $GRADLE_CMD clean assembleDebug --no-daemon --stacktrace
+          # DO NOT run Gradle clean here.
+          # This source has stale Windows CMake/ninja paths, and Gradle clean triggers them on Linux.
+          $GRADLE_CMD :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace --rerun-tasks \
+          || $GRADLE_CMD :app_pojavlauncher:assembleDebug --no-daemon --stacktrace --rerun-tasks \
+          || $GRADLE_CMD assembleDebug --no-daemon --stacktrace --rerun-tasks
 
       - name: Collect one APK
         shell: bash

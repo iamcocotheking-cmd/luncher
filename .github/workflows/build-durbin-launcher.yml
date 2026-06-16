@@ -91,6 +91,46 @@ jobs:
           echo "Final gradle.properties:"
           cat gradle.properties
 
+      - name: Patch missing Android resources
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          echo "Patching missing resources..."
+
+          RES_DIR="app_pojavlauncher/src/main/res"
+          mkdir -p "$RES_DIR/values"
+          mkdir -p "$RES_DIR/drawable"
+
+          cat > "$RES_DIR/values/durbin_missing_values.xml" <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <dimen name="padding_tiny">4dp</dimen>
+              <dimen name="padding_micro">2dp</dimen>
+              <dimen name="padding_small">8dp</dimen>
+              <dimen name="padding_normal">12dp</dimen>
+              <dimen name="padding_large">16dp</dimen>
+          </resources>
+          EOF
+
+          if [ ! -f "$RES_DIR/drawable/ic_social_media.xml" ]; then
+            cat > "$RES_DIR/drawable/ic_social_media.xml" <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="24"
+              android:viewportHeight="24">
+              <path
+                  android:fillColor="#FFFFFFFF"
+                  android:pathData="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.86L8.91,12.71C8.96,12.48 9,12.24 9,12C9,11.76 8.96,11.52 8.91,11.29L15.96,7.18C16.5,7.68 17.21,8 18,8C19.66,8 21,6.66 21,5C21,3.34 19.66,2 18,2C16.34,2 15,3.34 15,5C15,5.24 15.04,5.48 15.09,5.71L8.04,9.82C7.5,9.32 6.79,9 6,9C4.34,9 3,10.34 3,12C3,13.66 4.34,15 6,15C6.79,15 7.5,14.68 8.04,14.18L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.92 18,21.92C19.61,21.92 20.92,20.61 20.92,19C20.92,17.39 19.61,16.08 18,16.08Z"/>
+          </vector>
+          EOF
+          fi
+
+          echo "Missing values file:"
+          cat "$RES_DIR/values/durbin_missing_values.xml"
+
       - name: Patch missing forge_installer Java classes
         shell: bash
         run: |
@@ -197,9 +237,9 @@ jobs:
 
           $GRADLE_CMD --version
 
-          $GRADLE_CMD :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace \
-          || $GRADLE_CMD :app_pojavlauncher:assembleDebug --no-daemon --stacktrace \
-          || $GRADLE_CMD assembleDebug --no-daemon --stacktrace
+          $GRADLE_CMD clean :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace \
+          || $GRADLE_CMD clean :app_pojavlauncher:assembleDebug --no-daemon --stacktrace \
+          || $GRADLE_CMD clean assembleDebug --no-daemon --stacktrace
 
       - name: Collect one APK
         shell: bash

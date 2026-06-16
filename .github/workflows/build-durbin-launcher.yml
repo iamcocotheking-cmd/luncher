@@ -84,70 +84,63 @@ jobs:
 
           echo "Patching missing forge_installer classes..."
 
-          python3 - <<'PY'
-          from pathlib import Path
+          BASE_DIR="forge_installer/src/main/java/git/artdeell/installer_agent"
+          mkdir -p "$BASE_DIR"
 
-          base = Path("forge_installer/src/main/java/git/artdeell/installer_agent")
-          base.mkdir(parents=True, exist_ok=True)
+          printf '%s\n' \
+            'package git.artdeell.installer_agent;' \
+            '' \
+            'import java.awt.*;' \
+            '' \
+            'public interface ComponentFilter {' \
+            '    boolean checkComponent(Component component);' \
+            '}' \
+            > "$BASE_DIR/ComponentFilter.java"
 
-          files = {
-              "ComponentFilter.java": """package git.artdeell.installer_agent;
+          printf '%s\n' \
+            'package git.artdeell.installer_agent;' \
+            '' \
+            'import java.util.TimerTask;' \
+            '' \
+            'public class ComponentTimeoutTask extends TimerTask {' \
+            '    @Override' \
+            '    public void run() {' \
+            '        System.out.println("Initialization timed out!");' \
+            '        System.exit(17);' \
+            '    }' \
+            '}' \
+            > "$BASE_DIR/ComponentTimeoutTask.java"
 
-import java.awt.*;
+          printf '%s\n' \
+            'package git.artdeell.installer_agent;' \
+            '' \
+            'import javax.swing.*;' \
+            'import java.awt.*;' \
+            '' \
+            'public class DialogFilter implements ComponentFilter {' \
+            '    @Override' \
+            '    public boolean checkComponent(Component component) {' \
+            '        return component instanceof JOptionPane || component instanceof JProgressBar;' \
+            '    }' \
+            '}' \
+            > "$BASE_DIR/DialogFilter.java"
 
-public interface ComponentFilter {
-    boolean checkComponent(Component component);
-}
-""",
-              "ComponentTimeoutTask.java": """package git.artdeell.installer_agent;
-
-import java.util.TimerTask;
-
-public class ComponentTimeoutTask extends TimerTask {
-    @Override
-    public void run() {
-        System.out.println("Initialization timed out!");
-        System.exit(17);
-    }
-}
-""",
-              "DialogFilter.java": """package git.artdeell.installer_agent;
-
-import javax.swing.*;
-import java.awt.*;
-
-public class DialogFilter implements ComponentFilter {
-    @Override
-    public boolean checkComponent(Component component) {
-        return component instanceof JOptionPane
-                || component instanceof JProgressBar;
-    }
-}
-""",
-              "MainWindowFilter.java": """package git.artdeell.installer_agent;
-
-import javax.swing.*;
-import java.awt.*;
-
-public class MainWindowFilter implements ComponentFilter {
-    @Override
-    public boolean checkComponent(Component component) {
-        return component instanceof JRadioButton
-                || component instanceof JTextField
-                || component instanceof JButton;
-    }
-}
-"""
-          }
-
-          for name, content in files.items():
-              path = base / name
-              path.write_text(content, encoding="utf-8")
-              print("Wrote", path)
-          PY
+          printf '%s\n' \
+            'package git.artdeell.installer_agent;' \
+            '' \
+            'import javax.swing.*;' \
+            'import java.awt.*;' \
+            '' \
+            'public class MainWindowFilter implements ComponentFilter {' \
+            '    @Override' \
+            '    public boolean checkComponent(Component component) {' \
+            '        return component instanceof JRadioButton || component instanceof JTextField || component instanceof JButton;' \
+            '    }' \
+            '}' \
+            > "$BASE_DIR/MainWindowFilter.java"
 
           echo "forge_installer files now:"
-          ls -la forge_installer/src/main/java/git/artdeell/installer_agent
+          ls -la "$BASE_DIR"
 
       - name: Patch Gradle wrapper to 8.11.1 if wrapper exists
         shell: bash
@@ -156,7 +149,7 @@ public class MainWindowFilter implements ComponentFilter {
 
           if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
             echo "Patching gradle-wrapper.properties to Gradle 8.11.1..."
-            sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11.1-all.zip#g' gradle/wrapper/gradle-wrapper.properties
+            sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#g' gradle/wrapper/gradle-wrapper.properties
             cat gradle/wrapper/gradle-wrapper.properties
           else
             echo "No Gradle wrapper properties found. Skipping wrapper patch."

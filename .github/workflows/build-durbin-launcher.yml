@@ -1,4 +1,4 @@
-name: Build DURBIN Launcher APK Only
+name: Build DURBIN Launcher Small APK
 
 on:
   workflow_dispatch:
@@ -15,35 +15,20 @@ jobs:
       - name: Checkout your repo
         uses: actions/checkout@v4
 
-      - name: Show root folder
-        run: |
-          echo "Current folder:"
-          pwd
-          echo "Root files:"
-          ls -la
-
       - name: Create PojavLauncher-3_openjdk from Hyper v3_openjdk
         run: |
           rm -rf PojavLauncher-3_openjdk
           git clone --depth 1 --branch v3_openjdk https://github.com/hollowlauncher/HyperLauncher.git PojavLauncher-3_openjdk
           cd PojavLauncher-3_openjdk
           git submodule update --init --recursive || true
-          echo "Created folder:"
-          pwd
-          ls -la
-          echo "Gradle projects:"
           chmod +x gradlew
-          ./gradlew projects --no-daemon || true
 
       - name: Apply DURBIN branding and skeleton files
         run: |
           cd PojavLauncher-3_openjdk
 
           echo "Replacing visible launcher names..."
-          find . -type f \( -name "*.xml" -o -name "*.json" -o -name "*.java" -o -name "*.kt" \) \
-            -not -path "./.git/*" \
-            -not -path "./build/*" \
-            -not -path "./*/build/*" \
+          find app_pojavlauncher/src/main/res -type f \( -name "*.xml" -o -name "*.json" \) \
             -exec sed -i \
               -e 's/Hyper Launcher/DURBIN Launcher/g' \
               -e 's/HyperX Launcher/DURBIN Launcher/g' \
@@ -139,42 +124,123 @@ jobs:
           ])
           PY
 
-          echo "DURBIN patch complete."
-
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
 
-      - name: Build debug APK
+      - name: Build release APK first, fallback to debug
         working-directory: PojavLauncher-3_openjdk
         run: |
           chmod +x gradlew
-          ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace
+          ./gradlew :app_pojavlauncher:assembleRelease --no-daemon --stacktrace || ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace
 
-      - name: Search and collect APK
+      - name: Pick ONE small installable APK
         run: |
-          echo "Searching for APK files..."
           mkdir -p apk-output
-          find PojavLauncher-3_openjdk -type f -name "*.apk" -print -exec cp {} apk-output/ \;
 
-          echo "Collected APK files:"
-          ls -lah apk-output || true
+          echo "All APKs found:"
+          find PojavLauncher-3_openjdk -type f -name "*.apk" -not -path "*/androidTest/*" -print -exec ls -lh {} \;
 
-          APK_COUNT=$(find apk-output -type f -name "*.apk" | wc -l)
-          echo "APK count: $APK_COUNT"
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          import os
 
-          if [ "$APK_COUNT" -eq 0 ]; then
-            echo "No APK found. Showing build output folders:"
-            find PojavLauncher-3_openjdk -maxdepth 6 -type d | grep -E "outputs|apk|build" || true
-            exit 1
+          root = Path("PojavLauncher-3_openjdk")
+          out = Path("apk-output")
+          out.mkdir(exist_ok=True)
+
+          apks = []
+          for p in root.rglob("*.apk"):
+              s = str(p).lower()
+              if "androidtest" in s or "/test/" in s or p.name.lower().startswith("test"):
+                  continue
+              size = p.stat().st_size
+              if size < 20 * 1024 * 1024:
+                  continue
+              apks.append(p)
+
+          if not apks:
+              raise SystemExit("No real APK found.")
+
+          def is_arm64(p):
+              s = str(p).lower()
+              return "arm64" in s or "arm64-v8a" in s or "aarch64" in s
+
+          def is_release(p):
+              return "release" in str(p).lower()
+
+          def is_debug(p):
+              return "debug" in str(p).lower()
+
+          arm64_release = [p for p in apks if is_arm64(p) and is_release(p)]
+          release_reasonable = [p for p in apks if is_release(p) and p.stat().st_size < 170 * 1024 * 1024]
+          arm64_debug = [p for p in apks if is_arm64(p) and is_debug(p)]
+
+          if arm64_release:
+              chosen = sorted(arm64_release, key=lambda p: p.stat().st_size)[0]
+          elif release_reasonable:
+              chosen = sorted(release_reasonable, key=lambda p: p.stat().st_size)[0]
+          elif arm64_debug:
+              chosen = sorted(arm64_debug, key=lambda p: p.stat().st_size)[0]
+          else:
+              chosen = sorted(apks, key=lambda p: p.stat().st_size)[0]
+
+          target = out / "DURBIN-Launcher.apk"
+          shutil.copy2(chosen, target)
+
+          print("Chosen APK:", chosen)
+          print("Chosen size MB:", round(chosen.stat().st_size / 1024 / 1024, 2))
+          print("Copied to:", target)
+          PY
+
+          echo "Final upload folder:"
+          ls -lah apk-output
+
+      - name: Sign APK if it is unsigned
+        run: |
+          APK="apk-output/DURBIN-Launcher.apk"
+
+          if unzip -l "$APK" | grep -q "META-INF/.*RSA"; then
+            echo "APK already signed."
+            exit 0
           fi
 
-      - name: Upload APK only
+          echo "APK looks unsigned. Signing with debug key..."
+
+          mkdir -p ~/.android
+
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair \
+              -keystore ~/.android/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+
+          "$APKSIGNER" sign \
+            --ks ~/.android/debug.keystore \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out apk-output/DURBIN-Launcher-signed.apk \
+            "$APK"
+
+          mv apk-output/DURBIN-Launcher-signed.apk apk-output/DURBIN-Launcher.apk
+          echo "Signed APK:"
+          ls -lh apk-output/DURBIN-Launcher.apk
+
+      - name: Upload only one APK
         uses: actions/upload-artifact@v4
         with:
-          name: DURBIN-Launcher-debug-apk
-          path: apk-output/*.apk
+          name: DURBIN-Launcher-small-apk
+          path: apk-output/DURBIN-Launcher.apk
           if-no-files-found: error
           retention-days: 7

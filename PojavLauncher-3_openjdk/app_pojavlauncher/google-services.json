@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "364017714123",
+    "project_id": "durbin-f317c",
+    "storage_bucket": "durbin-f317c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:364017714123:android:857f20b9cad4a70085ac4e",
+        "android_client_info": {
+          "package_name": "net.ashmeet.hyperlauncher"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMqOjyUyTWRcPmRnv_tfEdcQq6fO-ucqw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

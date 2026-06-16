@@ -1,0 +1,28 @@
+{
+  "rules": {
+    "durbin": {
+      "launcher": {
+        ".read": true,
+        ".write": "root.child('durbin/admins').child(auth.uid).val() === true"
+      },
+      "news": {
+        ".read": true,
+        ".write": "root.child('durbin/admins').child(auth.uid).val() === true"
+      },
+      "pvpTierLists": {
+        ".read": true,
+        ".write": "root.child('durbin/admins').child(auth.uid).val() === true"
+      },
+      "userRanks": {
+        "$uid": {
+          ".read": "auth != null && (auth.uid === $uid || root.child('durbin/admins').child(auth.uid).val() === true)",
+          ".write": "root.child('durbin/admins').child(auth.uid).val() === true"
+        }
+      },
+      "admins": {
+        ".read": "auth != null",
+        ".write": "root.child('durbin/admins').child(auth.uid).val() === true"
+      }
+    }
+  }
+}

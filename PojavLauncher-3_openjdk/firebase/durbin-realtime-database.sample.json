@@ -1,0 +1,95 @@
+{
+  "durbin": {
+    "admins": {
+      "PASTE_YOUR_ADMIN_FIREBASE_UID_HERE": true
+    },
+    "news": {
+      "news_001": {
+        "title": "DURBIN Launcher Firebase is live",
+        "body": "Welcome to DURBIN Launcher news. You can edit this from Firebase Realtime Database without updating the APK.",
+        "tag": "Update",
+        "timestamp": 1797379200000,
+        "pinned": true,
+        "imageUrl": "",
+        "linkUrl": "https://www.youtube.com/@Cosa_5023_YT"
+      },
+      "news_002": {
+        "title": "PvP Tier List system added",
+        "body": "Tank, NethPot, Sword and Crystal tier categories are ready. Login with Google to see your own rank.",
+        "tag": "PvP",
+        "timestamp": 1797465600000,
+        "pinned": false,
+        "imageUrl": "",
+        "linkUrl": "https://discord.gg/PqnbXNrtHR"
+      }
+    },
+    "pvpTierLists": {
+      "tank": {
+        "name": "Tank",
+        "description": "Tank PvP leaderboard ranked from HT1 to LT5.",
+        "entries": {
+          "player_001": {
+            "uid": "player_001",
+            "ign": "COSA",
+            "tier": "HT1",
+            "score": 1000,
+            "region": "AS",
+            "country": "BD",
+            "notes": "Owner example rank",
+            "verified": true,
+            "updatedAt": 1797379200000
+          },
+          "player_002": {
+            "uid": "player_002",
+            "ign": "ExamplePlayer",
+            "tier": "LT1",
+            "score": 930,
+            "region": "AS",
+            "country": "BD",
+            "notes": "Example data",
+            "verified": true,
+            "updatedAt": 1797379200000
+          }
+        }
+      },
+      "nethpot": {
+        "name": "NethPot",
+        "description": "Netherite Potion PvP leaderboard.",
+        "entries": {}
+      },
+      "sword": {
+        "name": "Sword",
+        "description": "Sword PvP leaderboard.",
+        "entries": {}
+      },
+      "crystal": {
+        "name": "Crystal",
+        "description": "Crystal PvP leaderboard.",
+        "entries": {}
+      }
+    },
+    "userRanks": {
+      "PASTE_A_REAL_FIREBASE_UID_HERE": {
+        "ranks": {
+          "tank": {
+            "categoryName": "Tank",
+            "tier": "HT1",
+            "score": 1000,
+            "ign": "COSA",
+            "region": "AS",
+            "updatedAt": 1797379200000
+          },
+          "nethpot": {
+            "categoryName": "NethPot",
+            "tier": "LT1",
+            "score": 930,
+            "ign": "COSA",
+            "region": "AS",
+            "updatedAt": 1797379200000
+          }
+        }
+      }
+    },
+    "users": {}
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "durbin": {
+    "launcher": {
+      "latestVersion": "1.0.0",
+      "status": "online",
+      "message": "Welcome to DURBIN Launcher",
+      "discord": "https://discord.gg/PqnbXNrtHR",
+      "youtube": "https://www.youtube.com/@Cosa_5023_YT",
+      "owner": "COSA"
+    },
+    "news": {
+      "news_001": {
+        "title": "DURBIN Launcher is now live",
+        "body": "Welcome to DURBIN Launcher. News will appear here from Firebase.",
+        "tag": "Launcher",
+        "imageUrl": "",
+        "createdAt": 1797379200000,
+        "enabled": true
+      },
+      "news_002": {
+        "title": "PvP Tier List system added",
+        "body": "Check Tank, NethPot, Sword, Crystal, UHC, Axe, SMP, and Pot tiers from the launcher.",
+        "tag": "PvP",
+        "imageUrl": "",
+        "createdAt": 1797465600000,
+        "enabled": true
+      }
+    },
+    "pvpTierLists": {
+      "tank": {
+        "title": "Tank",
+        "players": {
+          "cosa": {
+            "ign": "COSA",
+            "tier": "HT1",
+            "score": 1000,
+            "region": "AS",
+            "youtube": "https://www.youtube.com/@Cosa_5023_YT",
+            "updatedAt": 1797379200000
+          }
+        }
+      },
+      "nethpot": {
+        "title": "NethPot",
+        "players": {
+          "example_player": {
+            "ign": "ExamplePlayer",
+            "tier": "LT1",
+            "score": 850,
+            "region": "AS",
+            "youtube": "",
+            "updatedAt": 1797379200000
+          }
+        }
+      },
+      "sword": {
+        "title": "Sword",
+        "players": {}
+      },
+      "crystal": {
+        "title": "Crystal",
+        "players": {}
+      },
+      "uhc": {
+        "title": "UHC",
+        "players": {}
+      },
+      "axe": {
+        "title": "Axe",
+        "players": {}
+      },
+      "smp": {
+        "title": "SMP",
+        "players": {}
+      },
+      "pot": {
+        "title": "Pot",
+        "players": {}
+      }
+    },
+    "userRanks": {
+      "PUT_FIREBASE_UID_HERE": {
+        "displayName": "COSA",
+        "email": "optional@example.com",
+        "ranks": {
+          "tank": {
+            "categoryName": "Tank",
+            "tier": "HT1",
+            "score": 1000,
+            "ign": "COSA",
+            "region": "AS",
+            "updatedAt": 1797379200000
+          },
+          "nethpot": {
+            "categoryName": "NethPot",
+            "tier": "LT1",
+            "score": 850,
+            "ign": "COSA",
+            "region": "AS",
+            "updatedAt": 1797379200000
+          }
+        }
+      }
+    },
+    "admins": {
+      "PUT_YOUR_FIREBASE_UID_HERE": true
+    }
+  }
+}

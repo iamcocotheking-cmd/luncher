@@ -1,2 +1,0 @@
-I could not directly clone GitHub inside the sandbox environment, so this package is a full-source creator instead of the already-cloned full source folder.
-Run make_full_source.sh or the included GitHub Action and it will create the real full PojavLauncher-3_openjdk folder from Hyper Launcher's public v3_openjdk source.

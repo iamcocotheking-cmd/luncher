@@ -31,13 +31,19 @@ jobs:
           echo "Created folder:"
           pwd
           ls -la
+          echo "Gradle projects:"
+          chmod +x gradlew
+          ./gradlew projects --no-daemon || true
 
       - name: Apply DURBIN branding and skeleton files
         run: |
           cd PojavLauncher-3_openjdk
 
           echo "Replacing visible launcher names..."
-          find app_pojavlauncher/src/main/res -type f \( -name "*.xml" -o -name "*.json" \) \
+          find . -type f \( -name "*.xml" -o -name "*.json" -o -name "*.java" -o -name "*.kt" \) \
+            -not -path "./.git/*" \
+            -not -path "./build/*" \
+            -not -path "./*/build/*" \
             -exec sed -i \
               -e 's/Hyper Launcher/DURBIN Launcher/g' \
               -e 's/HyperX Launcher/DURBIN Launcher/g' \
@@ -147,15 +153,28 @@ jobs:
           chmod +x gradlew
           ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace
 
-      - name: Find APK
+      - name: Search and collect APK
         run: |
-          echo "APK files:"
-          find PojavLauncher-3_openjdk/app_pojavlauncher/build/outputs/apk -type f -name "*.apk" -print -exec ls -lh {} \;
+          echo "Searching for APK files..."
+          mkdir -p apk-output
+          find PojavLauncher-3_openjdk -type f -name "*.apk" -print -exec cp {} apk-output/ \;
+
+          echo "Collected APK files:"
+          ls -lah apk-output || true
+
+          APK_COUNT=$(find apk-output -type f -name "*.apk" | wc -l)
+          echo "APK count: $APK_COUNT"
+
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "No APK found. Showing build output folders:"
+            find PojavLauncher-3_openjdk -maxdepth 6 -type d | grep -E "outputs|apk|build" || true
+            exit 1
+          fi
 
       - name: Upload APK only
         uses: actions/upload-artifact@v4
         with:
           name: DURBIN-Launcher-debug-apk
-          path: PojavLauncher-3_openjdk/app_pojavlauncher/build/outputs/apk/debug/*.apk
+          path: apk-output/*.apk
           if-no-files-found: error
           retention-days: 7

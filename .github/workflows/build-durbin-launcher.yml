@@ -77,6 +77,78 @@ jobs:
             echo "No gradlew found, using installed Gradle 8.11.1"
           fi
 
+      - name: Patch missing forge_installer Java classes
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          echo "Patching missing forge_installer classes..."
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          base = Path("forge_installer/src/main/java/git/artdeell/installer_agent")
+          base.mkdir(parents=True, exist_ok=True)
+
+          files = {
+              "ComponentFilter.java": """package git.artdeell.installer_agent;
+
+import java.awt.*;
+
+public interface ComponentFilter {
+    boolean checkComponent(Component component);
+}
+""",
+              "ComponentTimeoutTask.java": """package git.artdeell.installer_agent;
+
+import java.util.TimerTask;
+
+public class ComponentTimeoutTask extends TimerTask {
+    @Override
+    public void run() {
+        System.out.println("Initialization timed out!");
+        System.exit(17);
+    }
+}
+""",
+              "DialogFilter.java": """package git.artdeell.installer_agent;
+
+import javax.swing.*;
+import java.awt.*;
+
+public class DialogFilter implements ComponentFilter {
+    @Override
+    public boolean checkComponent(Component component) {
+        return component instanceof JOptionPane
+                || component instanceof JProgressBar;
+    }
+}
+""",
+              "MainWindowFilter.java": """package git.artdeell.installer_agent;
+
+import javax.swing.*;
+import java.awt.*;
+
+public class MainWindowFilter implements ComponentFilter {
+    @Override
+    public boolean checkComponent(Component component) {
+        return component instanceof JRadioButton
+                || component instanceof JTextField
+                || component instanceof JButton;
+    }
+}
+"""
+          }
+
+          for name, content in files.items():
+              path = base / name
+              path.write_text(content, encoding="utf-8")
+              print("Wrote", path)
+          PY
+
+          echo "forge_installer files now:"
+          ls -la forge_installer/src/main/java/git/artdeell/installer_agent
+
       - name: Patch Gradle wrapper to 8.11.1 if wrapper exists
         shell: bash
         run: |

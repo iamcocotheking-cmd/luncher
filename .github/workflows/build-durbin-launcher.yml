@@ -1,4 +1,4 @@
-name: Build DURBIN Launcher FINAL
+name: Build DURBIN Launcher MAX FIX
 
 on:
   workflow_dispatch:
@@ -26,22 +26,32 @@ jobs:
         with:
           gradle-version: 8.11.1
 
-      - name: Install native build tools
+      - name: Install Linux native build tools
         shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build cmake
-          echo "CMake:"
+
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+
+          if [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+              "cmake;3.22.1" \
+              "ndk;27.2.12479018" \
+              "platform-tools" \
+              "platforms;android-35" \
+              "build-tools;35.0.0" || true
+          fi
+
           cmake --version || true
-          echo "Ninja:"
           ninja --version || true
 
-      - name: Find launcher Gradle project
+      - name: Find launcher project
         shell: bash
         run: |
           echo "Repo root:"
           pwd
-          echo "Root files:"
           ls -la
 
           PROJECT_DIR=""
@@ -53,15 +63,15 @@ jobs:
           elif [ -f "HyperLauncher-3_openjdk/gradlew" ] || [ -f "HyperLauncher-3_openjdk/settings.gradle" ] || [ -f "HyperLauncher-3_openjdk/settings.gradle.kts" ]; then
             PROJECT_DIR="HyperLauncher-3_openjdk"
           else
-            FIRST_SETTINGS="$(find . -maxdepth 6 -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -n 1 || true)"
+            FIRST_SETTINGS="$(find . -maxdepth 8 -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -n 1 || true)"
             if [ -n "$FIRST_SETTINGS" ]; then
               PROJECT_DIR="$(dirname "$FIRST_SETTINGS")"
             fi
           fi
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Could not find a Gradle project."
-            find . -maxdepth 4 -type d -print
+            echo "ERROR: Could not find Gradle project."
+            find . -maxdepth 5 -type f | sort | head -n 300
             exit 1
           fi
 
@@ -78,23 +88,33 @@ jobs:
             echo "GRADLE_CMD=gradle" >> "$GITHUB_ENV"
           fi
 
-      - name: Remove stale Windows native build cache
+      - name: Hard reset bad generated/cache files
         shell: bash
         run: |
           cd "$PROJECT_DIR"
 
-          echo "Removing stale native build cache that can contain Windows ninja.exe paths..."
+          echo "Deleting committed build caches and stale Windows CMake paths..."
+
+          rm -rf .gradle
           rm -rf .cxx
           rm -rf app_pojavlauncher/.cxx
           rm -rf dnbglfw/.cxx
           rm -rf forge_installer/.cxx
-          rm -rf app_pojavlauncher/build/intermediates/cxx
-          rm -rf dnbglfw/build/intermediates/cxx
-          rm -rf app_pojavlauncher/build/.cxx
-          rm -rf dnbglfw/build/.cxx
 
-          find . -type f \( -name "CMakeCache.txt" -o -name "build_command.txt" \) -delete || true
-          find . -type f | grep -i "ninja.exe" || true
+          # Delete generated build folders without running Gradle clean.
+          # Gradle clean can fail here because the old cache contains Windows ninja.exe paths.
+          find . -type d -name build -prune -exec rm -rf {} + || true
+
+          # Delete CMake cache files that can remember Windows paths.
+          find . -type f \( -name "CMakeCache.txt" -o -name "build_command.txt" -o -name "*.cmake" \) -print | while read f; do
+            if grep -qi "C:\\\\Users\\\\ASHMEET\|ninja.exe" "$f"; then
+              echo "Removing stale native file: $f"
+              rm -f "$f"
+            fi
+          done || true
+
+          echo "Remaining Windows path references:"
+          grep -RIn "C:\\\\Users\\\\ASHMEET\|ninja.exe" . --exclude-dir=.git --exclude-dir=.gradle --exclude="*.png" --exclude="*.jpg" --exclude="*.webp" || true
 
       - name: Patch Gradle properties
         shell: bash
@@ -103,19 +123,29 @@ jobs:
 
           touch gradle.properties
 
-          grep -q '^android.useAndroidX=' gradle.properties \
-            && sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties \
-            || echo 'android.useAndroidX=true' >> gradle.properties
+          set_prop () {
+            KEY="$1"
+            VALUE="$2"
+            if grep -q "^$KEY=" gradle.properties; then
+              sed -i "s#^$KEY=.*#$KEY=$VALUE#g" gradle.properties
+            else
+              echo "$KEY=$VALUE" >> gradle.properties
+            fi
+          }
 
-          grep -q '^android.enableJetifier=' gradle.properties \
-            && sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' gradle.properties \
-            || echo 'android.enableJetifier=true' >> gradle.properties
-
-          grep -q '^org.gradle.jvmargs=' gradle.properties \
-            || echo 'org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8' >> gradle.properties
+          set_prop "android.useAndroidX" "true"
+          set_prop "android.enableJetifier" "true"
+          set_prop "android.nonTransitiveRClass" "false"
+          set_prop "org.gradle.jvmargs" "-Xmx4096m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
+          set_prop "org.gradle.daemon" "false"
 
           echo "Final gradle.properties:"
           cat gradle.properties
+
+          if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
+            sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#g' gradle/wrapper/gradle-wrapper.properties
+            cat gradle/wrapper/gradle-wrapper.properties
+          fi
 
       - name: Patch missing Android resources
         shell: bash
@@ -129,16 +159,21 @@ jobs:
           cat > "$RES_DIR/values/durbin_missing_values.xml" <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <dimen name="padding_tiny">4dp</dimen>
               <dimen name="padding_micro">2dp</dimen>
+              <dimen name="padding_tiny">4dp</dimen>
               <dimen name="padding_small">8dp</dimen>
               <dimen name="padding_normal">12dp</dimen>
               <dimen name="padding_large">16dp</dimen>
+              <dimen name="padding_xlarge">24dp</dimen>
+              <dimen name="margin_micro">2dp</dimen>
+              <dimen name="margin_tiny">4dp</dimen>
+              <dimen name="margin_small">8dp</dimen>
+              <dimen name="margin_normal">12dp</dimen>
+              <dimen name="margin_large">16dp</dimen>
           </resources>
           EOF
 
-          if [ ! -f "$RES_DIR/drawable/ic_social_media.xml" ]; then
-            cat > "$RES_DIR/drawable/ic_social_media.xml" <<'EOF'
+          cat > "$RES_DIR/drawable/ic_social_media.xml" <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="24dp"
@@ -150,7 +185,10 @@ jobs:
                   android:pathData="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.86L8.91,12.71C8.96,12.48 9,12.24 9,12C9,11.76 8.96,11.52 8.91,11.29L15.96,7.18C16.5,7.68 17.21,8 18,8C19.66,8 21,6.66 21,5C21,3.34 19.66,2 18,2C16.34,2 15,3.34 15,5C15,5.24 15.04,5.48 15.09,5.71L8.04,9.82C7.5,9.32 6.79,9 6,9C4.34,9 3,10.34 3,12C3,13.66 4.34,15 6,15C6.79,15 7.5,14.68 8.04,14.18L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.92 18,21.92C19.61,21.92 20.92,20.61 20.92,19C20.92,17.39 19.61,16.08 18,16.08Z"/>
           </vector>
           EOF
-          fi
+
+          echo "Patched resources:"
+          ls -la "$RES_DIR/values" | tail || true
+          ls -la "$RES_DIR/drawable/ic_social_media.xml"
 
       - name: Patch missing forge_installer Java classes
         shell: bash
@@ -212,15 +250,6 @@ jobs:
             '}' \
             > "$BASE_DIR/MainWindowFilter.java"
 
-      - name: Patch Gradle wrapper to 8.11.1 if wrapper exists
-        shell: bash
-        run: |
-          cd "$PROJECT_DIR"
-
-          if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
-            sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#g' gradle/wrapper/gradle-wrapper.properties
-          fi
-
       - name: Check Firebase config
         shell: bash
         run: |
@@ -236,7 +265,6 @@ jobs:
         shell: bash
         run: |
           cd "$PROJECT_DIR"
-
           $GRADLE_CMD signingReport --no-daemon > "$GITHUB_WORKSPACE/signing-report.txt" || true
           grep "SHA1:" "$GITHUB_WORKSPACE/signing-report.txt" || true
 
@@ -248,18 +276,53 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Build APK without Gradle clean
+      - name: Build APK with multiple attempts
+        id: build_apk
         shell: bash
+        continue-on-error: true
         run: |
           cd "$PROJECT_DIR"
+          mkdir -p "$GITHUB_WORKSPACE/build-logs"
 
-          $GRADLE_CMD --version
+          echo "Gradle version:"
+          $GRADLE_CMD --version | tee "$GITHUB_WORKSPACE/build-logs/gradle-version.txt"
 
-          # DO NOT run Gradle clean here.
-          # This source has stale Windows CMake/ninja paths, and Gradle clean triggers them on Linux.
-          $GRADLE_CMD :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace --rerun-tasks \
-          || $GRADLE_CMD :app_pojavlauncher:assembleDebug --no-daemon --stacktrace --rerun-tasks \
-          || $GRADLE_CMD assembleDebug --no-daemon --stacktrace --rerun-tasks
+          set +e
+
+          echo "Attempt 1: assembleFullDebug"
+          $GRADLE_CMD :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace --rerun-tasks 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/attempt-1-full-debug.log"
+          RESULT1=${PIPESTATUS[0]}
+          if [ "$RESULT1" -eq 0 ]; then
+            echo "BUILD_OK=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "Attempt 2: assembleDebug"
+          $GRADLE_CMD :app_pojavlauncher:assembleDebug --no-daemon --stacktrace --rerun-tasks 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/attempt-2-debug.log"
+          RESULT2=${PIPESTATUS[0]}
+          if [ "$RESULT2" -eq 0 ]; then
+            echo "BUILD_OK=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "Attempt 3: assembleNoruntimeDebug"
+          $GRADLE_CMD :app_pojavlauncher:assembleNoruntimeDebug --no-daemon --stacktrace --rerun-tasks 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/attempt-3-noruntime-debug.log"
+          RESULT3=${PIPESTATUS[0]}
+          if [ "$RESULT3" -eq 0 ]; then
+            echo "BUILD_OK=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "Attempt 4: assembleFullRelease"
+          $GRADLE_CMD :app_pojavlauncher:assembleFullRelease --no-daemon --stacktrace --rerun-tasks 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/attempt-4-full-release.log"
+          RESULT4=${PIPESTATUS[0]}
+          if [ "$RESULT4" -eq 0 ]; then
+            echo "BUILD_OK=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "BUILD_OK=false" >> "$GITHUB_ENV"
+          exit 0
 
       - name: Collect one APK
         shell: bash
@@ -267,24 +330,27 @@ jobs:
           mkdir -p apk-output
 
           echo "APK files found:"
-          find "$PROJECT_DIR" -type f -name "*.apk" -not -path "*/androidTest/*" -print -exec ls -lh {} \;
+          find "$PROJECT_DIR" -type f -name "*.apk" -not -path "*/androidTest/*" -print -exec ls -lh {} \; | tee build-logs/apk-search.txt
 
-          APK_PATH="$(find "$PROJECT_DIR" -type f -name "*.apk" -not -path "*/androidTest/*" -size +10M | grep -E 'full|universal|debug|release|arm64' | head -n 1 || true)"
+          APK_PATH="$(find "$PROJECT_DIR" -type f -name "*.apk" -not -path "*/androidTest/*" -size +10M | grep -E 'full|universal|debug|release|arm64|noruntime' | head -n 1 || true)"
 
           if [ -z "$APK_PATH" ]; then
             APK_PATH="$(find "$PROJECT_DIR" -type f -name "*.apk" -not -path "*/androidTest/*" -size +10M | head -n 1 || true)"
           fi
 
           if [ -z "$APK_PATH" ]; then
-            echo "ERROR: No installable APK found."
-            find "$PROJECT_DIR" -type d | grep -E "build|outputs|apk" || true
-            exit 1
+            echo "No APK found yet."
+            echo "NO_APK=true" >> "$GITHUB_ENV"
+            exit 0
           fi
 
           cp "$APK_PATH" apk-output/DURBIN-Launcher.apk
+          echo "NO_APK=false" >> "$GITHUB_ENV"
+          echo "Chosen APK: $APK_PATH"
           ls -lh apk-output/DURBIN-Launcher.apk
 
       - name: Sign APK if unsigned
+        if: env.NO_APK == 'false'
         shell: bash
         run: |
           APK="apk-output/DURBIN-Launcher.apk"
@@ -320,6 +386,7 @@ jobs:
           mv apk-output/DURBIN-Launcher-signed.apk "$APK"
 
       - name: Verify APK
+        if: env.NO_APK == 'false'
         shell: bash
         run: |
           APK="apk-output/DURBIN-Launcher.apk"
@@ -328,9 +395,26 @@ jobs:
           ls -lh "$APK"
 
       - name: Upload APK
+        if: env.NO_APK == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: DURBIN-Launcher-apk
           path: apk-output/DURBIN-Launcher.apk
           if-no-files-found: error
           retention-days: 7
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DURBIN-build-logs
+          path: build-logs
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Fail if no APK
+        if: env.NO_APK == 'true'
+        shell: bash
+        run: |
+          echo "No APK was produced. Download the DURBIN-build-logs artifact to see the exact failure."
+          exit 1

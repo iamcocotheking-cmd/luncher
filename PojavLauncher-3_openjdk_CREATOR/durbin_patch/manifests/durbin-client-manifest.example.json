@@ -1,0 +1,20 @@
+{
+  "minecraftVersion": "1.21.1",
+  "loader": "fabric",
+  "durbinMod": {
+    "name": "DURBIN Client",
+    "version": "1.0.0",
+    "fileName": "durbin-client-1.21.1-1.0.0.jar",
+    "downloadUrl": "https://example.com/durbin-client-1.21.1-1.0.0.jar",
+    "sha256": "PUT_REAL_SHA256_HERE"
+  },
+  "dependencies": [
+    {
+      "name": "Fabric API",
+      "version": "0.116.0+1.21.1",
+      "fileName": "fabric-api-0.116.0+1.21.1.jar",
+      "downloadUrl": "https://example.com/fabric-api-0.116.0+1.21.1.jar",
+      "sha256": "PUT_REAL_SHA256_HERE"
+    }
+  ]
+}

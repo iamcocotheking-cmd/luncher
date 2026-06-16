@@ -1,61 +1,64 @@
-name: DURBIN Launcher APK Build
+name: Build DURBIN Launcher
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: PojavLauncher-3_openjdk
-
     steps:
-      - name: Checkout repository
+      - name: Checkout your repo
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          lfs: true
+
+      - name: Show root files
+        run: |
+          echo "Current folder:"
+          pwd
+          echo "Root files:"
+          ls -la
+
+      - name: Create PojavLauncher-3_openjdk folder from Hyper base
+        run: |
+          chmod +x make_full_source.sh
+          bash make_full_source.sh
+
+      - name: Verify created folder
+        run: |
+          echo "After creator script:"
+          ls -la
+          test -d PojavLauncher-3_openjdk
+          echo "PojavLauncher-3_openjdk exists ✅"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Verify nested Android project structure
-        run: |
-          echo "Current folder:"
-          pwd
-          echo "Files:"
-          ls -la
-          test -f settings.gradle || (echo "settings.gradle not found. Make sure PojavLauncher-3_openjdk is in repo root." && exit 1)
-          test -f gradlew || (echo "gradlew not found. Make sure PojavLauncher-3_openjdk is in repo root." && exit 1)
-          test -d app_pojavlauncher || (echo "app_pojavlauncher folder not found." && exit 1)
+          java-version: 21
 
       - name: Make Gradle executable
-        run: chmod +x ./gradlew
+        working-directory: PojavLauncher-3_openjdk
+        run: |
+          chmod +x gradlew
+          ls -la
 
       - name: Build debug APK
-        run: ./gradlew --no-daemon :app_pojavlauncher:assembleDebug --stacktrace
-
-      - name: Copy APK to clean output folder
+        working-directory: PojavLauncher-3_openjdk
         run: |
-          mkdir -p build/apk-output
-          cp app_pojavlauncher/build/outputs/apk/debug/*.apk build/apk-output/durbin-launcher-debug.apk
-          ls -la build/apk-output
+          ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: durbin-launcher-debug-apk
-          path: PojavLauncher-3_openjdk/build/apk-output/durbin-launcher-debug.apk
-          if-no-files-found: error
+          name: DURBIN-Launcher-debug-apk
+          path: PojavLauncher-3_openjdk/app_pojavlauncher/build/outputs/apk/debug/*.apk
+
+      - name: Upload full generated source
+        uses: actions/upload-artifact@v4
+        with:
+          name: PojavLauncher-3_openjdk-full-source
+          path: PojavLauncher-3_openjdk

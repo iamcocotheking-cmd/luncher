@@ -15,7 +15,18 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Find launcher project folder
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle fallback
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Find launcher Gradle project
         shell: bash
         run: |
           echo "Repo root:"
@@ -23,38 +34,69 @@ jobs:
           echo "Root files:"
           ls -la
 
-          if [ -f "gradlew" ]; then
-            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
-            echo "Found project in repo root"
-          elif [ -f "PojavLauncher-3_openjdk/gradlew" ]; then
-            echo "PROJECT_DIR=PojavLauncher-3_openjdk" >> "$GITHUB_ENV"
-            echo "Found project in PojavLauncher-3_openjdk"
-          elif [ -f "HyperLauncher-3_openjdk/gradlew" ]; then
-            echo "PROJECT_DIR=HyperLauncher-3_openjdk" >> "$GITHUB_ENV"
-            echo "Found project in HyperLauncher-3_openjdk"
+          echo "Searching for gradlew:"
+          find . -maxdepth 6 -type f -name "gradlew" -print || true
+
+          echo "Searching for settings.gradle/settings.gradle.kts:"
+          find . -maxdepth 6 -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print || true
+
+          PROJECT_DIR=""
+
+          if [ -f "gradlew" ] || [ -f "settings.gradle" ] || [ -f "settings.gradle.kts" ]; then
+            PROJECT_DIR="."
+          elif [ -f "PojavLauncher-3_openjdk/gradlew" ] || [ -f "PojavLauncher-3_openjdk/settings.gradle" ] || [ -f "PojavLauncher-3_openjdk/settings.gradle.kts" ]; then
+            PROJECT_DIR="PojavLauncher-3_openjdk"
+          elif [ -f "HyperLauncher-3_openjdk/gradlew" ] || [ -f "HyperLauncher-3_openjdk/settings.gradle" ] || [ -f "HyperLauncher-3_openjdk/settings.gradle.kts" ]; then
+            PROJECT_DIR="HyperLauncher-3_openjdk"
           else
-            echo "ERROR: gradlew not found."
-            echo "Your repo must contain the real launcher source."
-            echo "Expected one of these:"
-            echo "- gradlew"
-            echo "- PojavLauncher-3_openjdk/gradlew"
-            echo "- HyperLauncher-3_openjdk/gradlew"
-            find . -maxdepth 4 -type f -name "gradlew" -print
+            FIRST_SETTINGS="$(find . -maxdepth 6 -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -n 1 || true)"
+            if [ -n "$FIRST_SETTINGS" ]; then
+              PROJECT_DIR="$(dirname "$FIRST_SETTINGS")"
+            fi
+          fi
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: Could not find a Gradle project."
+            echo "Your PojavLauncher-3_openjdk folder exists, but it has no gradlew/settings.gradle in the expected place."
+            echo "Show folder tree:"
+            find . -maxdepth 3 -type d -print
             exit 1
           fi
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Using project folder: $PROJECT_DIR"
+
+          cd "$PROJECT_DIR"
+          echo "Project files:"
+          ls -la
+
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+            echo "GRADLE_CMD=./gradlew" >> "$GITHUB_ENV"
+            echo "Using Gradle wrapper"
+          else
+            echo "GRADLE_CMD=gradle" >> "$GITHUB_ENV"
+            echo "No gradlew found, using installed Gradle fallback"
+          fi
+
+      - name: Check Firebase config
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          if [ -f "app_pojavlauncher/google-services.json" ]; then
+            echo "Firebase google-services.json found"
+          else
+            echo "WARNING: app_pojavlauncher/google-services.json not found"
+            echo "Google login may not work until you add it."
+          fi
 
       - name: Show SHA-1 fingerprint for Firebase
         shell: bash
         run: |
           cd "$PROJECT_DIR"
-          chmod +x gradlew
-          ./gradlew signingReport --no-daemon > "$GITHUB_WORKSPACE/signing-report.txt" || true
+
+          $GRADLE_CMD signingReport --no-daemon > "$GITHUB_WORKSPACE/signing-report.txt" || true
 
           echo "SHA-1 fingerprints:"
           grep "SHA1:" "$GITHUB_WORKSPACE/signing-report.txt" || true
@@ -71,9 +113,14 @@ jobs:
         shell: bash
         run: |
           cd "$PROJECT_DIR"
-          chmod +x gradlew
 
-          ./gradlew :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace           || ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace           || ./gradlew assembleDebug --no-daemon --stacktrace
+          echo "Gradle projects:"
+          $GRADLE_CMD projects --no-daemon || true
+
+          echo "Building APK..."
+          $GRADLE_CMD :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace \
+          || $GRADLE_CMD :app_pojavlauncher:assembleDebug --no-daemon --stacktrace \
+          || $GRADLE_CMD assembleDebug --no-daemon --stacktrace
 
       - name: Collect one APK
         shell: bash
@@ -91,6 +138,7 @@ jobs:
 
           if [ -z "$APK_PATH" ]; then
             echo "ERROR: No installable APK found."
+            echo "Showing output folders:"
             find "$PROJECT_DIR" -type d | grep -E "build|outputs|apk" || true
             exit 1
           fi
@@ -116,12 +164,25 @@ jobs:
           mkdir -p ~/.android
 
           if [ ! -f ~/.android/debug.keystore ]; then
-            keytool -genkeypair               -keystore ~/.android/debug.keystore               -storepass android               -alias androiddebugkey               -keypass android               -keyalg RSA               -keysize 2048               -validity 10000               -dname "CN=Android Debug,O=Android,C=US"
+            keytool -genkeypair \
+              -keystore ~/.android/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
           fi
 
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
 
-          "$APKSIGNER" sign             --ks ~/.android/debug.keystore             --ks-pass pass:android             --key-pass pass:android             --out apk-output/DURBIN-Launcher-signed.apk             "$APK"
+          "$APKSIGNER" sign \
+            --ks ~/.android/debug.keystore \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out apk-output/DURBIN-Launcher-signed.apk \
+            "$APK"
 
           mv apk-output/DURBIN-Launcher-signed.apk "$APK"
 

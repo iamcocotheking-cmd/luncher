@@ -36,109 +36,105 @@ jobs:
         run: |
           cd PojavLauncher-3_openjdk
 
-          echo "Replacing visible launcher names..."
-          find . -type f \( -name "*.xml" -o -name "*.java" -o -name "*.kt" -o -name "*.gradle" -o -name "*.kts" \) \
-            -not -path "./.git/*" \
+          echo "Replacing visible launcher names in resource/text files..."
+          find app_pojavlauncher/src/main/res -type f \( -name "*.xml" -o -name "*.json" \) \
             -exec sed -i \
               -e 's/Hyper Launcher/DURBIN Launcher/g' \
               -e 's/HyperX Launcher/DURBIN Launcher/g' \
-              -e 's/HyperLauncher/DURBIN Launcher/g' \
               -e 's/HYPER LAUNCHER/DURBIN LAUNCHER/g' \
-              -e 's/Hyper/DURBIN/g' {} + || true
+              -e 's/Hyper Launcher/DURBIN Launcher/g' {} + || true
 
           echo "Adding DURBIN Client Mode skeleton..."
-          mkdir -p app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/durbin
+          python3 - <<'PY'
+          from pathlib import Path
 
-          cat > app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/durbin/DurbinMode.java <<'EOF'
-package net.kdt.pojavlaunch.durbin;
+          def write_lines(path, lines):
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-public final class DurbinMode {
-    private DurbinMode() {}
+          base = Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/durbin")
 
-    public static final String NAME = "DURBIN";
-    public static final String DISPLAY_SUFFIX = " DURBIN";
+          write_lines(base / "DurbinMode.java", [
+              "package net.kdt.pojavlaunch.durbin;",
+              "",
+              "public final class DurbinMode {",
+              "    private DurbinMode() {}",
+              "",
+              "    public static final String NAME = \"DURBIN\";",
+              "    public static final String DISPLAY_SUFFIX = \" DURBIN\";",
+              "",
+              "    public static boolean isDurbinProfile(String profileName) {",
+              "        if (profileName == null) return false;",
+              "        return profileName.toUpperCase().contains(\"DURBIN\");",
+              "    }",
+              "}",
+          ])
 
-    public static boolean isDurbinProfile(String profileName) {
-        if (profileName == null) return false;
-        return profileName.toUpperCase().contains("DURBIN");
-    }
-}
-EOF
+          write_lines(base / "DurbinInstallResult.java", [
+              "package net.kdt.pojavlaunch.durbin;",
+              "",
+              "public class DurbinInstallResult {",
+              "    public final boolean success;",
+              "    public final String message;",
+              "",
+              "    private DurbinInstallResult(boolean success, String message) {",
+              "        this.success = success;",
+              "        this.message = message;",
+              "    }",
+              "",
+              "    public static DurbinInstallResult ok(String message) {",
+              "        return new DurbinInstallResult(true, message);",
+              "    }",
+              "",
+              "    public static DurbinInstallResult fail(String message) {",
+              "        return new DurbinInstallResult(false, message);",
+              "    }",
+              "}",
+          ])
 
-          cat > app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/durbin/DurbinInstallResult.java <<'EOF'
-package net.kdt.pojavlaunch.durbin;
+          write_lines(base / "DurbinClientManager.java", [
+              "package net.kdt.pojavlaunch.durbin;",
+              "",
+              "import java.io.File;",
+              "",
+              "public class DurbinClientManager {",
+              "    private final File minecraftDir;",
+              "",
+              "    public DurbinClientManager(File minecraftDir) {",
+              "        this.minecraftDir = minecraftDir;",
+              "    }",
+              "",
+              "    public DurbinInstallResult prepareDurbinClient(String minecraftVersion) {",
+              "        if (minecraftDir == null) {",
+              "            return DurbinInstallResult.fail(\"Minecraft folder was not found.\");",
+              "        }",
+              "",
+              "        File modsDir = new File(minecraftDir, \"mods\");",
+              "        if (!modsDir.exists() && !modsDir.mkdirs()) {",
+              "            return DurbinInstallResult.fail(\"Could not create mods folder.\");",
+              "        }",
+              "",
+              "        return DurbinInstallResult.ok(\"DURBIN Client Mode is ready for \" + minecraftVersion);",
+              "    }",
+              "}",
+          ])
 
-public class DurbinInstallResult {
-    public final boolean success;
-    public final String message;
-
-    private DurbinInstallResult(boolean success, String message) {
-        this.success = success;
-        this.message = message;
-    }
-
-    public static DurbinInstallResult ok(String message) {
-        return new DurbinInstallResult(true, message);
-    }
-
-    public static DurbinInstallResult fail(String message) {
-        return new DurbinInstallResult(false, message);
-    }
-}
-EOF
-
-          cat > app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/durbin/DurbinClientManager.java <<'EOF'
-package net.kdt.pojavlaunch.durbin;
-
-import java.io.File;
-
-public class DurbinClientManager {
-    private final File minecraftDir;
-
-    public DurbinClientManager(File minecraftDir) {
-        this.minecraftDir = minecraftDir;
-    }
-
-    public DurbinInstallResult prepareDurbinClient(String minecraftVersion) {
-        if (minecraftDir == null) {
-            return DurbinInstallResult.fail("Minecraft folder was not found.");
-        }
-
-        File modsDir = new File(minecraftDir, "mods");
-        if (!modsDir.exists() && !modsDir.mkdirs()) {
-            return DurbinInstallResult.fail("Could not create mods folder.");
-        }
-
-        // TODO next phase:
-        // 1. Read DURBIN manifest JSON
-        // 2. Check Fabric loader
-        // 3. Download durbin-client.jar
-        // 4. Download dependencies
-        // 5. Verify hashes
-        // 6. Launch Fabric profile
-
-        return DurbinInstallResult.ok("DURBIN Client Mode is ready for " + minecraftVersion);
-    }
-}
-EOF
-
-          mkdir -p durbin
-          cat > durbin/durbin-client-manifest.example.json <<'EOF'
-{
-  "minecraftVersion": "1.21.1",
-  "loader": "fabric",
-  "durbinClient": {
-    "version": "1.0.0",
-    "fileName": "durbin-client-1.21.1-1.0.0.jar",
-    "downloadUrl": "https://example.com/durbin-client-1.21.1-1.0.0.jar",
-    "sha256": "PUT_SHA256_HERE"
-  },
-  "dependencies": []
-}
-EOF
+          write_lines(Path("durbin/durbin-client-manifest.example.json"), [
+              "{",
+              "  \"minecraftVersion\": \"1.21.1\",",
+              "  \"loader\": \"fabric\",",
+              "  \"durbinClient\": {",
+              "    \"version\": \"1.0.0\",",
+              "    \"fileName\": \"durbin-client-1.21.1-1.0.0.jar\",",
+              "    \"downloadUrl\": \"https://example.com/durbin-client-1.21.1-1.0.0.jar\",",
+              "    \"sha256\": \"PUT_SHA256_HERE\"",
+              "  },",
+              "  \"dependencies\": []",
+              "}",
+          ])
+          PY
 
           echo "DURBIN patch complete."
-          ls -la
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4

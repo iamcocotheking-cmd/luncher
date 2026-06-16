@@ -1,4 +1,4 @@
-name: Build DURBIN Launcher From Hyper Base
+name: Build DURBIN Launcher APK Only
 
 on:
   workflow_dispatch:
@@ -36,13 +36,12 @@ jobs:
         run: |
           cd PojavLauncher-3_openjdk
 
-          echo "Replacing visible launcher names in resource/text files..."
+          echo "Replacing visible launcher names..."
           find app_pojavlauncher/src/main/res -type f \( -name "*.xml" -o -name "*.json" \) \
             -exec sed -i \
               -e 's/Hyper Launcher/DURBIN Launcher/g' \
               -e 's/HyperX Launcher/DURBIN Launcher/g' \
-              -e 's/HYPER LAUNCHER/DURBIN LAUNCHER/g' \
-              -e 's/Hyper Launcher/DURBIN Launcher/g' {} + || true
+              -e 's/HYPER LAUNCHER/DURBIN LAUNCHER/g' {} + || true
 
           echo "Adding DURBIN Client Mode skeleton..."
           python3 - <<'PY'
@@ -148,14 +147,15 @@ jobs:
           chmod +x gradlew
           ./gradlew :app_pojavlauncher:assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Find APK
+        run: |
+          echo "APK files:"
+          find PojavLauncher-3_openjdk/app_pojavlauncher/build/outputs/apk -type f -name "*.apk" -print -exec ls -lh {} \;
+
+      - name: Upload APK only
         uses: actions/upload-artifact@v4
         with:
           name: DURBIN-Launcher-debug-apk
           path: PojavLauncher-3_openjdk/app_pojavlauncher/build/outputs/apk/debug/*.apk
-
-      - name: Upload generated full source
-        uses: actions/upload-artifact@v4
-        with:
-          name: PojavLauncher-3_openjdk-full-source
-          path: PojavLauncher-3_openjdk
+          if-no-files-found: error
+          retention-days: 7

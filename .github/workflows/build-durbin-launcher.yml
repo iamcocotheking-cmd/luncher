@@ -1,4 +1,4 @@
-name: Build DURBIN Launcher MAX FIX
+name: Build DURBIN Launcher MAX FIX V2
 
 on:
   workflow_dispatch:
@@ -102,19 +102,15 @@ jobs:
           rm -rf forge_installer/.cxx
 
           # Delete generated build folders without running Gradle clean.
-          # Gradle clean can fail here because the old cache contains Windows ninja.exe paths.
           find . -type d -name build -prune -exec rm -rf {} + || true
 
-          # Delete CMake cache files that can remember Windows paths.
+          # Remove stale CMake files that can remember Windows ninja.exe paths.
           find . -type f \( -name "CMakeCache.txt" -o -name "build_command.txt" -o -name "*.cmake" \) -print | while read f; do
             if grep -qi "C:\\\\Users\\\\ASHMEET\|ninja.exe" "$f"; then
               echo "Removing stale native file: $f"
               rm -f "$f"
             fi
           done || true
-
-          echo "Remaining Windows path references:"
-          grep -RIn "C:\\\\Users\\\\ASHMEET\|ninja.exe" . --exclude-dir=.git --exclude-dir=.gradle --exclude="*.png" --exclude="*.jpg" --exclude="*.webp" || true
 
       - name: Patch Gradle properties
         shell: bash
@@ -139,13 +135,12 @@ jobs:
           set_prop "org.gradle.jvmargs" "-Xmx4096m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
           set_prop "org.gradle.daemon" "false"
 
-          echo "Final gradle.properties:"
-          cat gradle.properties
-
           if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
             sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#g' gradle/wrapper/gradle-wrapper.properties
-            cat gradle/wrapper/gradle-wrapper.properties
           fi
+
+          echo "Final gradle.properties:"
+          cat gradle.properties
 
       - name: Patch missing Android resources
         shell: bash
@@ -155,6 +150,11 @@ jobs:
           RES_DIR="app_pojavlauncher/src/main/res"
           mkdir -p "$RES_DIR/values"
           mkdir -p "$RES_DIR/drawable"
+          mkdir -p "$RES_DIR/mipmap-hdpi"
+          mkdir -p "$RES_DIR/mipmap-mdpi"
+          mkdir -p "$RES_DIR/mipmap-xhdpi"
+          mkdir -p "$RES_DIR/mipmap-xxhdpi"
+          mkdir -p "$RES_DIR/mipmap-xxxhdpi"
 
           cat > "$RES_DIR/values/durbin_missing_values.xml" <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -173,6 +173,22 @@ jobs:
           </resources>
           EOF
 
+          # The manifest uses @drawable/icon. Some repo copies are missing that default resource.
+          cat > "$RES_DIR/drawable/icon.xml" <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="48dp"
+              android:height="48dp"
+              android:viewportWidth="48"
+              android:viewportHeight="48">
+              <path android:fillColor="#FF7A00" android:pathData="M24,4C12.95,4 4,12.95 4,24C4,35.05 12.95,44 24,44C35.05,44 44,35.05 44,24C44,12.95 35.05,4 24,4Z"/>
+              <path android:fillColor="#FFFFFFFF" android:pathData="M15,13L30,13C32.76,13 35,15.24 35,18L35,30C35,32.76 32.76,35 30,35L15,35C13.9,35 13,34.1 13,33L13,15C13,13.9 13.9,13 15,13Z"/>
+              <path android:fillColor="#FF111111" android:pathData="M18,18L29,18L29,30L18,30Z"/>
+              <path android:fillColor="#FFFFFFFF" android:pathData="M21,21L26,21L26,24L21,24Z"/>
+          </vector>
+          EOF
+
+          # Also provide a round/default social icon so AAPT does not remove configured drawables.
           cat > "$RES_DIR/drawable/ic_social_media.xml" <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -186,9 +202,10 @@ jobs:
           </vector>
           EOF
 
-          echo "Patched resources:"
-          ls -la "$RES_DIR/values" | tail || true
-          ls -la "$RES_DIR/drawable/ic_social_media.xml"
+          echo "Checking patched resources:"
+          test -f "$RES_DIR/drawable/icon.xml"
+          test -f "$RES_DIR/drawable/ic_social_media.xml"
+          test -f "$RES_DIR/values/durbin_missing_values.xml"
 
       - name: Patch missing forge_installer Java classes
         shell: bash
@@ -277,7 +294,6 @@ jobs:
           retention-days: 7
 
       - name: Build APK with multiple attempts
-        id: build_apk
         shell: bash
         continue-on-error: true
         run: |
@@ -313,14 +329,6 @@ jobs:
             exit 0
           fi
 
-          echo "Attempt 4: assembleFullRelease"
-          $GRADLE_CMD :app_pojavlauncher:assembleFullRelease --no-daemon --stacktrace --rerun-tasks 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/attempt-4-full-release.log"
-          RESULT4=${PIPESTATUS[0]}
-          if [ "$RESULT4" -eq 0 ]; then
-            echo "BUILD_OK=true" >> "$GITHUB_ENV"
-            exit 0
-          fi
-
           echo "BUILD_OK=false" >> "$GITHUB_ENV"
           exit 0
 
@@ -328,6 +336,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p apk-output
+          mkdir -p build-logs
 
           echo "APK files found:"
           find "$PROJECT_DIR" -type f -name "*.apk" -not -path "*/androidTest/*" -print -exec ls -lh {} \; | tee build-logs/apk-search.txt

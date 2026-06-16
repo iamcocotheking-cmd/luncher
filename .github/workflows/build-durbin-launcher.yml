@@ -21,10 +21,10 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Set up Gradle fallback
+      - name: Set up Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.10.2
+          gradle-version: 8.11.1
 
       - name: Find launcher Gradle project
         shell: bash
@@ -57,9 +57,7 @@ jobs:
 
           if [ -z "$PROJECT_DIR" ]; then
             echo "ERROR: Could not find a Gradle project."
-            echo "Your PojavLauncher-3_openjdk folder exists, but it has no gradlew/settings.gradle in the expected place."
-            echo "Show folder tree:"
-            find . -maxdepth 3 -type d -print
+            find . -maxdepth 4 -type d -print
             exit 1
           fi
 
@@ -76,7 +74,20 @@ jobs:
             echo "Using Gradle wrapper"
           else
             echo "GRADLE_CMD=gradle" >> "$GITHUB_ENV"
-            echo "No gradlew found, using installed Gradle fallback"
+            echo "No gradlew found, using installed Gradle 8.11.1"
+          fi
+
+      - name: Patch Gradle wrapper to 8.11.1 if wrapper exists
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
+            echo "Patching gradle-wrapper.properties to Gradle 8.11.1..."
+            sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11.1-all.zip#g' gradle/wrapper/gradle-wrapper.properties
+            cat gradle/wrapper/gradle-wrapper.properties
+          else
+            echo "No Gradle wrapper properties found. Skipping wrapper patch."
           fi
 
       - name: Check Firebase config
@@ -113,6 +124,9 @@ jobs:
         shell: bash
         run: |
           cd "$PROJECT_DIR"
+
+          echo "Gradle version:"
+          $GRADLE_CMD --version
 
           echo "Gradle projects:"
           $GRADLE_CMD projects --no-daemon || true

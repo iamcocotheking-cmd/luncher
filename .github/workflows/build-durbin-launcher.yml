@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 name: Build DURBIN Launcher
+=======
+name: Build DURBIN Launcher SOURCE FIX V4
+>>>>>>> 08f792792a2dd6db26e68ef5dcc1a1724844fcd3
 
 on:
   workflow_dispatch:
@@ -23,11 +27,16 @@ jobs:
         with:
           gradle-version: 8.11.1
 
+<<<<<<< HEAD
       - name: Install Android native build tools
+=======
+      - name: Install Linux native build tools
+>>>>>>> 08f792792a2dd6db26e68ef5dcc1a1724844fcd3
         shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build cmake
+<<<<<<< HEAD
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "cmake;3.22.1" \
             "ndk;29.0.14206865" \
@@ -81,6 +90,466 @@ jobs:
           ./gradlew signingReport --no-daemon > "$GITHUB_WORKSPACE/signing-report.txt" || true
           grep "SHA1:" "$GITHUB_WORKSPACE/signing-report.txt" || true
 
+=======
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+
+          if [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+              "cmake;3.22.1" \
+              "ndk;27.2.12479018" \
+              "platform-tools" \
+              "platforms;android-35" \
+              "build-tools;35.0.0" || true
+          fi
+
+      - name: Find launcher project
+        shell: bash
+        run: |
+          echo "Repo root:"
+          pwd
+          ls -la
+
+          PROJECT_DIR=""
+
+          if [ -f "gradlew" ] || [ -f "settings.gradle" ] || [ -f "settings.gradle.kts" ]; then
+            PROJECT_DIR="."
+          elif [ -f "PojavLauncher-3_openjdk/gradlew" ] || [ -f "PojavLauncher-3_openjdk/settings.gradle" ] || [ -f "PojavLauncher-3_openjdk/settings.gradle.kts" ]; then
+            PROJECT_DIR="PojavLauncher-3_openjdk"
+          elif [ -f "HyperLauncher-3_openjdk/gradlew" ] || [ -f "HyperLauncher-3_openjdk/settings.gradle" ] || [ -f "HyperLauncher-3_openjdk/settings.gradle.kts" ]; then
+            PROJECT_DIR="HyperLauncher-3_openjdk"
+          else
+            FIRST_SETTINGS="$(find . -maxdepth 8 -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -n 1 || true)"
+            if [ -n "$FIRST_SETTINGS" ]; then
+              PROJECT_DIR="$(dirname "$FIRST_SETTINGS")"
+            fi
+          fi
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: Could not find Gradle project."
+            find . -maxdepth 5 -type f | sort | head -n 300
+            exit 1
+          fi
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Using project folder: $PROJECT_DIR"
+
+          cd "$PROJECT_DIR"
+          ls -la
+
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+            echo "GRADLE_CMD=./gradlew" >> "$GITHUB_ENV"
+          else
+            echo "GRADLE_CMD=gradle" >> "$GITHUB_ENV"
+          fi
+
+      - name: Delete broken generated cache
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          rm -rf .gradle
+          rm -rf .cxx
+          rm -rf app_pojavlauncher/.cxx
+          rm -rf dnbglfw/.cxx
+          rm -rf forge_installer/.cxx
+
+          # Delete committed build folders, but do NOT run Gradle clean.
+          find . -type d -name build -prune -exec rm -rf {} + || true
+
+          # Remove stale CMake files that remember Windows ninja.exe paths.
+          find . -type f \( -name "CMakeCache.txt" -o -name "build_command.txt" -o -name "*.cmake" \) -print | while read f; do
+            if grep -qi "C:\\\\Users\\\\ASHMEET\|ninja.exe" "$f"; then
+              rm -f "$f"
+            fi
+          done || true
+
+      - name: Patch missing native C source files
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          JNI_DIR="app_pojavlauncher/src/main/jni"
+          mkdir -p "$JNI_DIR/driver_helper"
+          mkdir -p "$JNI_DIR/awt_xawt"
+
+          # Your source is missing these files referenced by CMakeLists.txt.
+          # Without them, CMake fails before Java/Android can build the APK.
+          if [ ! -f "$JNI_DIR/driver_helper/hook.c" ]; then
+            cat > "$JNI_DIR/driver_helper/hook.c" <<'EOF'
+          #include <jni.h>
+          #include <android/log.h>
+
+          __attribute__((visibility("default")))
+          void durbin_linkerhook_placeholder(void) {
+              __android_log_print(ANDROID_LOG_INFO, "DURBIN", "linkerhook placeholder loaded");
+          }
+          EOF
+          fi
+
+          if [ ! -f "$JNI_DIR/awt_xawt/xawt_fake.c" ]; then
+            cat > "$JNI_DIR/awt_xawt/xawt_fake.c" <<'EOF'
+          #include <jni.h>
+          #include <android/log.h>
+
+          __attribute__((visibility("default")))
+          void durbin_xawt_placeholder(void) {
+              __android_log_print(ANDROID_LOG_INFO, "DURBIN", "xawt placeholder loaded");
+          }
+          EOF
+          fi
+
+          echo "Native files:"
+          ls -la "$JNI_DIR/driver_helper" || true
+          ls -la "$JNI_DIR/awt_xawt" || true
+
+
+      - name: Patch Gradle properties
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          touch gradle.properties
+
+          set_prop () {
+            KEY="$1"
+            VALUE="$2"
+            if grep -q "^$KEY=" gradle.properties; then
+              sed -i "s#^$KEY=.*#$KEY=$VALUE#g" gradle.properties
+            else
+              echo "$KEY=$VALUE" >> gradle.properties
+            fi
+          }
+
+          set_prop "android.useAndroidX" "true"
+          set_prop "android.enableJetifier" "true"
+          set_prop "android.nonTransitiveRClass" "false"
+          set_prop "org.gradle.jvmargs" "-Xmx4096m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
+          set_prop "org.gradle.daemon" "false"
+
+          if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
+            sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#g' gradle/wrapper/gradle-wrapper.properties
+          fi
+
+          cat gradle.properties
+
+      - name: Auto-patch missing Android resources
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          res = Path("app_pojavlauncher/src/main/res")
+          res.mkdir(parents=True, exist_ok=True)
+          (res / "values").mkdir(parents=True, exist_ok=True)
+          (res / "drawable").mkdir(parents=True, exist_ok=True)
+          (res / "mipmap-anydpi-v26").mkdir(parents=True, exist_ok=True)
+
+          def existing_value_names(kind):
+              names = set()
+              tag_pattern = re.compile(r'<\s*' + re.escape(kind) + r'\b[^>]*>')
+              name_pattern = re.compile(r'\bname=["\']([A-Za-z0-9_]+)["\']')
+              for f in res.glob("values*/**/*.xml"):
+                  try:
+                      text = f.read_text(encoding="utf-8", errors="ignore")
+                  except Exception:
+                      continue
+                  for tag in tag_pattern.findall(text):
+                      m = name_pattern.search(tag)
+                      if m:
+                          names.add(m.group(1))
+              return names
+
+          def existing_file_resource(kind, name):
+              for d in res.glob(kind + "*"):
+                  if d.is_dir():
+                      for ext in (".xml", ".png", ".webp", ".jpg", ".jpeg", ".gif"):
+                          if (d / (name + ext)).exists():
+                              return True
+              return False
+
+          refs = {
+              "dimen": set(), "drawable": set(), "mipmap": set(), "color": set(),
+              "string": set(), "integer": set(), "bool": set(), "id": set()
+          }
+
+          ref_re = re.compile(r'@(?!(?:android:|null\b))(?P<plus>\+)?(?P<kind>dimen|drawable|mipmap|color|string|integer|bool|id)/(?P<name>[A-Za-z0-9_]+)')
+          for f in res.glob("**/*.xml"):
+              try:
+                  text = f.read_text(encoding="utf-8", errors="ignore")
+              except Exception:
+                  continue
+              for m in ref_re.finditer(text):
+                  kind = m.group("kind")
+                  name = m.group("name")
+                  plus = m.group("plus")
+                  if kind == "id" and plus:
+                      continue
+                  refs[kind].add(name)
+
+          refs["dimen"].update([
+              "padding_micro", "padding_tiny", "padding_small", "padding_medium",
+              "padding_moderate", "padding_normal", "padding_large", "padding_heavy",
+              "padding_xlarge", "margin_micro", "margin_tiny", "margin_small",
+              "margin_medium", "margin_moderate", "margin_normal", "margin_large",
+              "margin_heavy", "margin_xlarge"
+          ])
+          refs["drawable"].update([
+              "icon", "ic_social_media", "ic_telegram", "ic_mouse_pointer",
+              "spinner_arrow_right", "spinner_arrow_down", "spinner_arrow_left",
+              "ic_launcher_foreground", "ic_launcher_background"
+          ])
+          refs["mipmap"].update(["ic_launcher", "ic_launcher_round"])
+
+          existing_dimens = existing_value_names("dimen")
+          existing_colors = existing_value_names("color")
+          existing_strings = existing_value_names("string")
+          existing_integers = existing_value_names("integer")
+          existing_bools = existing_value_names("bool")
+          existing_ids = existing_value_names("item")
+
+          dimen_defaults = {
+              "micro": "2dp", "tiny": "4dp", "small": "8dp", "medium": "10dp",
+              "moderate": "12dp", "normal": "14dp", "large": "16dp",
+              "heavy": "20dp", "xlarge": "24dp"
+          }
+
+          value_lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
+
+          for name in sorted(refs["dimen"] - existing_dimens):
+              size = "8dp"
+              for key, val in dimen_defaults.items():
+                  if key in name:
+                      size = val
+                      break
+              value_lines.append(f'    <dimen name="{name}">{size}</dimen>')
+
+          for name in sorted(refs["color"] - existing_colors):
+              # @color/name can also be a file in res/color/name.xml. Do not duplicate it.
+              if not existing_file_resource("color", name):
+                  value_lines.append(f'    <color name="{name}">#FFFFFFFF</color>')
+
+          for name in sorted(refs["string"] - existing_strings):
+              value_lines.append(f'    <string name="{name}" formatted="false">{name}</string>')
+
+          for name in sorted(refs["integer"] - existing_integers):
+              value_lines.append(f'    <integer name="{name}">0</integer>')
+
+          for name in sorted(refs["bool"] - existing_bools):
+              value_lines.append(f'    <bool name="{name}">false</bool>')
+
+          for name in sorted(refs["id"]):
+              if name not in existing_ids:
+                  value_lines.append(f'    <item name="{name}" type="id"/>')
+
+          value_lines.append('</resources>')
+          (res / "values" / "durbin_autofix_missing_values.xml").write_text("\n".join(value_lines) + "\n", encoding="utf-8")
+
+          generic_vector = '''<?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="24"
+              android:viewportHeight="24">
+              <path android:fillColor="#FFFFFFFF" android:pathData="M12,2L22,12L12,22L2,12Z"/>
+          </vector>
+          '''
+
+          arrow_right_vector = '''<?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="24"
+              android:viewportHeight="24">
+              <path android:fillColor="#FFFFFFFF" android:pathData="M8,5V19L19,12Z"/>
+          </vector>
+          '''
+
+          mouse_vector = '''<?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="24"
+              android:viewportHeight="24">
+              <path android:fillColor="#FFFFFFFF" android:pathData="M4,2L19,12L12,13L16,21L13,22L9,14L4,19Z"/>
+          </vector>
+          '''
+
+          telegram_vector = '''<?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="24"
+              android:viewportHeight="24">
+              <path android:fillColor="#FFFFFFFF" android:pathData="M21,4L3,11L9,13L11,19L14,15L18,18Z"/>
+          </vector>
+          '''
+
+          social_vector = '''<?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="24"
+              android:viewportHeight="24">
+              <path android:fillColor="#FFFFFFFF" android:pathData="M18,16C17.2,16 16.5,16.3 16,16.8L9,12.7C9,12.5 9,12.2 9,12S9,11.5 9,11.3L16,7.2C16.5,7.7 17.2,8 18,8C19.7,8 21,6.7 21,5S19.7,2 18,2S15,3.3 15,5C15,5.2 15,5.5 15.1,5.7L8,9.8C7.5,9.3 6.8,9 6,9C4.3,9 3,10.3 3,12S4.3,15 6,15C6.8,15 7.5,14.7 8,14.2L15.1,18.4C15,18.6 15,18.8 15,19C15,20.7 16.3,22 18,22S21,20.7 21,19S19.7,16 18,16Z"/>
+          </vector>
+          '''
+
+          icon_vector = '''<?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="48dp"
+              android:height="48dp"
+              android:viewportWidth="48"
+              android:viewportHeight="48">
+              <path android:fillColor="#FF7A00" android:pathData="M24,4C13,4 4,13 4,24S13,44 24,44S44,35 44,24S35,4 24,4Z"/>
+              <path android:fillColor="#FFFFFFFF" android:pathData="M15,13H30C33,13 35,15 35,18V30C35,33 33,35 30,35H15C14,35 13,34 13,33V15C13,14 14,13 15,13Z"/>
+              <path android:fillColor="#FF111111" android:pathData="M18,18H29V30H18Z"/>
+          </vector>
+          '''
+
+          def vector_for(name):
+              if name in ("icon", "ic_launcher", "ic_launcher_round", "ic_launcher_foreground", "ic_launcher_background"):
+                  return icon_vector
+              if "telegram" in name:
+                  return telegram_vector
+              if "mouse" in name or "pointer" in name:
+                  return mouse_vector
+              if "spinner" in name or "arrow" in name:
+                  return arrow_right_vector
+              if "social" in name:
+                  return social_vector
+              return generic_vector
+
+          for name in sorted(refs["drawable"]):
+              if not existing_file_resource("drawable", name):
+                  (res / "drawable" / f"{name}.xml").write_text(vector_for(name), encoding="utf-8")
+
+          for name in sorted(refs["mipmap"]):
+              if not existing_file_resource("mipmap", name):
+                  (res / "mipmap-anydpi-v26" / f"{name}.xml").write_text(vector_for(name), encoding="utf-8")
+
+          print("Auto-patched missing resources.")
+          print("Dimens referenced:", len(refs["dimen"]))
+          print("Drawables referenced:", len(refs["drawable"]))
+          print("Mipmaps referenced:", len(refs["mipmap"]))
+          PY
+
+          cat app_pojavlauncher/src/main/res/values/durbin_autofix_missing_values.xml
+
+      - name: Patch string formatting warnings
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          res = Path("app_pojavlauncher/src/main/res")
+          string_tag = re.compile(r'<string\s+([^>]*name="[^"]+"[^>]*)>(.*?)</string>', re.S)
+          fmt_re = re.compile(r'(?<!%)%(?!%)(?!\d+\$)[#0,+\-\s(]*\d*(?:\.\d+)?[a-zA-Z]')
+
+          for f in res.glob("values*/strings.xml"):
+              text = f.read_text(encoding="utf-8", errors="ignore")
+
+              def repl(m):
+                  attrs = m.group(1)
+                  body = m.group(2)
+                  count = len(fmt_re.findall(body))
+                  if count > 1 and "formatted=" not in attrs:
+                      attrs = attrs + ' formatted="false"'
+                      return f'<string {attrs}>{body}</string>'
+                  return m.group(0)
+
+              new = string_tag.sub(repl, text)
+              if new != text:
+                  f.write_text(new, encoding="utf-8")
+                  print("Patched string formatting:", f)
+          PY
+
+      - name: Patch missing forge_installer Java classes
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          BASE_DIR="forge_installer/src/main/java/git/artdeell/installer_agent"
+          mkdir -p "$BASE_DIR"
+
+          printf '%s\n' \
+            'package git.artdeell.installer_agent;' \
+            '' \
+            'import java.awt.*;' \
+            '' \
+            'public interface ComponentFilter {' \
+            '    boolean checkComponent(Component component);' \
+            '}' \
+            > "$BASE_DIR/ComponentFilter.java"
+
+          printf '%s\n' \
+            'package git.artdeell.installer_agent;' \
+            '' \
+            'import java.util.TimerTask;' \
+            '' \
+            'public class ComponentTimeoutTask extends TimerTask {' \
+            '    @Override' \
+            '    public void run() {' \
+            '        System.out.println("Initialization timed out!");' \
+            '        System.exit(17);' \
+            '    }' \
+            '}' \
+            > "$BASE_DIR/ComponentTimeoutTask.java"
+
+          printf '%s\n' \
+            'package git.artdeell.installer_agent;' \
+            '' \
+            'import javax.swing.*;' \
+            'import java.awt.*;' \
+            '' \
+            'public class DialogFilter implements ComponentFilter {' \
+            '    @Override' \
+            '    public boolean checkComponent(Component component) {' \
+            '        return component instanceof JOptionPane || component instanceof JProgressBar;' \
+            '    }' \
+            '}' \
+            > "$BASE_DIR/DialogFilter.java"
+
+          printf '%s\n' \
+            'package git.artdeell.installer_agent;' \
+            '' \
+            'import javax.swing.*;' \
+            'import java.awt.*;' \
+            '' \
+            'public class MainWindowFilter implements ComponentFilter {' \
+            '    @Override' \
+            '    public boolean checkComponent(Component component) {' \
+            '        return component instanceof JRadioButton || component instanceof JTextField || component instanceof JButton;' \
+            '    }' \
+            '}' \
+            > "$BASE_DIR/MainWindowFilter.java"
+
+      - name: Check Firebase config
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          if [ -f "app_pojavlauncher/google-services.json" ]; then
+            echo "Firebase google-services.json found"
+          else
+            echo "WARNING: app_pojavlauncher/google-services.json not found"
+          fi
+
+      - name: Show SHA-1 fingerprint for Firebase
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+          $GRADLE_CMD signingReport --no-daemon > "$GITHUB_WORKSPACE/signing-report.txt" || true
+          grep "SHA1:" "$GITHUB_WORKSPACE/signing-report.txt" || true
+
+>>>>>>> 08f792792a2dd6db26e68ef5dcc1a1724844fcd3
       - name: Upload SHA-1 report
         uses: actions/upload-artifact@v4
         with:
@@ -89,10 +558,16 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+<<<<<<< HEAD
       - name: Build APK
+=======
+      - name: Build APK with multiple attempts
+>>>>>>> 08f792792a2dd6db26e68ef5dcc1a1724844fcd3
         shell: bash
+        continue-on-error: true
         run: |
           cd "$PROJECT_DIR"
+<<<<<<< HEAD
           ./gradlew :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace --rerun-tasks
 
       - name: Collect APK
@@ -107,11 +582,141 @@ jobs:
           fi
           cp "$APK_PATH" apk-output/DURBIN-Launcher.apk
           ls -lh apk-output/DURBIN-Launcher.apk
+=======
+          mkdir -p "$GITHUB_WORKSPACE/build-logs"
+
+          $GRADLE_CMD --version | tee "$GITHUB_WORKSPACE/build-logs/gradle-version.txt"
+
+          set +e
+
+          echo "Attempt 1: assembleFullDebug"
+          $GRADLE_CMD :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace --rerun-tasks 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/attempt-1-full-debug.log"
+          RESULT1=${PIPESTATUS[0]}
+          if [ "$RESULT1" -eq 0 ]; then
+            echo "BUILD_OK=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "Attempt 2: assembleDebug"
+          $GRADLE_CMD :app_pojavlauncher:assembleDebug --no-daemon --stacktrace --rerun-tasks 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/attempt-2-debug.log"
+          RESULT2=${PIPESTATUS[0]}
+          if [ "$RESULT2" -eq 0 ]; then
+            echo "BUILD_OK=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "Attempt 3: assembleNoruntimeDebug"
+          $GRADLE_CMD :app_pojavlauncher:assembleNoruntimeDebug --no-daemon --stacktrace --rerun-tasks 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/attempt-3-noruntime-debug.log"
+          RESULT3=${PIPESTATUS[0]}
+          if [ "$RESULT3" -eq 0 ]; then
+            echo "BUILD_OK=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "Attempt 4: assembleFullRelease"
+          $GRADLE_CMD :app_pojavlauncher:assembleFullRelease --no-daemon --stacktrace --rerun-tasks 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/attempt-4-full-release.log"
+          RESULT4=${PIPESTATUS[0]}
+          if [ "$RESULT4" -eq 0 ]; then
+            echo "BUILD_OK=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "BUILD_OK=false" >> "$GITHUB_ENV"
+          exit 0
+
+      - name: Collect one APK
+        shell: bash
+        run: |
+          mkdir -p apk-output
+          mkdir -p build-logs
+
+          echo "APK files found:"
+          find "$PROJECT_DIR" -type f -name "*.apk" -not -path "*/androidTest/*" -print -exec ls -lh {} \; | tee build-logs/apk-search.txt
+
+          APK_PATH="$(find "$PROJECT_DIR" -type f -name "*.apk" -not -path "*/androidTest/*" -size +10M | grep -E 'full|universal|debug|release|arm64|noruntime' | head -n 1 || true)"
+
+          if [ -z "$APK_PATH" ]; then
+            APK_PATH="$(find "$PROJECT_DIR" -type f -name "*.apk" -not -path "*/androidTest/*" -size +10M | head -n 1 || true)"
+          fi
+
+          if [ -z "$APK_PATH" ]; then
+            echo "No APK found yet."
+            echo "NO_APK=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          cp "$APK_PATH" apk-output/DURBIN-Launcher.apk
+          echo "NO_APK=false" >> "$GITHUB_ENV"
+          echo "Chosen APK: $APK_PATH"
+          ls -lh apk-output/DURBIN-Launcher.apk
+
+      - name: Sign APK if unsigned
+        if: env.NO_APK == 'false'
+        shell: bash
+        run: |
+          APK="apk-output/DURBIN-Launcher.apk"
+
+          if unzip -l "$APK" | grep -E "META-INF/.*(RSA|DSA|EC)" >/dev/null; then
+            echo "APK already signed"
+            exit 0
+          fi
+
+          mkdir -p ~/.android
+
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair \
+              -keystore ~/.android/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+
+          "$APKSIGNER" sign \
+            --ks ~/.android/debug.keystore \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out apk-output/DURBIN-Launcher-signed.apk \
+            "$APK"
+
+          mv apk-output/DURBIN-Launcher-signed.apk "$APK"
+
+      - name: Verify APK
+        if: env.NO_APK == 'false'
+        shell: bash
+        run: |
+          APK="apk-output/DURBIN-Launcher.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose "$APK" || true
+          ls -lh "$APK"
+>>>>>>> 08f792792a2dd6db26e68ef5dcc1a1724844fcd3
 
       - name: Upload APK
+        if: env.NO_APK == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: DURBIN-Launcher-apk
           path: apk-output/DURBIN-Launcher.apk
           if-no-files-found: error
           retention-days: 7
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DURBIN-build-logs
+          path: build-logs
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Fail if no APK
+        if: env.NO_APK == 'true'
+        shell: bash
+        run: |
+          echo "No APK was produced. Download the DURBIN-build-logs artifact to see the exact failure."
+          exit 1

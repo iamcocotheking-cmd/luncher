@@ -1,15 +1,10 @@
-name: Build DURBIN Launcher
+name: Get SHA1 for Firebase
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - master
 
 jobs:
-  build:
-    name: Build APK
+  sha1:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,82 +22,21 @@ jobs:
         with:
           gradle-version: 8.11.1
 
-      - name: Restore GLFW native source
+      - name: Get SHA1 for Firebase
         shell: bash
         run: |
           cd PojavLauncher-3_openjdk
+          mkdir -p ~/.android
 
-          GLFW_DIR="dnbglfw/src/main/cpp/glfw"
+          keytool -genkeypair \
+            -keystore ~/.android/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US" || true
 
-          if [ -f "$GLFW_DIR/.durbin_stub" ]; then
-            echo "Fallback GLFW stub detected. Trying to download real MojoLauncher GLFW source..."
-            rm -rf "$GLFW_DIR"
-            git clone --depth 1 --recursive https://github.com/MojoLauncher/glfw "$GLFW_DIR" || true
-          fi
-
-          if [ ! -f "$GLFW_DIR/CMakeLists.txt" ]; then
-            echo "Real GLFW source was not available. Creating safe fallback stub..."
-            mkdir -p "$GLFW_DIR"
-
-            cat > "$GLFW_DIR/CMakeLists.txt" <<'EOF'
-          cmake_minimum_required(VERSION 3.22.1)
-
-          project("glfw")
-
-          add_library(glfw SHARED glfw_stub.c)
-
-          find_library(log_lib log)
-          find_library(android_lib android)
-
-          target_link_libraries(glfw ${log_lib} ${android_lib})
-          EOF
-
-            cat > "$GLFW_DIR/glfw_stub.c" <<'EOF'
-          #include <jni.h>
-          #include <android/log.h>
-
-          #define LOG_TAG "DURBIN_GLFW_STUB"
-          #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_initialize(JNIEnv *env, jclass clazz) { (void)env; (void)clazz; LOGI("GLFW fallback stub initialized"); }
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_sendMousePosition0(JNIEnv *env, jclass clazz, jdouble x, jdouble y) { (void)env; (void)clazz; (void)x; (void)y; }
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_sendKeyEvent(JNIEnv *env, jclass clazz, jint key, jint state, jint mods) { (void)env; (void)clazz; (void)key; (void)state; (void)mods; }
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_sendRawKeyEvent(JNIEnv *env, jclass clazz, jint androidCode, jint state, jint mods, jchar codepoint) { (void)env; (void)clazz; (void)androidCode; (void)state; (void)mods; (void)codepoint; }
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_sendMouseEvent(JNIEnv *env, jclass clazz, jint button, jint state, jint mods) { (void)env; (void)clazz; (void)button; (void)state; (void)mods; }
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_sendBulkUnicodeEvent(JNIEnv *env, jclass clazz, jstring input, jint mods) { (void)env; (void)clazz; (void)input; (void)mods; }
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_sendScrollEvent(JNIEnv *env, jclass clazz, jdouble xoffset, jdouble yoffset) { (void)env; (void)clazz; (void)xoffset; (void)yoffset; }
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_nativeSurfaceCreated(JNIEnv *env, jclass clazz, jobject surface) { (void)env; (void)clazz; (void)surface; }
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_nativeSurfaceDestroyed(JNIEnv *env, jclass clazz) { (void)env; (void)clazz; }
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_nativeSurfaceUpdated(JNIEnv *env, jclass clazz) { (void)env; (void)clazz; }
-          JNIEXPORT void JNICALL Java_git_artdeell_dnbootstrap_glfw_GLFW_nativeNotifyGamepadConnected(JNIEnv *env, jclass clazz) { (void)env; (void)clazz; }
-          EOF
-          fi
-
-      - name: Build APK
-        shell: bash
-        run: |
-          cd PojavLauncher-3_openjdk
           chmod +x gradlew || true
-          ./gradlew :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace
-
-      - name: Collect APK
-        shell: bash
-        run: |
-          mkdir -p apk-output
-          APK_PATH="$(find PojavLauncher-3_openjdk -type f -name '*.apk' -not -path '*/androidTest/*' -size +10M | head -n 1)"
-
-          if [ -z "$APK_PATH" ]; then
-            echo "No APK found"
-            find PojavLauncher-3_openjdk -type f -name '*.apk' -print
-            exit 1
-          fi
-
-          cp "$APK_PATH" apk-output/DURBIN-Launcher.apk
-          ls -lh apk-output/DURBIN-Launcher.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: DURBIN-Launcher-apk
-          path: apk-output/DURBIN-Launcher.apk
-          if-no-files-found: error
+          ./gradlew :app_pojavlauncher:signingReport --no-daemon | grep SHA1

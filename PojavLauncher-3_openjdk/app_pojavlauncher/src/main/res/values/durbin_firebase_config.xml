@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Replace these values after you create your Firebase Android app. -->
-    <string name="durbin_firebase_api_key" translatable="false">PASTE_API_KEY_HERE</string>
-    <string name="durbin_firebase_application_id" translatable="false">PASTE_MOBILE_SDK_APP_ID_HERE</string>
-    <string name="durbin_firebase_project_id" translatable="false">PASTE_PROJECT_ID_HERE</string>
-    <string name="durbin_firebase_database_url" translatable="false">PASTE_DATABASE_URL_HERE</string>
-    <string name="durbin_firebase_web_client_id" translatable="false">PASTE_WEB_CLIENT_ID_HERE</string>
+    <string name="durbin_firebase_api_key" translatable="false">AIzaSyAMqOjyUyTWRcPmRnv_tfEdcQq6fO-ucqw</string>
+    <string name="durbin_firebase_application_id" translatable="false">1:364017714123:android:857f20b9cad4a70085ac4e</string>
+    <string name="durbin_firebase_project_id" translatable="false">durbin-f317c</string>
+    <string name="durbin_firebase_database_url" translatable="false">https://durbin-f317c-default-rtdb.asia-southeast1.firebasedatabase.app</string>
+    <string name="durbin_firebase_web_client_id" translatable="false">364017714123-ek04bla6s4sckbk4p11lug7r5rbpfgv8.apps.googleusercontent.com</string>
 </resources>

@@ -97,7 +97,7 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
     private var selectedTab by mutableIntStateOf(0)
 
     private val auth: FirebaseAuth? get() = runCatching { FirebaseAuth.getInstance() }.getOrNull()
-    private val database: FirebaseDatabase? get() = runCatching { FirebaseDatabase.getInstance() }.getOrNull()
+    private val database: FirebaseDatabase? get() = runCatching { FirebaseDatabase.getInstance(getString(R.string.durbin_firebase_database_url).trim()) }.getOrNull()
 
     private val signInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
@@ -610,7 +610,7 @@ private fun SetupHint(firebaseReady: Boolean) {
     GlassCard(modifier = Modifier.fillMaxWidth(), borderAlpha = 0.32f) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(Icons.Rounded.Security, null, tint = MaterialTheme.colorScheme.primary)
-            Text("Firebase setup needed", fontWeight = FontWeight.Bold)
+            Text("Firebase setup needed", color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -619,7 +619,7 @@ private fun SetupHint(firebaseReady: Boolean) {
 private fun SetupMessage() {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Icon(Icons.Rounded.Security, contentDescription = null, modifier = Modifier.size(54.dp), tint = MaterialTheme.colorScheme.primary)
-        Text("Firebase setup needed", fontWeight = FontWeight.Black, fontSize = 22.sp)
+        Text("Firebase setup needed", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
         Text("Open DURBIN_FIREBASE_SETUP.md and paste your Firebase config values.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

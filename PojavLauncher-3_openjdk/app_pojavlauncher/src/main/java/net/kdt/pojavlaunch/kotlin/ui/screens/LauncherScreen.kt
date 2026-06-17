@@ -413,7 +413,7 @@ fun AccountSelector(
             shape = RoundedCornerShape(18.dp),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)),
             colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = Color(0xFF060606).copy(alpha = 0.92f),
+                containerColor = Color.Transparent,
                 contentColor = Color.White
             ),
             contentPadding = PaddingValues(horizontal = 11.dp)
@@ -543,8 +543,8 @@ fun TopBarButton(
     isSpecialActive: Boolean = false,
     badgeCount: Int = 0
 ) {
-    val defaultContainerColor = Color(0xFF0A0A0A).copy(alpha = 0.92f)
-    val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.82f)
+    val defaultContainerColor = Color.Transparent
+    val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
 
     val finalContainerColor = if (isSelected || isSpecialActive) activeColor else defaultContainerColor
 
@@ -623,7 +623,7 @@ fun TopBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(topBarHeight)
-            .background(Color.Black.copy(alpha = 0.62f))
+            .background(Color.Transparent)
     ) {
         Row(
             modifier = Modifier

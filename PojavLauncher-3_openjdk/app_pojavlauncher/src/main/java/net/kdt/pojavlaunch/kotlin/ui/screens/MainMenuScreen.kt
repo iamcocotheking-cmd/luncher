@@ -63,6 +63,11 @@ import net.kdt.pojavlaunch.skin.SkinUtils
 import net.kdt.pojavlaunch.ui.theme.PojavTheme
 import net.kdt.pojavlaunch.durbin.firebase.DurbinFirebaseHubActivity
 import net.kdt.pojavlaunch.durbin.DurbinInstaller
+import net.kdt.pojavlaunch.durbin.firebase.DurbinFirebaseConfig
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 @Composable
 fun rememberDrawablePainter(drawable: Drawable?): Painter {
@@ -216,26 +221,15 @@ fun MainMenuRevamp(
 
 
 
+
 @Composable
 private fun DurbinBackground(glowPulse: Float, content: @Composable BoxScope.() -> Unit) {
-    // V5: cleaner and faster background. No heavy animation, no giant orange blur.
+    // V9: fully transparent main background.
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF080808),
-                        Color(0xFF030303),
-                        Color.Black
-                    )
-                )
-            ),
+        modifier = Modifier.fillMaxSize(),
         content = content
     )
 }
-
 
 @Composable
 private fun DurbinLandscapeHome(
@@ -261,8 +255,6 @@ private fun DurbinLandscapeHome(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .horizontalScroll(rememberScrollState())
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -273,19 +265,16 @@ private fun DurbinLandscapeHome(
             glowPulse = glowPulse
         )
 
-        DurbinVersionBanner(selectedInstance = selectedInstance)
-
         Row(
             modifier = Modifier
-                .widthIn(min = 980.dp)
                 .fillMaxWidth()
-                .heightIn(min = 420.dp),
+                .weight(1f),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             DurbinActionPanel(
                 modifier = Modifier
-                    .weight(1.22f)
-                    .heightIn(min = 420.dp),
+                    .weight(1.18f)
+                    .fillMaxHeight(),
                 selectedInstance = selectedInstance,
                 onCustomControlsClick = onCustomControlsClick,
                 onInstallJarClick = onInstallJarClick,
@@ -298,8 +287,8 @@ private fun DurbinLandscapeHome(
 
             DurbinProfilePanel(
                 modifier = Modifier
-                    .weight(0.78f)
-                    .heightIn(min = 420.dp),
+                    .weight(0.82f)
+                    .fillMaxHeight(),
                 selectedInstance = selectedInstance,
                 instanceIcon = instanceIcon,
                 currentAccount = currentAccount,
@@ -316,6 +305,7 @@ private fun DurbinLandscapeHome(
         }
     }
 }
+
 
 @Composable
 private fun DurbinPortraitHome(
@@ -338,48 +328,27 @@ private fun DurbinPortraitHome(
     onTerminateClick: () -> Unit,
     onInstanceSelect: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        DurbinTopBar(onYoutubeClick = onYoutubeClick, onSocialMediaClick = onSocialMediaClick, compact = true, glowPulse = glowPulse)
-
-        DurbinActionPanel(
-            modifier = Modifier.fillMaxWidth(),
-                selectedInstance = selectedInstance,
-            onCustomControlsClick = onCustomControlsClick,
-            onInstallJarClick = onInstallJarClick,
-            onShareLogsClick = onShareLogsClick,
-            onOpenFilesClick = onOpenFilesClick,
-            onYoutubeClick = onYoutubeClick,
-            onSocialMediaClick = onSocialMediaClick,
-            singleColumn = true
-        )
-
-        DurbinProfilePanel(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 320.dp),
-            selectedInstance = selectedInstance,
-            instanceIcon = instanceIcon,
-            currentAccount = currentAccount,
-            skinHead = skinHead,
-            headScale = headScale,
-            headInteractionSource = headInteractionSource,
-            animatedTerminateRotation = animatedTerminateRotation,
-            glowPulse = glowPulse,
-            onEditProfileClick = onEditProfileClick,
-            onPlayClick = onPlayClick,
-            onTerminateClick = onTerminateClick,
-            onInstanceSelect = onInstanceSelect
-        )
-    }
+    DurbinLandscapeHome(
+        selectedInstance = selectedInstance,
+        instanceIcon = instanceIcon,
+        currentAccount = currentAccount,
+        skinHead = skinHead,
+        headScale = headScale,
+        headInteractionSource = headInteractionSource,
+        animatedTerminateRotation = animatedTerminateRotation,
+        glowPulse = glowPulse,
+        onEditProfileClick = onEditProfileClick,
+        onCustomControlsClick = onCustomControlsClick,
+        onInstallJarClick = onInstallJarClick,
+        onShareLogsClick = onShareLogsClick,
+        onOpenFilesClick = onOpenFilesClick,
+        onYoutubeClick = onYoutubeClick,
+        onSocialMediaClick = onSocialMediaClick,
+        onPlayClick = onPlayClick,
+        onTerminateClick = onTerminateClick,
+        onInstanceSelect = onInstanceSelect
+    )
 }
-
-
 
 @Composable
 private fun DurbinTopBar(
@@ -510,6 +479,7 @@ private fun SmallIconButton(icon: ImageVector, label: String, onClick: () -> Uni
 
 
 
+
 @Composable
 private fun DurbinVersionBanner(selectedInstance: Instance?) {
     val versionText = selectedInstance?.versionId ?: "No version selected"
@@ -518,22 +488,17 @@ private fun DurbinVersionBanner(selectedInstance: Instance?) {
         versionText.contains("durbin", ignoreCase = true) || nameText.contains("durbin", ignoreCase = true)
     }
     val bannerRes = if (isDurbin) R.drawable.durbin_banner else R.drawable.minecraft_banner
-    val title = if (isDurbin) "DURBIN Client Mode" else "Minecraft Java Mode"
-    val subtitle = if (isDurbin) {
-        "Fabric + Sodium + Iris + Lithium ready"
-    } else {
-        "Vanilla, Fabric, Forge and normal Minecraft profiles"
-    }
+    val title = if (isDurbin) "DURBIN Mode" else "Minecraft Mode"
+    val subtitle = if (isDurbin) "Fabric + Sodium + Iris + Lithium" else "Vanilla • Fabric • Forge"
 
     Box(
         modifier = Modifier
-            .widthIn(min = 980.dp)
             .fillMaxWidth()
-            .height(118.dp)
-            .clip(RoundedCornerShape(22.dp))
+            .height(108.dp)
+            .clip(RoundedCornerShape(20.dp))
             .border(
-                BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)),
-                RoundedCornerShape(22.dp)
+                BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)),
+                RoundedCornerShape(20.dp)
             )
     ) {
         Image(
@@ -548,9 +513,9 @@ private fun DurbinVersionBanner(selectedInstance: Instance?) {
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.72f),
-                            Color.Black.copy(alpha = 0.35f),
-                            Color.Black.copy(alpha = 0.12f)
+                            Color.Black.copy(alpha = 0.76f),
+                            Color.Black.copy(alpha = 0.34f),
+                            Color.Transparent
                         )
                     )
                 )
@@ -558,14 +523,14 @@ private fun DurbinVersionBanner(selectedInstance: Instance?) {
         Column(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(horizontal = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
                 text = title,
                 color = Color.White,
                 fontWeight = FontWeight.Black,
-                fontSize = 24.sp,
+                fontSize = 18.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -573,20 +538,21 @@ private fun DurbinVersionBanner(selectedInstance: Instance?) {
                 text = subtitle,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
+                fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = versionText,
                 color = Color(0xFFE0E0E0),
-                fontSize = 11.sp,
+                fontSize = 9.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
+
 
 @Composable
 private fun DurbinActionPanel(
@@ -605,7 +571,7 @@ private fun DurbinActionPanel(
     DurbinGlassSurface(modifier = modifier, corner = 24, borderAlpha = 0.16f) {
         Column(
             modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(
@@ -625,7 +591,7 @@ private fun DurbinActionPanel(
                         color = Color.White
                     )
                     Text(
-                        text = "Fast tools, cleaner layout, no vertical dashboard",
+                        text = "News, tools, PvP tier and DURBIN setup",
                         color = Color(0xFFCFCFCF),
                         fontSize = 11.sp,
                         maxLines = 1,
@@ -634,43 +600,137 @@ private fun DurbinActionPanel(
                 }
             }
 
+            DurbinInlineNewsPanel()
+
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                DurbinActionCard(Modifier.weight(1f).height(70.dp), "News", Icons.Rounded.Article, "Latest launcher updates", {
-                    context.startActivity(DurbinFirebaseHubActivity.newsIntent(context))
-                }, accent = true)
-                DurbinActionCard(Modifier.weight(1f).height(70.dp), "PvP Tier List", Icons.Rounded.EmojiEvents, "Tank • NethPot • Sword • Crystal", {
+                DurbinActionCard(Modifier.weight(1f).height(58.dp), "PvP Tier List", Icons.Rounded.EmojiEvents, "Tank • NethPot • Sword • Crystal", {
                     context.startActivity(DurbinFirebaseHubActivity.tierListIntent(context))
                 }, accent = true)
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                DurbinActionCard(Modifier.weight(1f).height(62.dp), "Wiki", Icons.Rounded.Book, "Open help page", {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://pojavlauncherteam.github.io/")))
-                })
-                DurbinActionCard(Modifier.weight(1f).height(62.dp), "Discord", Icons.Rounded.Share, "Join community", onSocialMediaClick)
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                DurbinActionCard(Modifier.weight(1f).height(62.dp), stringResource(id = R.string.mcl_option_customcontrol), Icons.Rounded.SportsEsports, "Edit mobile buttons", onCustomControlsClick)
-                DurbinActionCard(Modifier.weight(1f).height(62.dp), stringResource(id = R.string.main_install_jar_file), Icons.Rounded.Terminal, "Run or install .jar", onInstallJarClick)
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                DurbinActionCard(Modifier.weight(1f).height(62.dp), stringResource(id = R.string.main_share_logs), Icons.AutoMirrored.Rounded.Send, "Send crash logs", onShareLogsClick)
-                DurbinActionCard(Modifier.weight(1f).height(62.dp), stringResource(id = R.string.mcl_button_open_directory), Icons.Rounded.Folder, "Open game folder", onOpenFilesClick)
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                DurbinActionCard(Modifier.weight(1f).height(58.dp), "YouTube", Icons.Rounded.PlayArrow, "@Cosa_5023_YT", onYoutubeClick)
                 DurbinActionCard(Modifier.weight(1f).height(58.dp), "Install DURBIN", Icons.Rounded.AutoAwesome, "Fabric + Sodium + Iris + Lithium", {
                     Toast.makeText(context, "Installing DURBIN Fabric + mods...", Toast.LENGTH_LONG).show()
                     DurbinInstaller.installDurbin(context, selectedInstance?.versionId)
                 }, accent = true)
             }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                DurbinActionCard(Modifier.weight(1f).height(56.dp), "Wiki", Icons.Rounded.Book, "Open help page", {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://pojavlauncherteam.github.io/")))
+                })
+                DurbinActionCard(Modifier.weight(1f).height(56.dp), "Discord", Icons.Rounded.Share, "Join community", onSocialMediaClick)
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                DurbinActionCard(Modifier.weight(1f).height(56.dp), stringResource(id = R.string.mcl_option_customcontrol), Icons.Rounded.SportsEsports, "Edit mobile buttons", onCustomControlsClick)
+                DurbinActionCard(Modifier.weight(1f).height(56.dp), stringResource(id = R.string.main_install_jar_file), Icons.Rounded.Terminal, "Run or install .jar", onInstallJarClick)
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                DurbinActionCard(Modifier.weight(1f).height(56.dp), stringResource(id = R.string.main_share_logs), Icons.AutoMirrored.Rounded.Send, "Send crash logs", onShareLogsClick)
+                DurbinActionCard(Modifier.weight(1f).height(56.dp), stringResource(id = R.string.mcl_button_open_directory), Icons.Rounded.Folder, "Open game folder", onOpenFilesClick)
+            }
+
+            DurbinActionCard(Modifier.fillMaxWidth().height(52.dp), "YouTube", Icons.Rounded.PlayArrow, "@Cosa_5023_YT", onYoutubeClick)
         }
     }
 }
 
+
+@Composable
+private fun DurbinInlineNewsPanel() {
+    val context = LocalContext.current
+    var title by remember { mutableStateOf("DURBIN News") }
+    var body by remember { mutableStateOf("Loading latest launcher news...") }
+    var tag by remember { mutableStateOf("News") }
+
+    LaunchedEffect(Unit) {
+        runCatching {
+            if (!DurbinFirebaseConfig.ensureInitialized(context)) {
+                title = "DURBIN News"
+                body = "Firebase is not ready yet. Add google-services.json and database config."
+                tag = "Offline"
+                return@LaunchedEffect
+            }
+
+            FirebaseDatabase.getInstance(context.getString(R.string.durbin_firebase_database_url).trim())
+                .getReference("durbin/news")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val latest = snapshot.children.maxByOrNull {
+                            it.child("timestamp").getValue(Long::class.java) ?: 0L
+                        }
+                        if (latest == null) {
+                            title = "DURBIN News"
+                            body = "No news added yet."
+                            tag = "Empty"
+                        } else {
+                            title = latest.child("title").getValue(String::class.java) ?: "DURBIN News"
+                            body = latest.child("body").getValue(String::class.java) ?: ""
+                            tag = latest.child("tag").getValue(String::class.java) ?: "News"
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        title = "DURBIN News"
+                        body = error.message
+                        tag = "Error"
+                    }
+                })
+        }.onFailure {
+            title = "DURBIN News"
+            body = it.message ?: "Could not load news"
+            tag = "Offline"
+        }
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(76.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Article, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(23.dp))
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                Text(
+                    text = tag.uppercase(),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1
+                )
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = body.ifBlank { "No description" },
+                    color = Color(0xFFCFCFCF),
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun DurbinActionCard(
@@ -690,7 +750,7 @@ private fun DurbinActionCard(
         shape = RoundedCornerShape(18.dp),
         border = BorderStroke(1.dp, borderColor),
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = if (accent) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.035f),
+            containerColor = Color.Transparent,
             contentColor = Color.White
         ),
         contentPadding = PaddingValues(horizontal = 14.dp)
@@ -719,6 +779,7 @@ private fun DurbinActionCard(
 }
 
 
+
 @Composable
 private fun DurbinProfilePanel(
     modifier: Modifier,
@@ -737,18 +798,18 @@ private fun DurbinProfilePanel(
 ) {
     DurbinGlassSurface(modifier = modifier, corner = 24, borderAlpha = 0.18f) {
         Column(
-            modifier = Modifier.padding(15.dp),
+            modifier = Modifier.padding(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Launch Center", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
-            Text("Owner: COSA", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Text("Launch Center", color = Color.White, fontWeight = FontWeight.Black, fontSize = 21.sp)
+            Text("Owner: COSA", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
 
             Box(
                 modifier = Modifier
-                    .size(70.dp)
+                    .size(58.dp)
                     .scale(headScale)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(17.dp))
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
                     .clickable(interactionSource = headInteractionSource, indication = null, onClick = {}),
                 contentAlignment = Alignment.Center
@@ -756,7 +817,7 @@ private fun DurbinProfilePanel(
                 if (skinHead != null) {
                     Image(bitmap = skinHead.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                 } else {
-                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(44.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
                 }
             }
 
@@ -764,27 +825,27 @@ private fun DurbinProfilePanel(
 
             OutlinedButton(
                 onClick = onEditProfileClick,
-                modifier = Modifier.fillMaxWidth().height(44.dp),
-                shape = RoundedCornerShape(15.dp),
+                modifier = Modifier.fillMaxWidth().height(40.dp),
+                shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
-                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White.copy(alpha = 0.04f), contentColor = Color.White)
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent, contentColor = Color.White)
             ) {
-                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Edit Profile", fontWeight = FontWeight.Bold)
             }
 
             OutlinedButton(
                 onClick = onInstanceSelect,
-                modifier = Modifier.fillMaxWidth().height(70.dp),
-                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth().height(62.dp),
+                shape = RoundedCornerShape(18.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)),
-                colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.09f), contentColor = Color.White)
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent, contentColor = Color.White)
             ) {
                 if (instanceIcon != null) {
-                    Image(painter = rememberDrawablePainter(instanceIcon), contentDescription = null, modifier = Modifier.size(36.dp), contentScale = ContentScale.Fit)
+                    Image(painter = rememberDrawablePainter(instanceIcon), contentDescription = null, modifier = Modifier.size(32.dp), contentScale = ContentScale.Fit)
                 } else {
-                    Icon(painter = painterResource(id = R.drawable.ic_px_home), contentDescription = null, modifier = Modifier.size(30.dp), tint = Color.Unspecified)
+                    Icon(painter = painterResource(id = R.drawable.ic_px_home), contentDescription = null, modifier = Modifier.size(28.dp), tint = Color.Unspecified)
                 }
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -803,7 +864,7 @@ private fun DurbinProfilePanel(
                     Text(
                         text = selectedInstance?.versionId ?: stringResource(id = R.string.version_select_hint),
                         color = Color(0xFFCFCFCF),
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -811,26 +872,27 @@ private fun DurbinProfilePanel(
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(17.dp), tint = MaterialTheme.colorScheme.primary)
             }
 
-            Spacer(modifier = Modifier.weight(1f, fill = false))
+            // Banner belongs here: above the Play button, rounded and cropped to the 16:9 banner.
+            DurbinVersionBanner(selectedInstance = selectedInstance)
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
                 Button(
                     onClick = onPlayClick,
-                    modifier = Modifier.weight(1f).height(58.dp),
-                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(19.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(23.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(id = R.string.main_play).uppercase(), fontWeight = FontWeight.Black)
                 }
                 Button(
                     onClick = onTerminateClick,
-                    modifier = Modifier.size(58.dp),
-                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.size(56.dp),
+                    shape = RoundedCornerShape(19.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError),
                     contentPadding = PaddingValues(0.dp)
                 ) {
@@ -862,6 +924,7 @@ private fun DurbinStatusChip(text: String) {
 
 
 
+
 @Composable
 private fun DurbinGlassSurface(
     modifier: Modifier = Modifier,
@@ -872,7 +935,7 @@ private fun DurbinGlassSurface(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(corner.dp),
-        color = Color(0xFF070707).copy(alpha = 0.94f),
+        color = Color.Transparent,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = borderAlpha.coerceIn(0f, 0.35f))),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,

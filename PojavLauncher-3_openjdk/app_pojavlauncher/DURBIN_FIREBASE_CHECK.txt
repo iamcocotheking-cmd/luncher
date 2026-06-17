@@ -1,0 +1,23 @@
+DURBIN Firebase config ready.
+
+Package:
+net.ashmeet.hyperlauncher
+
+Project ID:
+durbin-f317c
+
+Realtime Database:
+https://durbin-f317c-default-rtdb.asia-southeast1.firebasedatabase.app
+
+Android OAuth client:
+364017714123-sfg8rhurhi5qelbgj7n1lksn2ubggr1g.apps.googleusercontent.com
+
+Certificate hash/SHA1 without colons:
+17d6f8a1a38eb2efb7b2c7a775999cf40d468410
+
+Web client ID:
+364017714123-ek04bla6s4sckbk4p11lug7r5rbpfgv8.apps.googleusercontent.com
+
+Notes:
+- google-services.json was replaced with the new SHA1-enabled file.
+- durbin_firebase_web_client_id is filled, so Google sign-in can request Firebase credential.

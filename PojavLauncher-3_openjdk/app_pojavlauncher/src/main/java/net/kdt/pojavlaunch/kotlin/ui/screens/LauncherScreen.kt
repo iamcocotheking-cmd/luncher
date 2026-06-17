@@ -190,7 +190,7 @@ fun TaskProgressItem(task: TaskProgress) {
             Text(
                 text = task.text,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -407,16 +407,16 @@ fun AccountSelector(
         FilledTonalButton(
             onClick = { expanded = true },
             modifier = Modifier
-                .height(topBarHeight - 8.dp)
+                .height(40.dp)
                 .wrapContentWidth()
-                .padding(horizontal = 4.dp),
-            shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                .padding(horizontal = 3.dp),
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)),
             colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                contentColor = MaterialTheme.colorScheme.onSurface
+                containerColor = Color(0xFF060606).copy(alpha = 0.92f),
+                contentColor = Color.White
             ),
-            contentPadding = PaddingValues(horizontal = 16.dp)
+            contentPadding = PaddingValues(horizontal = 11.dp)
         ) {
             if (currentHead != null) {
                 Image(
@@ -543,8 +543,8 @@ fun TopBarButton(
     isSpecialActive: Boolean = false,
     badgeCount: Int = 0
 ) {
-    val defaultContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-    val activeColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.90f)
+    val defaultContainerColor = Color(0xFF0A0A0A).copy(alpha = 0.92f)
+    val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.82f)
 
     val finalContainerColor = if (isSelected || isSpecialActive) activeColor else defaultContainerColor
 
@@ -552,19 +552,19 @@ fun TopBarButton(
         FilledTonalButton(
             onClick = onClick,
             modifier = Modifier
-                .height(topBarHeight - 16.dp)
-                .padding(horizontal = 4.dp),
-            shape = RoundedCornerShape(12.dp),
+                .height(40.dp)
+                .padding(horizontal = 3.dp),
+            shape = RoundedCornerShape(17.dp),
             colors = ButtonDefaults.filledTonalButtonColors(
                 containerColor = finalContainerColor,
-                contentColor = if (isSelected || isSpecialActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                contentColor = if (isSelected || isSpecialActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
             ),
-            contentPadding = PaddingValues(horizontal = 12.dp)
+            contentPadding = PaddingValues(horizontal = 11.dp)
         ) {
             Icon(
                 painter = painterResource(id = icon),
                 contentDescription = label,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(17.dp)
             )
 
             @Suppress("DEPRECATION")
@@ -578,7 +578,7 @@ fun TopBarButton(
                     @Suppress("DEPRECATION")
                     Text(
                         text = label,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Clip
@@ -623,11 +623,7 @@ fun TopBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(topBarHeight)
-            .background(
-                MaterialTheme.colorScheme.background.copy(
-                    alpha = if (hasBackground) 0.85f else 1f
-                )
-            )
+            .background(Color.Black.copy(alpha = 0.62f))
     ) {
         Row(
             modifier = Modifier
@@ -721,7 +717,7 @@ fun LauncherScreen(
 ) {
     val isPreview = LocalInspectionMode.current
     val context = LocalContext.current
-    val topBarHeight = dimensionResource(id = R.dimen._50sdp)
+    val topBarHeight = 46.dp
     val ignoreNotch = remember { if (isPreview) true else LauncherPreferences.PREF_IGNORE_NOTCH }
 
     val backgroundPath = LauncherPreferences.PREF_BACKGROUND_PATH_STATE.value

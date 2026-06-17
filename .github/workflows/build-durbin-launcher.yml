@@ -1,4 +1,4 @@
-name: Build DURBIN Launcher MAX FIX V3
+name: Build DURBIN Launcher SOURCE FIX V4
 
 on:
   workflow_dispatch:
@@ -105,6 +105,46 @@ jobs:
             fi
           done || true
 
+      - name: Patch missing native C source files
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+
+          JNI_DIR="app_pojavlauncher/src/main/jni"
+          mkdir -p "$JNI_DIR/driver_helper"
+          mkdir -p "$JNI_DIR/awt_xawt"
+
+          # Your source is missing these files referenced by CMakeLists.txt.
+          # Without them, CMake fails before Java/Android can build the APK.
+          if [ ! -f "$JNI_DIR/driver_helper/hook.c" ]; then
+            cat > "$JNI_DIR/driver_helper/hook.c" <<'EOF'
+          #include <jni.h>
+          #include <android/log.h>
+
+          __attribute__((visibility("default")))
+          void durbin_linkerhook_placeholder(void) {
+              __android_log_print(ANDROID_LOG_INFO, "DURBIN", "linkerhook placeholder loaded");
+          }
+          EOF
+          fi
+
+          if [ ! -f "$JNI_DIR/awt_xawt/xawt_fake.c" ]; then
+            cat > "$JNI_DIR/awt_xawt/xawt_fake.c" <<'EOF'
+          #include <jni.h>
+          #include <android/log.h>
+
+          __attribute__((visibility("default")))
+          void durbin_xawt_placeholder(void) {
+              __android_log_print(ANDROID_LOG_INFO, "DURBIN", "xawt placeholder loaded");
+          }
+          EOF
+          fi
+
+          echo "Native files:"
+          ls -la "$JNI_DIR/driver_helper" || true
+          ls -la "$JNI_DIR/awt_xawt" || true
+
+
       - name: Patch Gradle properties
         shell: bash
         run: |
@@ -151,13 +191,17 @@ jobs:
 
           def existing_value_names(kind):
               names = set()
-              pattern = re.compile(r'<\s*' + re.escape(kind) + r'\s+name=["\']([A-Za-z0-9_]+)["\']')
+              tag_pattern = re.compile(r'<\s*' + re.escape(kind) + r'\b[^>]*>')
+              name_pattern = re.compile(r'\bname=["\']([A-Za-z0-9_]+)["\']')
               for f in res.glob("values*/**/*.xml"):
                   try:
                       text = f.read_text(encoding="utf-8", errors="ignore")
                   except Exception:
                       continue
-                  names.update(pattern.findall(text))
+                  for tag in tag_pattern.findall(text):
+                      m = name_pattern.search(tag)
+                      if m:
+                          names.add(m.group(1))
               return names
 
           def existing_file_resource(kind, name):
@@ -225,7 +269,9 @@ jobs:
               value_lines.append(f'    <dimen name="{name}">{size}</dimen>')
 
           for name in sorted(refs["color"] - existing_colors):
-              value_lines.append(f'    <color name="{name}">#FFFFFFFF</color>')
+              # @color/name can also be a file in res/color/name.xml. Do not duplicate it.
+              if not existing_file_resource("color", name):
+                  value_lines.append(f'    <color name="{name}">#FFFFFFFF</color>')
 
           for name in sorted(refs["string"] - existing_strings):
               value_lines.append(f'    <string name="{name}" formatted="false">{name}</string>')

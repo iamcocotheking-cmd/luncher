@@ -9,7 +9,6 @@ on:
 
 jobs:
   build:
-    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
@@ -27,22 +26,12 @@ jobs:
         with:
           gradle-version: 8.11.1
 
-      - name: Install Android build tools
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build cmake
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "cmake;3.22.1" \
-            "ndk;29.0.14206865" \
-            "platforms;android-35" \
-            "build-tools;35.0.0" || true
-
       - name: Build APK
         shell: bash
         run: |
           cd PojavLauncher-3_openjdk
-          gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace
+          chmod +x gradlew || true
+          ./gradlew :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace
 
       - name: Collect APK
         shell: bash

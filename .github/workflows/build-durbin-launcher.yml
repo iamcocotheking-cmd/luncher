@@ -2,6 +2,10 @@ name: Get SHA1 for Firebase
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
 
 jobs:
   sha1:
@@ -39,4 +43,4 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US" || true
 
           chmod +x gradlew || true
-          ./gradlew :app_pojavlauncher:signingReport --no-daemon | grep SHA1
+          ./gradlew :app_pojavlauncher:signingReport --no-daemon

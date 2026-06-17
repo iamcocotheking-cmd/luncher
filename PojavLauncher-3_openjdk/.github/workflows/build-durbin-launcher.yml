@@ -1,49 +1,117 @@
-name: Build DURBIN Launcher APK
+name: Build DURBIN Launcher
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
-      - v3_openjdk
+    branches: [ main, master ]
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout source
+      - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          submodules: true
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
-      - name: Set up Gradle
+      - name: Set up Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.14.3"
+          gradle-version: 8.11.1
 
-      - name: Build full debug APK
+      - name: Install Android native build tools
+        shell: bash
         run: |
-          chmod +x gradlew
-          ./gradlew :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "cmake;3.22.1" \
+            "ndk;29.0.14206865" \
+            "platforms;android-35" \
+            "platforms;android-36" \
+            "build-tools;35.0.0" || true
+          cmake --version || true
+          ninja --version || true
 
-      - name: Collect one APK
+      - name: Find project
+        shell: bash
         run: |
-          mkdir -p out
-          cp app_pojavlauncher/build/outputs/apk/full/debug/app_pojavlauncher-full-debug.apk out/DURBIN-Launcher-full-debug.apk
-          ls -lah out
+          if [ -f "PojavLauncher-3_openjdk/settings.gradle" ]; then
+            echo "PROJECT_DIR=PojavLauncher-3_openjdk" >> "$GITHUB_ENV"
+          else
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          fi
 
-      - name: Upload DURBIN APK
+      - name: Prepare source
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+          chmod +x gradlew || true
+          rm -rf .gradle .cxx .kotlin app_pojavlauncher/.cxx dnbglfw/.cxx forge_installer/.cxx
+          rm -rf app_pojavlauncher/build dnbglfw/build forge_installer/build build
+          if [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
+            sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#g' gradle/wrapper/gradle-wrapper.properties
+          fi
+          touch gradle.properties
+          grep -q '^android.useAndroidX=' gradle.properties && sed -i 's/^android.useAndroidX=.*/android.useAndroidX=true/' gradle.properties || echo 'android.useAndroidX=true' >> gradle.properties
+          grep -q '^android.enableJetifier=' gradle.properties && sed -i 's/^android.enableJetifier=.*/android.enableJetifier=true/' gradle.properties || echo 'android.enableJetifier=true' >> gradle.properties
+          grep -q '^android.nonTransitiveRClass=' gradle.properties && sed -i 's/^android.nonTransitiveRClass=.*/android.nonTransitiveRClass=false/' gradle.properties || echo 'android.nonTransitiveRClass=false' >> gradle.properties
+          cat gradle.properties
+
+      - name: Verify fixed source files exist
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+          test -f app_pojavlauncher/src/main/res/drawable/ic_social_media.xml
+          test -f app_pojavlauncher/src/main/res/drawable/icon.xml
+          test -f app_pojavlauncher/src/main/jni/jvm_hooks/jvm_hooks.h
+          test -f app_pojavlauncher/src/main/jni/driver_helper/hook.c
+          test -f app_pojavlauncher/src/main/jni/awt_xawt/xawt_fake.c
+          test -f forge_installer/src/main/java/git/artdeell/installer_agent/ComponentFilter.java
+          echo "Source verification OK"
+
+      - name: Show SHA-1 fingerprint for Firebase
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+          ./gradlew signingReport --no-daemon > "$GITHUB_WORKSPACE/signing-report.txt" || true
+          grep "SHA1:" "$GITHUB_WORKSPACE/signing-report.txt" || true
+
+      - name: Upload SHA-1 report
         uses: actions/upload-artifact@v4
         with:
-          name: DURBIN-Launcher-APK
-          path: out/DURBIN-Launcher-full-debug.apk
+          name: DURBIN-SHA1-signing-report
+          path: signing-report.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Build APK
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+          ./gradlew :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace --rerun-tasks
+
+      - name: Collect APK
+        shell: bash
+        run: |
+          mkdir -p apk-output
+          APK_PATH="$(find "$PROJECT_DIR" -type f -name "*.apk" -not -path "*/androidTest/*" -size +10M | head -n 1 || true)"
+          if [ -z "$APK_PATH" ]; then
+            echo "No APK found"
+            find "$PROJECT_DIR" -type f -name "*.apk" -print
+            exit 1
+          fi
+          cp "$APK_PATH" apk-output/DURBIN-Launcher.apk
+          ls -lh apk-output/DURBIN-Launcher.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DURBIN-Launcher-apk
+          path: apk-output/DURBIN-Launcher.apk
           if-no-files-found: error
           retention-days: 7

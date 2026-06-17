@@ -78,9 +78,6 @@ jobs:
           EOF
           fi
 
-          echo "GLFW folder ready:"
-          ls -la "$GLFW_DIR" | head -40
-
       - name: Build APK
         shell: bash
         run: |

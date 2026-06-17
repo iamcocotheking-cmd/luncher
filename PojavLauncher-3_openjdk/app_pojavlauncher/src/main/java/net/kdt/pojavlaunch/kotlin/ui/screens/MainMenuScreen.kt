@@ -349,6 +349,7 @@ private fun DurbinPortraitHome(
 
         DurbinActionPanel(
             modifier = Modifier.fillMaxWidth(),
+                selectedInstance = selectedInstance,
             onCustomControlsClick = onCustomControlsClick,
             onInstallJarClick = onInstallJarClick,
             onShareLogsClick = onShareLogsClick,

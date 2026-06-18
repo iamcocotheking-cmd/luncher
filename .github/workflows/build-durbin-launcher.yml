@@ -78,6 +78,29 @@ jobs:
           EOF
           fi
 
+      - name: Final source sanity check
+        shell: bash
+        run: |
+          echo "Checking for merge conflict markers..."
+          if grep -R "<<<<<<<\|=======\|>>>>>>>" -n --exclude-dir=.git . ; then
+            echo "ERROR: merge conflict markers found"
+            exit 1
+          fi
+
+          echo "Checking Firebase package match..."
+          grep -n 'applicationId "net.ashmeet.hyperlauncher"' PojavLauncher-3_openjdk/app_pojavlauncher/build.gradle
+          grep -n '"package_name": "net.ashmeet.hyperlauncher"' PojavLauncher-3_openjdk/app_pojavlauncher/google-services.json
+
+          echo "Checking Firebase Web Client ID exists..."
+          grep -n 'durbin_firebase_web_client_id' PojavLauncher-3_openjdk/app_pojavlauncher/src/main/res/values/durbin_firebase_config.xml
+
+      - name: Verify package and SHA1
+        shell: bash
+        run: |
+          cd PojavLauncher-3_openjdk
+          echo "Firebase package must be: net.ashmeet.hyperlauncher"
+          keytool -list -v -keystore app_pojavlauncher/debug.keystore -storepass android | grep -E "SHA1|SHA256" || true
+
       - name: Build APK
         shell: bash
         run: |

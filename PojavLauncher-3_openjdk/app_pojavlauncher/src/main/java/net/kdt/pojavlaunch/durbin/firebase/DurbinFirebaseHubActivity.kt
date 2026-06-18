@@ -364,7 +364,7 @@ private fun DurbinFirebaseHubScreen(
             }
         } else {
             Row(modifier = Modifier.fillMaxSize().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(modifier = Modifier.width(330.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.width(330.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     FirebaseHeader(currentUser, onBack, onRefresh, onSignIn, onSignOut, compact = true)
                     FirebaseTabs(selectedTab, onTabChange, vertical = true)
                     SetupHint(firebaseReady)

@@ -353,7 +353,7 @@ private fun DurbinFirebaseHubScreen(
             .background(Color.Black)
             .background(
                 Brush.radialGradient(
-                    colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.38f), Color.Transparent)
+                    colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), Color.Transparent)
                 )
             )
     ) {
@@ -529,7 +529,7 @@ private fun TierList(categories: List<DurbinTierCategory>) {
                 ) { Text(category.name, fontWeight = FontWeight.Bold) }
             }
         }
-        Text(current.description.ifBlank { "${current.name} leaderboard" }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(current.description.ifBlank { "${current.name} leaderboard" }, color = Color.White.copy(alpha = 0.82f), fontWeight = FontWeight.Bold)
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(current.entries, key = { it.uid + it.ign }) { entry ->
                 TierEntryRow(entry)
@@ -639,9 +639,9 @@ private fun GlassCard(modifier: Modifier = Modifier, borderAlpha: Float = 0.25f,
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
             .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = borderAlpha)), RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
+            .background(Color(0xFF171717).copy(alpha = 0.82f))
             .animateContentSize(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.70f),
+        color = Color(0xFF171717).copy(alpha = 0.82f),
         shape = RoundedCornerShape(24.dp),
         tonalElevation = 6.dp
     ) { content() }

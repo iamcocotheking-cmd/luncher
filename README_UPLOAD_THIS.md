@@ -120,3 +120,13 @@ Important:
 ## v17 Artifact quota fix
 - Build succeeded before; upload failed because GitHub artifact quota was full.
 - Added release fallback so APK can still be downloaded from GitHub Releases.
+
+
+## v18 Final UI cleanup
+- Smaller Play button so the banner image is visible.
+- Removed subtitle under DURBIN Launcher title.
+- Removed placeholder news cards.
+- Quick tool cards are bigger so text is not cut.
+- Replaced Friends panel with a clean 9:16 ad image area.
+- Added `durbin_ad_9_16.png` for your ad image.
+- Firebase tier area is brighter/readable.

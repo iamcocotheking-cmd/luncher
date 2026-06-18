@@ -270,6 +270,28 @@ jobs:
           print("Replaced DurbinFirebaseHubActivity.kt with no-login version")
           PY
 
+
+      - name: Remove duplicate Firebase model classes
+        shell: bash
+        run: |
+          ROOT="PojavLauncher-3_openjdk"
+          if [ ! -d "$ROOT" ]; then
+            ROOT="."
+          fi
+
+          MODEL_FILE="$ROOT/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/durbin/firebase/DurbinFirebaseModels.kt"
+
+          if [ -f "$MODEL_FILE" ]; then
+            echo "Removing duplicate Firebase model file: $MODEL_FILE"
+            rm -f "$MODEL_FILE"
+          else
+            echo "No duplicate Firebase model file found."
+          fi
+
+          echo "Checking remaining Firebase model declarations:"
+          grep -RIn "data class DurbinNewsItem\|data class DurbinTierCategory\|data class DurbinTierEntry" \
+            "$ROOT/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/durbin/firebase" || true
+
       - name: Final source sanity check
         shell: bash
         run: |

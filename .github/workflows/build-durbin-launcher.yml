@@ -74,15 +74,15 @@ jobs:
           s = "\n".join(lines) + "\n"
 
           inline_news = r'''
-@Composable
-private fun DurbinInlineNewsPanel() {
-    val context = LocalContext.current
-    var title by remember { mutableStateOf("DURBIN News") }
-    var body by remember { mutableStateOf("Loading latest launcher news...") }
-    var tag by remember { mutableStateOf("News") }
+          @Composable
+          private fun DurbinInlineNewsPanel() {
+              val context = LocalContext.current
+              var title by remember { mutableStateOf("DURBIN News") }
+              var body by remember { mutableStateOf("Loading latest launcher news...") }
+              var tag by remember { mutableStateOf("News") }
 
-    LaunchedEffect(Unit) {
-        try {
+              LaunchedEffect(Unit) {
+                  try {
             val ready = DurbinFirebaseConfig.ensureInitialized(context)
             if (!ready) {
                 title = "DURBIN News"
@@ -114,26 +114,26 @@ private fun DurbinInlineNewsPanel() {
                         }
                     })
             }
-        } catch (t: Throwable) {
+                  } catch (t: Throwable) {
             title = "DURBIN News"
             body = t.message ?: "Could not load news"
             tag = "Offline"
-        }
-    }
+                  }
+              }
 
-    Surface(
-        modifier = Modifier
+              Surface(
+                  modifier = Modifier
             .fillMaxWidth()
             .height(82.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = Color.Black.copy(alpha = 0.55f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
-    ) {
-        Row(
+                  shape = RoundedCornerShape(18.dp),
+                  color = Color.Black.copy(alpha = 0.55f),
+                  border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+              ) {
+                  Row(
             modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(11.dp)
-        ) {
+                  ) {
             Box(
                 modifier = Modifier
                     .size(46.dp)
@@ -167,40 +167,40 @@ private fun DurbinInlineNewsPanel() {
                     overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-    }
-}
-'''
+                  }
+              }
+          }
+          '''
 
           action_card = r'''
-@Composable
-private fun DurbinActionCard(
-    modifier: Modifier = Modifier,
-    title: String,
-    icon: ImageVector,
-    subtitle: String,
-    onClick: () -> Unit,
-    accent: Boolean = false
-) {
-    val borderColor = if (accent) MaterialTheme.colorScheme.primary.copy(alpha = 0.48f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.24f)
-    val iconBoxColor = if (accent) MaterialTheme.colorScheme.primary.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.08f)
+          @Composable
+          private fun DurbinActionCard(
+              modifier: Modifier = Modifier,
+              title: String,
+              icon: ImageVector,
+              subtitle: String,
+              onClick: () -> Unit,
+              accent: Boolean = false
+          ) {
+              val borderColor = if (accent) MaterialTheme.colorScheme.primary.copy(alpha = 0.48f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.24f)
+              val iconBoxColor = if (accent) MaterialTheme.colorScheme.primary.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.08f)
 
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, borderColor),
-        colors = ButtonDefaults.outlinedButtonColors(
+              OutlinedButton(
+                  onClick = onClick,
+                  modifier = modifier,
+                  shape = RoundedCornerShape(18.dp),
+                  border = BorderStroke(1.dp, borderColor),
+                  colors = ButtonDefaults.outlinedButtonColors(
             containerColor = Color.Transparent,
             contentColor = Color.White
-        ),
-        contentPadding = PaddingValues(horizontal = 14.dp)
-    ) {
-        Row(
+                  ),
+                  contentPadding = PaddingValues(horizontal = 14.dp)
+              ) {
+                  Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+                  ) {
             Box(
                 modifier = Modifier
                     .size(42.dp)
@@ -215,10 +215,10 @@ private fun DurbinActionCard(
                 Text(subtitle, color = Color(0xFFBDBDBD), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp), tint = if (accent) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.55f))
-        }
-    }
-}
-'''
+                  }
+              }
+          }
+          '''
 
           extra = ""
           if "private fun DurbinInlineNewsPanel" not in s:

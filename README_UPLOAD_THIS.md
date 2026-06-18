@@ -109,3 +109,9 @@ Important:
 - It now ignores binary files like `.so`.
 - It no longer mistakes normal source comment separator lines as merge conflicts.
 - Real merge conflict markers are still detected.
+
+
+## v16 Kotlin import fixed
+- Fixed `DurbinFirebaseHubActivity.kt`.
+- Added missing Compose imports for `verticalScroll` and `rememberScrollState`.
+- This fixes the compile error from v15.

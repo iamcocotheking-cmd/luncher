@@ -1,5 +1,6 @@
 package net.kdt.pojavlaunch.durbin.firebase
 
+import androidx.compose.foundation.verticalScroll
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast

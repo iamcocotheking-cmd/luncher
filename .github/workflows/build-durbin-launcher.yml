@@ -1,5 +1,8 @@
 name: Build DURBIN Launcher
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -136,8 +139,33 @@ jobs:
           ls -lh apk-output/DURBIN-Launcher.apk
 
       - name: Upload APK
+        id: upload_apk_artifact
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: DURBIN-Launcher-apk
           path: apk-output/DURBIN-Launcher.apk
+          retention-days: 1
           if-no-files-found: error
+
+
+      - name: Upload APK to GitHub Release fallback
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK_PATH="apk-output/DURBIN-Launcher.apk"
+
+          if [ ! -f "$APK_PATH" ]; then
+            echo "APK not found at $APK_PATH"
+            find . -name "*.apk" -type f
+            exit 1
+          fi
+
+          TAG="durbin-build-${GITHUB_RUN_NUMBER}"
+          TITLE="DURBIN Launcher Build ${GITHUB_RUN_NUMBER}"
+
+          echo "Uploading APK to GitHub Release fallback: $TAG"
+
+          gh release create "$TAG" "$APK_PATH" --title "$TITLE" --notes "Auto-built DURBIN Launcher APK." --latest=false || gh release upload "$TAG" "$APK_PATH" --clobber

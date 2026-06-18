@@ -115,3 +115,8 @@ Important:
 - Fixed `DurbinFirebaseHubActivity.kt`.
 - Added missing Compose imports for `verticalScroll` and `rememberScrollState`.
 - This fixes the compile error from v15.
+
+
+## v17 Artifact quota fix
+- Build succeeded before; upload failed because GitHub artifact quota was full.
+- Added release fallback so APK can still be downloaded from GitHub Releases.

@@ -370,3 +370,11 @@ dependencies {
     implementation "io.ktor:ktor-server-content-negotiation:2.3.12"
     implementation "io.ktor:ktor-serialization-kotlinx-json:2.3.12"
 }
+
+
+// DURBIN V35 Kotlin compile memory guard
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        freeCompilerArgs += ["-Xjdk-release=17"]
+    }
+}

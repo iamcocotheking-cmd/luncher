@@ -1542,12 +1542,14 @@ private fun DurbinSelectedVersionPanel(
                 DurbinInfoCard(
                     icon = Icons.Rounded.CheckCircle,
                     title = "Good for",
-                    body = selected.category.label
+                    body = selected.category.label,
+                    modifier = Modifier.weight(1f)
                 )
                 DurbinInfoCard(
                     icon = Icons.Rounded.Speed,
                     title = "Setup",
-                    body = if (selected.enabled) "Ready" else "Later"
+                    body = if (selected.enabled) "Ready" else "Later",
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -1596,9 +1598,14 @@ private fun DurbinSelectedVersionPanel(
 }
 
 @Composable
-private fun DurbinInfoCard(icon: ImageVector, title: String, body: String) {
+private fun DurbinInfoCard(
+    icon: ImageVector,
+    title: String,
+    body: String,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        modifier = Modifier.weight(1f),
+        modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         color = Color.White.copy(alpha = 0.045f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))

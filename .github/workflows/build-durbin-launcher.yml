@@ -285,6 +285,11 @@ jobs:
           XML
           fi
 
+
+          # DURBIN V33 resource sweep safety
+          mkdir -p app_pojavlauncher/src/main/res/values app_pojavlauncher/src/main/res/drawable
+          cp -f app_pojavlauncher/src/main/res/values/durbin_generated_missing_dimens.xml app_pojavlauncher/src/main/res/values/durbin_generated_missing_dimens.xml || true
+
           echo "Patch done."
 
       - name: Source sanity check

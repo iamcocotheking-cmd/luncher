@@ -1,0 +1,108 @@
+name: Build DURBIN Launcher APK
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle 8.14.3
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Locate project
+        shell: bash
+        run: |
+          if [ -f "PojavLauncher-3_openjdk/build.gradle" ]; then
+            echo "PROJECT_DIR=PojavLauncher-3_openjdk" >> "$GITHUB_ENV"
+          elif [ -f "build.gradle" ]; then
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          else
+            echo "ERROR: Gradle project not found"
+            find . -maxdepth 3 -name build.gradle -print
+            exit 1
+          fi
+
+      - name: Source sanity check
+        shell: bash
+        run: |
+          echo "Checking for real merge conflict markers only..."
+          if grep -RInI -E '^(<<<<<<<|=======|>>>>>>>)( |$)' \
+            --exclude-dir=.git \
+            --exclude-dir=.gradle \
+            --exclude-dir=build \
+            --exclude-dir=.cxx \
+            --exclude='*.so' \
+            --exclude='*.jar' \
+            --exclude='*.png' \
+            --exclude='*.webp' \
+            --exclude='*.jpg' \
+            --exclude='*.jpeg' \
+            --exclude='*.zip' \
+            . ; then
+            echo "ERROR: real merge conflict markers found"
+            exit 1
+          fi
+
+      - name: Build full debug APK
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+          gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace
+
+      - name: Collect APK
+        shell: bash
+        run: |
+          mkdir -p apk-output
+          APK="$(find "$PROJECT_DIR" -type f -name '*.apk' -path '*/outputs/apk/*debug/*.apk' | head -n 1)"
+          if [ -z "$APK" ]; then
+            echo "No APK found"
+            find "$PROJECT_DIR" -type f -name '*.apk' -print
+            exit 1
+          fi
+          cp "$APK" apk-output/DURBIN-Launcher.apk
+          ls -lh apk-output/DURBIN-Launcher.apk
+
+      - name: Upload APK artifact
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: DURBIN-Launcher-APK
+          path: apk-output/DURBIN-Launcher.apk
+          retention-days: 1
+
+      - name: Upload APK to GitHub Release fallback
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK_PATH="apk-output/DURBIN-Launcher.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            echo "APK not found at $APK_PATH"
+            exit 1
+          fi
+          TAG="durbin-build-${GITHUB_RUN_NUMBER}"
+          TITLE="DURBIN Launcher Build ${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" "$APK_PATH" --title "$TITLE" --notes "Auto-built DURBIN Launcher APK." --latest=false || gh release upload "$TAG" "$APK_PATH" --clobber

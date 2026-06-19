@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
  * Improved to be more compatible with Drasl (https://github.com/unmojang/drasl).
  */
 class OfflineYggdrasilServer(
-    private val serverName: String = "DURBIN Launcher",
+    private val serverName: String = "HyperLauncher",
     private val implName: String   = "drasl",
     private val implVersion: String = "1.4"
 ) {

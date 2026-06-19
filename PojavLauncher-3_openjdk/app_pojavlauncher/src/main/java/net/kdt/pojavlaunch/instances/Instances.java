@@ -137,9 +137,12 @@ public class Instances {
      */
     private static void createFirstTimeInstance() throws IOException {
         internalCreateInstance((instance)-> {
-            instance.sharedData = true;
-            instance.versionId = "1.12.2";
-        }, null);
+            instance.name = "DURBIN Fabric 1.21.11";
+            instance.icon = "durbin";
+            instance.sharedData = false;
+            instance.versionId = "fabric-loader-0.19.3-1.21.11";
+            instance.renderer = "opengles3_ltw";
+        }, "DURBIN-Fabric-1.21.11");
     }
 
     /**

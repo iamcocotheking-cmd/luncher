@@ -628,6 +628,260 @@ jobs:
           grep -n '"package_name": "net.ashmeet.hyperlauncher"' app_pojavlauncher/google-services.json || true
           keytool -list -v -keystore app_pojavlauncher/debug.keystore -storepass android | grep -E "SHA1|SHA256" || true
 
+
+      - name: Final MainMenu compile guard
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          root = Path("PojavLauncher-3_openjdk")
+          if not root.exists():
+              root = Path(".")
+
+          p = root / "app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/kotlin/ui/screens/MainMenuScreen.kt"
+          if not p.exists():
+              raise SystemExit(f"MainMenuScreen.kt not found: {p}")
+
+          s = p.read_text(encoding="utf-8")
+
+          def add_import(src: str, imp: str) -> str:
+              if imp in src:
+                  return src
+              lines = src.splitlines()
+              positions = [i for i, line in enumerate(lines) if line.startswith("import ")]
+              insert_at = positions[-1] + 1 if positions else 1
+              lines.insert(insert_at, imp)
+              return "\n".join(lines) + "\n"
+
+          needed_imports = [
+              "import android.graphics.BitmapFactory",
+              "import androidx.compose.material.icons.automirrored.filled.ArrowForward",
+              "import androidx.compose.ui.graphics.vector.ImageVector",
+              "import kotlinx.coroutines.Dispatchers",
+              "import kotlinx.coroutines.withContext",
+              "import java.net.URL",
+              "import net.kdt.pojavlaunch.durbin.firebase.DurbinFirebaseConfig",
+              "import com.google.firebase.database.DataSnapshot",
+              "import com.google.firebase.database.DatabaseError",
+              "import com.google.firebase.database.FirebaseDatabase",
+              "import com.google.firebase.database.ValueEventListener",
+          ]
+
+          for imp in needed_imports:
+              s = add_import(s, imp)
+
+          remote_image = '''
+          @Composable
+          private fun DurbinRemoteImage(
+              url: String,
+              modifier: Modifier,
+              fallbackRes: Int? = null
+          ) {
+              var bitmap by remember(url) { mutableStateOf<Bitmap?>(null) }
+
+              LaunchedEffect(url) {
+                  if (url.isNotBlank()) {
+                      bitmap = withContext(Dispatchers.IO) {
+                          runCatching {
+                              URL(url).openStream().use { stream ->
+                                  BitmapFactory.decodeStream(stream)
+                              }
+                          }.getOrNull()
+                      }
+                  }
+              }
+
+              if (bitmap != null) {
+                  Image(
+                      bitmap = bitmap!!.asImageBitmap(),
+                      contentDescription = null,
+                      modifier = modifier,
+                      contentScale = ContentScale.Crop
+                  )
+              } else if (fallbackRes != null) {
+                  Image(
+                      painter = painterResource(id = fallbackRes),
+                      contentDescription = null,
+                      modifier = modifier,
+                      contentScale = ContentScale.Crop
+                  )
+              } else {
+                  Box(
+                      modifier = modifier.background(
+                          Brush.radialGradient(
+                              colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), Color(0xFF111111))
+                          )
+                      )
+                  )
+              }
+          }
+          '''
+
+          inline_news = '''
+          @Composable
+          private fun DurbinInlineNewsPanel() {
+              val context = LocalContext.current
+              var title by remember { mutableStateOf("DURBIN News") }
+              var body by remember { mutableStateOf("Loading latest launcher news...") }
+              var tag by remember { mutableStateOf("News") }
+              var imageUrl by remember { mutableStateOf("") }
+
+              LaunchedEffect(Unit) {
+                  try {
+                      val ready = DurbinFirebaseConfig.ensureInitialized(context)
+                      if (!ready) {
+                          title = "DURBIN News"
+                          body = "Firebase config is not ready."
+                          tag = "Offline"
+                          imageUrl = ""
+                      } else {
+                          FirebaseDatabase.getInstance(context.getString(R.string.durbin_firebase_database_url).trim())
+                              .getReference("durbin/news")
+                              .addListenerForSingleValueEvent(object : ValueEventListener {
+                                  override fun onDataChange(snapshot: DataSnapshot) {
+                                      val latest = snapshot.children.maxWithOrNull(
+                                          compareBy<DataSnapshot> {
+                                              if (it.child("pinned").getValue(Boolean::class.java) == true) 1 else 0
+                                          }.thenBy {
+                                              it.child("timestamp").getValue(Long::class.java) ?: 0L
+                                          }
+                                      )
+                                      if (latest == null) {
+                                          title = "DURBIN News"
+                                          body = "No news added yet."
+                                          tag = "Empty"
+                                          imageUrl = ""
+                                      } else {
+                                          title = latest.child("title").getValue(String::class.java) ?: "DURBIN News"
+                                          body = latest.child("body").getValue(String::class.java) ?: "No description"
+                                          tag = latest.child("tag").getValue(String::class.java) ?: "News"
+                                          imageUrl = latest.child("imageUrl").getValue(String::class.java).orEmpty()
+                                      }
+                                  }
+
+                                  override fun onCancelled(error: DatabaseError) {
+                                      title = "DURBIN News"
+                                      body = error.message
+                                      tag = "Error"
+                                      imageUrl = ""
+                                  }
+                              })
+                      }
+                  } catch (t: Throwable) {
+                      title = "DURBIN News"
+                      body = t.message ?: "Could not load news"
+                      tag = "Offline"
+                      imageUrl = ""
+                  }
+              }
+
+              Surface(
+                  modifier = Modifier.fillMaxWidth().height(112.dp),
+                  shape = RoundedCornerShape(18.dp),
+                  color = Color.Black.copy(alpha = 0.55f),
+                  border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+              ) {
+                  Row(
+                      modifier = Modifier.padding(12.dp),
+                      verticalAlignment = Alignment.CenterVertically,
+                      horizontalArrangement = Arrangement.spacedBy(12.dp)
+                  ) {
+                      if (imageUrl.isNotBlank()) {
+                          DurbinRemoteImage(
+                              url = imageUrl,
+                              modifier = Modifier.size(width = 140.dp, height = 88.dp).clip(RoundedCornerShape(14.dp))
+                          )
+                      } else {
+                          Box(
+                              modifier = Modifier.size(54.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)),
+                              contentAlignment = Alignment.Center
+                          ) {
+                              Icon(Icons.Rounded.Article, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                          }
+                      }
+
+                      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                          Text(tag.uppercase(), color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, fontWeight = FontWeight.Black, maxLines = 1)
+                          Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                          Text(body.ifBlank { "No description" }, color = Color.White.copy(alpha = 0.76f), fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                      }
+                  }
+              }
+          }
+          '''
+
+          action_card = '''
+          @Composable
+          private fun DurbinActionCard(
+              modifier: Modifier = Modifier,
+              title: String,
+              icon: ImageVector,
+              subtitle: String,
+              onClick: () -> Unit,
+              accent: Boolean = false
+          ) {
+              val borderColor = if (accent) MaterialTheme.colorScheme.primary.copy(alpha = 0.48f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.24f)
+              val iconBoxColor = if (accent) MaterialTheme.colorScheme.primary.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.08f)
+
+              OutlinedButton(
+                  onClick = onClick,
+                  modifier = modifier,
+                  shape = RoundedCornerShape(18.dp),
+                  border = BorderStroke(1.dp, borderColor),
+                  colors = ButtonDefaults.outlinedButtonColors(
+                      containerColor = Color.Transparent,
+                      contentColor = Color.White
+                  ),
+                  contentPadding = PaddingValues(horizontal = 14.dp)
+              ) {
+                  Row(
+                      modifier = Modifier.fillMaxSize(),
+                      verticalAlignment = Alignment.CenterVertically,
+                      horizontalArrangement = Arrangement.spacedBy(12.dp)
+                  ) {
+                      Box(
+                          modifier = Modifier
+                              .size(42.dp)
+                              .clip(RoundedCornerShape(13.dp))
+                              .background(iconBoxColor),
+                          contentAlignment = Alignment.Center
+                      ) {
+                          Icon(icon, contentDescription = null, modifier = Modifier.size(23.dp), tint = if (accent) MaterialTheme.colorScheme.primary else Color.White)
+                      }
+
+                      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                          Text(title, color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                          Text(subtitle, color = Color(0xFFBDBDBD), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                      }
+
+                      Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp), tint = if (accent) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.55f))
+                  }
+              }
+          }
+          '''
+
+          extra = ""
+          if "private fun DurbinRemoteImage" not in s:
+              extra += "\n" + remote_image.strip() + "\n"
+          if "private fun DurbinInlineNewsPanel" not in s:
+              extra += "\n" + inline_news.strip() + "\n"
+          if "private fun DurbinActionCard" not in s:
+              extra += "\n" + action_card.strip() + "\n"
+
+          if extra:
+              marker = "\n@Composable\nprivate fun DurbinStatusChip"
+              if marker in s:
+                  s = s.replace(marker, "\n" + extra + marker, 1)
+              else:
+                  s += "\n" + extra
+
+          p.write_text(s, encoding="utf-8")
+          print("Final MainMenu guard done")
+          print("DurbinInlineNewsPanel exists:", "private fun DurbinInlineNewsPanel" in s)
+          print("DurbinActionCard exists:", "private fun DurbinActionCard" in s)
+          PY
+
       - name: Build APK
         shell: bash
         run: |

@@ -1,7 +1,6 @@
 package git.artdeell.installer_agent;
 
 import java.awt.Component;
-
 import javax.swing.JButton;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;

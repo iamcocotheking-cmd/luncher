@@ -148,7 +148,7 @@ fun MainMenuRevamp(
         label = "headScale"
     )
 
-    // V28: static glow is much lighter on low-end phones than infinite background animation.
+    // Static glow is much lighter on low-end phones than an infinite background animation.
     val glowPulse = 0.20f
 
     var terminateRotationAngle by remember { mutableFloatStateOf(0f) }
@@ -249,14 +249,21 @@ private fun DurbinBackground(glowPulse: Float, content: @Composable BoxScope.() 
             .background(Color.Black)
             .background(
                 Brush.radialGradient(
-                    colors = listOf(primary.copy(alpha = 0.13f), Color.Transparent),
-                    center = Offset(260f, 140f),
-                    radius = 720f
+                    colors = listOf(primary.copy(alpha = glowPulse), Color.Transparent),
+                    center = Offset(240f, 120f),
+                    radius = 680f
+                )
+            )
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(primary.copy(alpha = glowPulse * 0.55f), Color.Transparent),
+                    center = Offset(1500f, 820f),
+                    radius = 760f
                 )
             )
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color.Black.copy(alpha = 0.04f), Color.Black.copy(alpha = 0.70f))
+                    colors = listOf(Color.Black.copy(alpha = 0.10f), Color.Black.copy(alpha = 0.78f))
                 )
             ),
         content = content

@@ -16,19 +16,11 @@ import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-/**
- * DURBIN bundled mod installer.
- *
- * It copies the real DURBIN Fabric mod packs from APK assets into the selected
- * Minecraft profile's mods folder. It only runs for Fabric/DURBIN profiles and
- * only for supported versions.
- */
 public final class DurbinModPackInstaller {
     private static final String TAG = "DurbinModPackInstaller";
     private static final String ASSET_ROOT = "durbin_modpacks";
 
-    private DurbinModPackInstaller() {
-    }
+    private DurbinModPackInstaller() {}
 
     public static void installForVersion(Context context, Instance instance, String versionId) {
         if (context == null || instance == null || versionId == null) return;
@@ -41,27 +33,22 @@ public final class DurbinModPackInstaller {
         }
 
         String packVersion = null;
-        if (lower.contains("1.21.11")) {
-            packVersion = "1.21.11";
-        } else if (lower.contains("1.20.1")) {
-            packVersion = "1.20.1";
-        }
+        if (lower.contains("1.21.11")) packVersion = "1.21.11";
+        else if (lower.contains("1.20.1")) packVersion = "1.20.1";
 
         if (packVersion == null) {
             Logger.appendToLog("Info: DURBIN mod pack skipped: unsupported version " + versionId);
             return;
         }
 
-        File gameDir = instance.getGameDirectory();
-        File modsDir = new File(gameDir, "mods");
+        File modsDir = new File(instance.getGameDirectory(), "mods");
         if (!modsDir.isDirectory() && !modsDir.mkdirs()) {
             Logger.appendToLog("Warn: DURBIN could not create mods folder: " + modsDir.getAbsolutePath());
             return;
         }
 
-        String assetZip = ASSET_ROOT + "/" + packVersion + ".zip";
         try {
-            int copied = extractJars(context.getAssets(), assetZip, modsDir);
+            int copied = extractJars(context.getAssets(), ASSET_ROOT + "/" + packVersion + ".zip", modsDir);
             Logger.appendToLog("Info: DURBIN " + packVersion + " bundled mods ready. Installed/updated: " + copied);
         } catch (Throwable t) {
             Log.e(TAG, "Failed to install DURBIN bundled mods", t);
@@ -71,16 +58,13 @@ public final class DurbinModPackInstaller {
 
     private static int extractJars(AssetManager assets, String assetZip, File modsDir) throws Exception {
         int copied = 0;
-
         try (InputStream raw = assets.open(assetZip);
              ZipInputStream zip = new ZipInputStream(new BufferedInputStream(raw))) {
-
             ZipEntry entry;
             byte[] buffer = new byte[64 * 1024];
 
             while ((entry = zip.getNextEntry()) != null) {
                 if (entry.isDirectory()) continue;
-
                 String name = entry.getName();
                 if (!name.toLowerCase(Locale.US).endsWith(".jar")) continue;
 
@@ -90,14 +74,10 @@ public final class DurbinModPackInstaller {
 
                 File outFile = new File(modsDir, fileName);
                 long expectedSize = entry.getSize();
-
-                if (outFile.isFile() && expectedSize > 0 && outFile.length() == expectedSize) {
-                    continue;
-                }
+                if (outFile.isFile() && expectedSize > 0 && outFile.length() == expectedSize) continue;
 
                 File tempFile = new File(modsDir, fileName + ".durbin_tmp");
                 long written = 0;
-
                 try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(tempFile))) {
                     int read;
                     while ((read = zip.read(buffer)) != -1) {
@@ -109,7 +89,6 @@ public final class DurbinModPackInstaller {
                 if (outFile.exists() && !outFile.delete()) {
                     throw new IllegalStateException("Could not replace old mod: " + outFile.getName());
                 }
-
                 if (!tempFile.renameTo(outFile)) {
                     throw new IllegalStateException("Could not save mod: " + outFile.getName());
                 }
@@ -118,7 +97,6 @@ public final class DurbinModPackInstaller {
                 Logger.appendToLog("Info: DURBIN mod ready: " + fileName + " (" + written + " bytes)");
             }
         }
-
         return copied;
     }
 }

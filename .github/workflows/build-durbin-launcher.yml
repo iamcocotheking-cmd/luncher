@@ -254,6 +254,37 @@ jobs:
           gp.write_text(gps, encoding="utf-8")
           PY
 
+
+          # Fix Android resource linking error:
+          # resource dimen/padding_tiny not found
+          mkdir -p app_pojavlauncher/src/main/res/values
+          mkdir -p app_pojavlauncher/src/main/res/drawable
+
+          if ! grep -Rqs 'name="padding_tiny"' app_pojavlauncher/src/main/res/values; then
+            cat > app_pojavlauncher/src/main/res/values/durbin_missing_dimens.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <dimen name="padding_tiny">4dp</dimen>
+          </resources>
+          XML
+          fi
+
+          # Fix warning: drawable/ic_social_media has no default value
+          if [ ! -f app_pojavlauncher/src/main/res/drawable/ic_social_media.xml ]; then
+            cat > app_pojavlauncher/src/main/res/drawable/ic_social_media.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="24"
+              android:viewportHeight="24">
+              <path
+                  android:fillColor="@android:color/white"
+                  android:pathData="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.86L8.91,12.71C8.96,12.48 9,12.24 9,12C9,11.76 8.96,11.52 8.91,11.29L15.96,7.18C16.5,7.68 17.21,8 18,8C19.66,8 21,6.66 21,5C21,3.34 19.66,2 18,2C16.34,2 15,3.34 15,5C15,5.24 15.04,5.48 15.09,5.71L8.04,9.82C7.5,9.32 6.79,9 6,9C4.34,9 3,10.34 3,12C3,13.66 4.34,15 6,15C6.79,15 7.5,14.68 8.04,14.18L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.92 18,21.92C19.61,21.92 20.92,20.61 20.92,19C20.92,17.39 19.61,16.08 18,16.08Z" />
+          </vector>
+          XML
+          fi
+
           echo "Patch done."
 
       - name: Source sanity check

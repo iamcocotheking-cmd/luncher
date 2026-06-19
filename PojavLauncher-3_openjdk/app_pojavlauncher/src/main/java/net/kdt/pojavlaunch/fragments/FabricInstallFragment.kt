@@ -202,8 +202,8 @@ class FabricInstallFragment : Fragment(), ModloaderDownloadListener {
                 return
             }
             Instances.createInstance({ i ->
-                i.name = "DURBIN Fabric " + mSelectedGameVersion
-                i.icon = "durbin"
+                i.name = mFabriclikeUtils.name
+                i.icon = mFabriclikeUtils.iconName
                 i.versionId = versionId
             }, versionId)
             getListenerProxy()?.onDownloadFinished(null)

@@ -279,91 +279,94 @@ jobs:
           PY
 
 
-      - name: V37 deep preflight resource and bridge guard
+      - name: V38 duplicate resource cleanup
         shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
           import re
+
           root = Path("PojavLauncher-3_openjdk")
-          if not root.exists(): root = Path(".")
-          src = root / "app_pojavlauncher/src/main/java"
+          if not root.exists():
+              root = Path(".")
+
           res = root / "app_pojavlauncher/src/main/res"
-          values = res / "values"; drawable = res / "drawable"; layout = res / "layout"
-          values.mkdir(parents=True, exist_ok=True); drawable.mkdir(parents=True, exist_ok=True); layout.mkdir(parents=True, exist_ok=True)
-          required = [
-              src/"net/kdt/pojavlaunch/modloaders/ModloaderDownloadListener.java",
-              src/"net/kdt/pojavlaunch/modloaders/ModloaderListenerProxy.java",
-              src/"net/kdt/pojavlaunch/modloaders/FabricVersion.java",
-              src/"net/kdt/pojavlaunch/extra/ExtraListener.java",
-              src/"net/kdt/pojavlaunch/progresskeeper/ProgressListener.java",
-              src/"net/kdt/pojavlaunch/profiles/VersionSelectorListener.java",
-              src/"com/kdt/pickafile/FileListView.java",
-              src/"com/kdt/pickafile/FileSelectedListener.java",
-              src/"net/kdt/pojavlaunch/customcontrols/ControlJoystickData.java",
-              src/"net/kdt/pojavlaunch/modloaders/modpacks/models/ModItem.java",
-              src/"net/kdt/pojavlaunch/modloaders/modpacks/models/SearchFilters.java",
-              src/"net/kdt/pojavlaunch/modloaders/modpacks/models/SearchResult.java",
-              src/"net/kdt/pojavlaunch/modloaders/modpacks/models/Constants.java",
-              src/"net/kdt/pojavlaunch/modloaders/modpacks/models/CurseManifest.java",
-          ]
-          missing_sources = [str(p) for p in required if not p.exists()]
-          if missing_sources:
-              print("Missing source bridge files:")
-              print("\n".join(missing_sources))
-              raise SystemExit(1)
-          existing = {}
-          for d in res.iterdir():
-              if d.is_dir():
-                  typ = d.name.split("-")[0]
-                  for f in d.iterdir():
-                      if f.is_file(): existing.setdefault(typ,set()).add(f.stem)
+          drawable = res / "drawable"
+          values = res / "values"
+
+          print("========== V38 DUPLICATE RESOURCE CLEANUP ==========")
+
+          # Android treats icon.png and icon.xml as the same @drawable/icon.
+          # If a real image exists, delete fallback XML with the same basename.
+          removed = []
+          image_exts = {".png", ".webp", ".jpg", ".jpeg"}
+          for folder in [drawable] + sorted(res.glob("drawable-*")):
+              if not folder.exists():
+                  continue
+              by_name = {}
+              for f in folder.iterdir():
+                  if f.is_file():
+                      by_name.setdefault(f.stem, []).append(f)
+              for name, files in by_name.items():
+                  has_real_image = any(f.suffix.lower() in image_exts for f in files)
+                  if has_real_image:
+                      for f in files:
+                          if f.suffix.lower() == ".xml":
+                              removed.append(str(f.relative_to(root)))
+                              f.unlink()
+
+          # Do not let generated fallback value files redefine IDs already defined in real project values.
+          real_defined_ids = set()
+          fallback_files = []
+          for vf in values.glob("*.xml"):
+              if vf.name.startswith("durbin_"):
+                  fallback_files.append(vf)
+                  continue
+              txt = vf.read_text(encoding="utf-8", errors="ignore")
+              real_defined_ids.update(re.findall(r'<item[^>]*type="id"[^>]*name="([^"]+)"[^>]*/?>', txt))
+              real_defined_ids.update(re.findall(r'<item[^>]*name="([^"]+)"[^>]*type="id"[^>]*/?>', txt))
+
+          for vf in fallback_files:
+              txt = vf.read_text(encoding="utf-8", errors="ignore")
+              before = txt
+              for name in sorted(real_defined_ids):
+                  txt = re.sub(r'\n\s*<item[^>]*type="id"[^>]*name="' + re.escape(name) + r'"[^>]*/>', '', txt)
+                  txt = re.sub(r'\n\s*<item[^>]*name="' + re.escape(name) + r'"[^>]*type="id"[^>]*/>', '', txt)
+              if txt != before:
+                  vf.write_text(txt, encoding="utf-8")
+                  print("Cleaned duplicate IDs from", vf.relative_to(root))
+
+          # Final duplicate scan for drawable/id resources that would fail mergeResources.
+          dupes = []
+          for typ_dir in [drawable] + sorted(res.glob("drawable-*")):
+              if not typ_dir.exists():
+                  continue
+              seen = {}
+              for f in typ_dir.iterdir():
+                  if f.is_file():
+                      seen.setdefault(f.stem, []).append(f.name)
+              for name, files in seen.items():
+                  if len(files) > 1:
+                      dupes.append(f"{typ_dir.relative_to(root)}/{name}: {files}")
+
+          # Check duplicate id items across all values xml.
+          id_owner = {}
           for vf in values.glob("*.xml"):
               txt = vf.read_text(encoding="utf-8", errors="ignore")
-              for typ,name in re.findall(r'<(dimen|string|color|bool|integer|array|string-array|integer-array)\s+[^>]*name="([^"]+)"', txt):
-                  if typ in ("string-array","integer-array"): typ="array"
-                  existing.setdefault(typ,set()).add(name)
-              for name in re.findall(r'<item\s+type="id"\s+name="([^"]+)"', txt): existing.setdefault("id",set()).add(name)
-          refs = {}
-          for f in res.rglob("*.xml"):
-              txt = f.read_text(encoding="utf-8", errors="ignore")
-              for typ,name in re.findall(r'@([a-zA-Z0-9_]+)/([A-Za-z0-9_\.]+)', txt):
-                  if typ != "android": refs.setdefault(typ,set()).add(name)
-          for f in src.rglob("*"):
-              if f.suffix in (".kt", ".java"):
-                  txt = f.read_text(encoding="utf-8", errors="ignore")
-                  for typ,name in re.findall(r'R\.([a-zA-Z0-9_]+)\.([A-Za-z0-9_]+)', txt):
-                      if typ in {"drawable","dimen","id","array","string","color","layout"}: refs.setdefault(typ,set()).add(name)
-          refs.setdefault("drawable", set()).update(["ic_auth_ms","ic_auth_elyby","ic_px_theme","ic_px_download","ic_px_file","ic_px_refresh","ic_px_progress","ic_filter"])
-          refs.setdefault("dimen", set()).update(["_50sdp","_280sdp"])
-          refs.setdefault("string", set()).update(["cancel","ok","copy","curseforge_api_key"])
-          missing = {typ: sorted(names-existing.get(typ,set())) for typ,names in refs.items()}
-          missing = {k:v for k,v in missing.items() if v}
-          value_lines = ['<?xml version="1.0" encoding="utf-8"?>','<resources>']
-          for name in missing.get("dimen",[]):
-              m = re.match(r'_(\d+)(sdp|ssp)$', name)
-              val = f"{m.group(1)}{'sp' if m and m.group(2)=='ssp' else 'dp'}" if m else "8dp"
-              value_lines.append(f'    <dimen name="{name}">{val}</dimen>')
-          for name in missing.get("id",[]): value_lines.append(f'    <item type="id" name="{name}"/>')
-          for name in missing.get("array",[]): value_lines.append(f'    <string-array name="{name}"><item>default</item></string-array>')
-          for name in missing.get("string",[]):
-              if name in {"application_package","storageProviderAuthorities"}: continue
-              text = {"ok":"OK","cancel":"Cancel","copy":"Copy","curseforge_api_key":""}.get(name, name.replace("_"," "))
-              value_lines.append(f'    <string name="{name}" formatted="false">{text}</string>')
-          value_lines.append('</resources>')
-          (values/"durbin_v37_runtime_fallbacks.xml").write_text("\n".join(value_lines)+"\n", encoding="utf-8")
-          vector = '<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">\n    <path android:fillColor="#FFFFFFFF" android:pathData="M4,4h16v16H4z"/>\n</vector>\n'
-          for name in sorted(set(missing.get("drawable",[])) | refs.get("drawable",set())):
-              out = drawable/f"{name}.xml"
-              if not out.exists(): out.write_text(vector, encoding="utf-8")
-          generic = '<?xml version="1.0" encoding="utf-8"?>\n<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical"><TextView android:id="@+id/account_item" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Item"/><TextView android:id="@+id/mod_title_textview" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Title"/><TextView android:id="@+id/mod_body_textview" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Body"/><ImageView android:id="@+id/mod_thumbnail_imageview" android:layout_width="48dp" android:layout_height="48dp"/><ImageView android:id="@+id/mod_source_imageview" android:layout_width="24dp" android:layout_height="24dp"/><ImageView android:id="@+id/delete_account_button" android:layout_width="48dp" android:layout_height="48dp"/><ViewStub android:id="@+id/mod_limited_state_stub" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout="@layout/durbin_mod_extended_fallback"/></LinearLayout>\n'
-          (layout/"durbin_mod_extended_fallback.xml").write_text('<?xml version="1.0" encoding="utf-8"?><LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"><Button android:id="@+id/mod_extended_select_version_button" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Install"/><Spinner android:id="@+id/mod_extended_version_spinner" android:layout_width="match_parent" android:layout_height="wrap_content"/><TextView android:id="@+id/mod_extended_error_textview" android:layout_width="match_parent" android:layout_height="wrap_content"/></LinearLayout>', encoding="utf-8")
-          for name in sorted(refs.get("layout",set()) - existing.get("layout",set())):
-              out = layout/f"{name}.xml"
-              if not out.exists(): out.write_text(generic, encoding="utf-8")
-          print("========== V37 DEEP PREFLIGHT ==========")
-          print("Source bridge files OK:", len(required))
-          print("Resource refs handled:", {k: len(v) for k,v in missing.items()})
+              ids = set(re.findall(r'<item[^>]*type="id"[^>]*name="([^"]+)"[^>]*/?>', txt))
+              ids.update(re.findall(r'<item[^>]*name="([^"]+)"[^>]*type="id"[^>]*/?>', txt))
+              for name in ids:
+                  if name in id_owner:
+                      dupes.append(f"id/{name}: {id_owner[name].relative_to(root)} and {vf.relative_to(root)}")
+                  else:
+                      id_owner[name] = vf
+
+          print("Removed duplicate drawable XML files:", removed)
+          if dupes:
+              print("Duplicate resources still found:")
+              print("\n".join(dupes[:80]))
+              raise SystemExit(1)
+          print("No duplicate drawable/id resources detected")
           PY
 
       - name: Build APK with clear error output
@@ -390,7 +393,7 @@ jobs:
             if grep -q "android.useAndroidX" durbin-build.log; then
               echo "::error title=AndroidX property missing::android.useAndroidX=true was missing. This workflow patches gradle.properties. If it still appears, the wrong project folder is being built."
             elif grep -qE "Android resource linking failed|AAPT: error|resource .* not found" durbin-build.log; then
-              echo "::error title=Android resource error::A missing XML drawable/dimen/array/id caused resource linking to fail. V37 creates source-code and XML fallback resources before build."
+              echo "::error title=Android resource error::A missing XML drawable/dimen/array/id caused resource linking to fail. V35 creates fallback resources before build."
             elif grep -q "cannot find symbol" durbin-build.log; then
               echo "::error title=Java compile error::A Java class/file is missing. See cannot find symbol lines above."
             elif grep -q "Unresolved reference" durbin-build.log; then

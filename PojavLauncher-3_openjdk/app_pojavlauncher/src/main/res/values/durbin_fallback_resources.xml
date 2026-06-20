@@ -47,7 +47,6 @@
     <item type="id" name="checkboxSwipeable"/>
     <item type="id" name="checkboxToggle"/>
     <item type="id" name="custom_control_button"/>
-    <item type="id" name="dimension_tracker"/>
     <item type="id" name="editBackgroundColor_textView"/>
     <item type="id" name="editButtonOpacity_textView"/>
     <item type="id" name="editCornerRadius_textView"/>

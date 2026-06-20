@@ -316,6 +316,28 @@ jobs:
         shell: bash
         run: |
           cd "$PROJECT_DIR"
+          echo "DURBIN V42 exp4j API safety"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/customcontrols/ControlData.java")
+          if p.exists():
+              s = p.read_text()
+              s = s.replace('private static void buildExpressionBuilder() {
+        ExpressionBuilder expressionBuilder = new ExpressionBuilder("1 + 1")',
+                            'private static void buildExpressionBuilder(String stringExpression) {
+        ExpressionBuilder expressionBuilder = new ExpressionBuilder(stringExpression)')
+              s = s.replace('private static void setExpression(String stringExpression) {
+        if (builder.get() == null) buildExpressionBuilder();
+        builder.get().expression(stringExpression);
+    }',
+                            'private static void setExpression(String stringExpression) {
+        buildExpressionBuilder(stringExpression);
+    }')
+              s = s.replace('        builder.get().expression(stringExpression);
+', '')
+              p.write_text(s)
+          PY
+
           echo "DURBIN V41 duplicate resource cleanup"
           rm -f app_pojavlauncher/src/main/res/values/durbin_missing_dimens.xml
           rm -f app_pojavlauncher/src/main/res/values/durbin_generated_missing_dimens.xml

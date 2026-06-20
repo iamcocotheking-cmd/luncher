@@ -198,8 +198,8 @@ public class ControlData {
     /**
      * Create a builder, keep a weak reference to it to use it with all views on first inflation
      */
-    private static void buildExpressionBuilder() {
-        ExpressionBuilder expressionBuilder = new ExpressionBuilder("1 + 1")
+    private static void buildExpressionBuilder(String stringExpression) {
+        ExpressionBuilder expressionBuilder = new ExpressionBuilder(stringExpression)
                 .function(new Function("dp", 1) {
                     @Override
                     public double apply(double... args) {
@@ -221,8 +221,7 @@ public class ControlData {
      * @param stringExpression the expression to set.
      */
     private static void setExpression(String stringExpression) {
-        if (builder.get() == null) buildExpressionBuilder();
-        builder.get().expression(stringExpression);
+        buildExpressionBuilder(stringExpression);
     }
 
     /**

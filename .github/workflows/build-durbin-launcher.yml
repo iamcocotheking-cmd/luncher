@@ -316,6 +316,16 @@ jobs:
         shell: bash
         run: |
           cd "$PROJECT_DIR"
+          echo "DURBIN V41 duplicate resource cleanup"
+          rm -f app_pojavlauncher/src/main/res/values/durbin_missing_dimens.xml
+          rm -f app_pojavlauncher/src/main/res/values/durbin_generated_missing_dimens.xml
+          rm -f app_pojavlauncher/src/main/res/values/durbin_generated_all_missing_dimens.xml
+          for name in ic_mouse_pointer icon ic_curseforge icon_hyper ic_modrinth; do
+            if [ -f "app_pojavlauncher/src/main/res/drawable/${name}.png" ] || [ -f "app_pojavlauncher/src/main/res/drawable/${name}.webp" ]; then
+              rm -f "app_pojavlauncher/src/main/res/drawable/${name}.xml"
+            fi
+          done
+
                     echo "DURBIN V39 JDK/Kotlin safety"
           export JAVA_HOME="${JAVA_HOME_21_X64:-$JAVA_HOME}"
           export JDK_HOME="$JAVA_HOME"

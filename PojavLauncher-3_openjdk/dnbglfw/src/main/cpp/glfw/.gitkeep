@@ -1,1 +1,1 @@
-GLFW source is downloaded by GitHub Actions from https://github.com/MojoLauncher/glfw
+This folder is filled during GitHub Actions by cloning https://github.com/MojoLauncher/glfw.git

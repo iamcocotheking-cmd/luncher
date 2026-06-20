@@ -323,6 +323,24 @@ jobs:
           echo "Project dir: $PROJECT_DIR"
           echo "Log file: $LOG_DIR/durbin-build-full.log"
 
+          echo "===== DURBIN V51 FETCH GLFW SOURCE ====="
+          cd "$ROOT/$PROJECT_DIR"
+          echo "Checking dnbglfw GLFW folder..."
+          if [ ! -f "dnbglfw/src/main/cpp/glfw/CMakeLists.txt" ]; then
+            echo "GLFW source is missing. Re-downloading it now..."
+            rm -rf dnbglfw/src/main/cpp/glfw
+            mkdir -p dnbglfw/src/main/cpp
+            git clone --depth 1 https://github.com/MojoLauncher/glfw.git dnbglfw/src/main/cpp/glfw || git clone --depth 1 https://github.com/glfw/glfw.git dnbglfw/src/main/cpp/glfw
+          fi
+          if [ ! -f "dnbglfw/src/main/cpp/glfw/CMakeLists.txt" ]; then
+            echo "::error title=GLFW download failed::dnbglfw/src/main/cpp/glfw/CMakeLists.txt is still missing after clone"
+            find dnbglfw/src/main/cpp -maxdepth 3 -type f | head -120 || true
+            exit 1
+          fi
+          echo "GLFW source found:"
+          ls -la dnbglfw/src/main/cpp/glfw | head -40
+          echo "===== DURBIN V51 GLFW OK ====="
+
           cd "$ROOT/$PROJECT_DIR"
 
           echo "Check GLFW folder before build:"

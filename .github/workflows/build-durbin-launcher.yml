@@ -45,73 +45,19 @@ jobs:
           fi
 
 
-      - name: Forge installer compile guard
+
+
+      - name: Verify Forge installer helper files
         shell: bash
         run: |
-          python3 <<'PY'
-          from pathlib import Path
-
-          root = Path("PojavLauncher-3_openjdk")
-          if not root.exists():
-              root = Path(".")
-
-          agent_dir = root / "forge_installer/src/main/java/git/artdeell/installer_agent"
-          agent_dir.mkdir(parents=True, exist_ok=True)
-
-          files = {
-              "ComponentFilter.java": """package git.artdeell.installer_agent;
-
-import java.awt.Component;
-
-public interface ComponentFilter {
-    boolean checkComponent(Component component);
-}
-""",
-              "MainWindowFilter.java": """package git.artdeell.installer_agent;
-
-import java.awt.Component;
-import javax.swing.AbstractButton;
-
-public class MainWindowFilter implements ComponentFilter {
-    @Override
-    public boolean checkComponent(Component component) {
-        return component instanceof AbstractButton;
-    }
-}
-""",
-              "DialogFilter.java": """package git.artdeell.installer_agent;
-
-import java.awt.Component;
-import javax.swing.JOptionPane;
-
-public class DialogFilter implements ComponentFilter {
-    @Override
-    public boolean checkComponent(Component component) {
-        return component instanceof JOptionPane;
-    }
-}
-""",
-              "ComponentTimeoutTask.java": """package git.artdeell.installer_agent;
-
-import java.util.TimerTask;
-
-public class ComponentTimeoutTask extends TimerTask {
-    @Override
-    public void run() {
-        System.out.println("Forge/OptiFine installer UI was not detected in time.");
-        System.exit(1);
-    }
-}
-"""
-          }
-
-          for name, data in files.items():
-              (agent_dir / name).write_text(data, encoding="utf-8")
-
-          print("Forge installer helper classes are ready:")
-          for name in files:
-              print(agent_dir / name)
-          PY
+          ROOT="PojavLauncher-3_openjdk"
+          if [ ! -d "$ROOT" ]; then ROOT="."; fi
+          DIR="$ROOT/forge_installer/src/main/java/git/artdeell/installer_agent"
+          test -f "$DIR/ComponentFilter.java"
+          test -f "$DIR/ComponentTimeoutTask.java"
+          test -f "$DIR/MainWindowFilter.java"
+          test -f "$DIR/DialogFilter.java"
+          echo "Forge installer helper files are present."
 
       - name: Source sanity check
         shell: bash

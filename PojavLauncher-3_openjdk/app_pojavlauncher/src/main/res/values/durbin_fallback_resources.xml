@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="_100sdp">100dp</dimen>
+    <dimen name="_10sdp">10dp</dimen>
+    <dimen name="_10ssp">10sp</dimen>
+    <dimen name="_12sdp">12dp</dimen>
+    <dimen name="_12ssp">12sp</dimen>
+    <dimen name="_134sdp">134dp</dimen>
+    <dimen name="_13ssp">13sp</dimen>
+    <dimen name="_14sdp">14dp</dimen>
+    <dimen name="_150sdp">150dp</dimen>
+    <dimen name="_15sdp">15dp</dimen>
+    <dimen name="_16ssp">16sp</dimen>
+    <dimen name="_17sdp">17dp</dimen>
+    <dimen name="_1sdp">1dp</dimen>
+    <dimen name="_200sdp">200dp</dimen>
+    <dimen name="_20sdp">20dp</dimen>
+    <dimen name="_25sdp">25dp</dimen>
+    <dimen name="_280sdp">280dp</dimen>
+    <dimen name="_2sdp">2dp</dimen>
+    <dimen name="_30sdp">30dp</dimen>
+    <dimen name="_35sdp">35dp</dimen>
+    <dimen name="_36sdp">36dp</dimen>
+    <dimen name="_37sdp">37dp</dimen>
+    <dimen name="_38sdp">38dp</dimen>
+    <dimen name="_3sdp">3dp</dimen>
+    <dimen name="_40sdp">40dp</dimen>
+    <dimen name="_42sdp">42dp</dimen>
+    <dimen name="_4sdp">4dp</dimen>
+    <dimen name="_50sdp">50dp</dimen>
+    <dimen name="_52sdp">52dp</dimen>
+    <dimen name="_5sdp">5dp</dimen>
+    <dimen name="_60sdp">60dp</dimen>
+    <dimen name="_62sdp">62dp</dimen>
+    <dimen name="_66sdp">66dp</dimen>
+    <dimen name="_6sdp">6dp</dimen>
+    <dimen name="_8sdp">8dp</dimen>
+    <item type="id" name="_background_display_view"/>
+    <item type="id" name="center_guideline"/>
+    <item type="id" name="checkboxAbsoluteFingerTracking"/>
+    <item type="id" name="checkboxForwardLock"/>
+    <item type="id" name="checkboxGesture"/>
+    <item type="id" name="checkboxGyro"/>
+    <item type="id" name="checkboxGyroX"/>
+    <item type="id" name="checkboxGyroY"/>
+    <item type="id" name="checkboxPassThrough"/>
+    <item type="id" name="checkboxSwipeable"/>
+    <item type="id" name="checkboxToggle"/>
+    <item type="id" name="custom_control_button"/>
+    <item type="id" name="dimension_tracker"/>
+    <item type="id" name="editBackgroundColor_textView"/>
+    <item type="id" name="editButtonOpacity_textView"/>
+    <item type="id" name="editCornerRadius_textView"/>
+    <item type="id" name="editGestureDelay_textView"/>
+    <item type="id" name="editGyro_seekbar"/>
+    <item type="id" name="editGyro_textView"/>
+    <item type="id" name="editMapping_textView"/>
+    <item type="id" name="editMouseSpeed_seekbar"/>
+    <item type="id" name="editMouseSpeed_textView"/>
+    <item type="id" name="editName_editText"/>
+    <item type="id" name="editOrientation_spinner"/>
+    <item type="id" name="editResolution_seekbar"/>
+    <item type="id" name="editResolution_textView"/>
+    <item type="id" name="editSize_editTextX"/>
+    <item type="id" name="editSize_editTextY"/>
+    <item type="id" name="editStrokeColor_textView"/>
+    <item type="id" name="editStrokeWidth_seekbar"/>
+    <item type="id" name="editStrokeWidth_textView"/>
+    <item type="id" name="install_jar_button"/>
+    <item type="id" name="mapping_1_textview"/>
+    <item type="id" name="mapping_2_textview"/>
+    <item type="id" name="mapping_3_textview"/>
+    <item type="id" name="mapping_4_textview"/>
+    <item type="id" name="mc_version_spinner"/>
+    <item type="id" name="mineButton_import_local_modpack"/>
+    <item type="id" name="news_button"/>
+    <item type="id" name="play_button"/>
+    <item type="id" name="progress_flip_arrow"/>
+    <item type="id" name="progress_generic_progressbar"/>
+    <item type="id" name="search_mod_edittext"/>
+    <item type="id" name="search_mod_filter"/>
+    <item type="id" name="setBackgroundBitmap_textView"/>
+    <item type="id" name="share_logs_button"/>
+    <item type="id" name="social_divider"/>
+    <item type="id" name="social_media_button"/>
+    <item type="id" name="vprof_editor_ctrl_button"/>
+    <item type="id" name="vprof_editor_ctrl_spinner"/>
+    <item type="id" name="vprof_editor_instance_icon"/>
+    <item type="id" name="vprof_editor_instance_renderer"/>
+    <item type="id" name="vprof_editor_jre_args"/>
+    <item type="id" name="vprof_editor_spinner_runtime"/>
+</resources>

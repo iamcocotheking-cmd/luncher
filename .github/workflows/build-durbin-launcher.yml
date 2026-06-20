@@ -351,6 +351,15 @@ jobs:
             echo "GLFW missing before build: dnbglfw/src/main/cpp/glfw"
           fi
 
+          echo "===== DURBIN V52 DEBUG KEYSTORE CHECK ====="
+          cd "$ROOT/$PROJECT_DIR"
+          if [ ! -f "app_pojavlauncher/debug.keystore" ]; then
+            echo "debug.keystore missing. Creating standard Android debug keystore..."
+            keytool -genkeypair -v               -keystore app_pojavlauncher/debug.keystore               -storepass android               -alias androiddebugkey               -keypass android               -keyalg RSA               -keysize 2048               -validity 10000               -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          ls -la app_pojavlauncher/debug.keystore
+          echo "===== DURBIN V52 DEBUG KEYSTORE OK ====="
+
           echo "===== DURBIN BUILD START ====="
           set +e
           gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace 2>&1 | tee "$LOG_DIR/durbin-build-full.log"
@@ -401,14 +410,14 @@ jobs:
             echo "## DURBIN REAL ERROR HERE"
             echo ""
             echo "### Important error lines"
-            echo "```text"
+            printf '%s\n' '```text'
             grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments|BUILD FAILED|fatal:" "$LOG_FILE" | tail -100 || true
-            echo "```"
+            printf '%s\n' '```'
             echo ""
             echo "### Last 260 lines"
-            echo "```text"
+            printf '%s\n' '```text'
             tail -n 260 "$LOG_FILE"
-            echo "```"
+            printf '%s\n' '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
           SHORT="$(grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments|BUILD FAILED|fatal:" "$LOG_FILE" | tail -40 || true)"

@@ -314,10 +314,7 @@ jobs:
           echo "DURBIN V35 memory safety"
           export GRADLE_OPTS="-Xmx6144m -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
           export JAVA_TOOL_OPTIONS="-Xmx6144m -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
-          echo "DURBIN V35 memory safety"
-          export GRADLE_OPTS="-Xmx6144m -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
-          export JAVA_TOOL_OPTIONS="-Xmx6144m -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
-          gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace --max-workers=1 --max-workers=1
+          gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace
 
       - name: Collect APK
         shell: bash

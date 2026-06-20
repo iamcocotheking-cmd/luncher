@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cancel" formatted="false">Cancel</string>
+    <string name="copy" formatted="false">Copy</string>
+    <string name="curseforge_api_key" formatted="false"></string>
+    <string name="ok" formatted="false">OK</string>
+</resources>

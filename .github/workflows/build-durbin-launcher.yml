@@ -14,6 +14,10 @@ jobs:
   diagnose-and-build:
     name: Diagnose and Build
     runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: "-Xmx6144m -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
+      JAVA_TOOL_OPTIONS: "-Xmx6144m -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
+      KOTLIN_DAEMON_JVMARGS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
 
     steps:
       - name: Checkout source
@@ -75,10 +79,29 @@ jobs:
 
           set_prop "android.useAndroidX" "true"
           set_prop "android.enableJetifier" "true"
-          set_prop "org.gradle.jvmargs" "-Xmx4096m -Dfile.encoding=UTF-8"
+          set_prop "org.gradle.jvmargs" "-Xmx6144m -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
+          set_prop "kotlin.daemon.jvmargs" "-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
+          set_prop "kotlin.incremental" "false"
+          set_prop "kotlin.compiler.execution.strategy" "in-process"
 
-          echo "========== gradle.properties after fix =========="
+          ROOT_PROP_FILE="gradle.properties"
+          touch "$ROOT_PROP_FILE"
+          if [ "$PROP_FILE" != "$ROOT_PROP_FILE" ]; then
+            for ENTRY in               "android.useAndroidX=true"               "android.enableJetifier=true"               "org.gradle.jvmargs=-Xmx6144m -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"               "kotlin.daemon.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"               "kotlin.incremental=false"               "kotlin.compiler.execution.strategy=in-process"; do
+              KEY="${ENTRY%%=*}"
+              VALUE="${ENTRY#*=}"
+              if grep -qE "^${KEY}[[:space:]]*=" "$ROOT_PROP_FILE"; then
+                sed -i "s|^${KEY}[[:space:]]*=.*|${KEY}=${VALUE}|" "$ROOT_PROP_FILE"
+              else
+                printf "\n%s=%s\n" "$KEY" "$VALUE" >> "$ROOT_PROP_FILE"
+              fi
+            done
+          fi
+
+          echo "========== project gradle.properties after fix =========="
           cat "$PROP_FILE"
+          echo "========== root gradle.properties after fix =========="
+          cat "$ROOT_PROP_FILE"
 
       - name: Verify important source files
         shell: bash
@@ -145,7 +168,7 @@ jobs:
           echo "========== DURBIN CLEAR ERROR SUMMARY =========="
           if [ "$STATUS" -ne 0 ]; then
             echo "Build failed. Important lines:"
-            grep -nE "(^FAILURE:|^\* What went wrong:|^Execution failed|^> | error: |e: file:|Caused by:|A problem occurred|AndroidX|useAndroidX|cannot find symbol|Unresolved reference|Invalid workflow|YAML|No APK|permission_denied)" durbin-build.log | head -n 120 || true
+            grep -nE "(^FAILURE:|^\* What went wrong:|^Execution failed|^> | error: |e: file:|Caused by:|A problem occurred|AndroidX|useAndroidX|cannot find symbol|Unresolved reference|Invalid workflow|YAML|No APK|permission_denied|Not enough memory|OOMErrorException|OutOfMemory|Kotlin daemon)" durbin-build.log | head -n 160 || true
             echo ""
             echo "Last 120 log lines:"
             tail -n 120 durbin-build.log
@@ -156,6 +179,8 @@ jobs:
               echo "::error title=Java compile error::A Java class/file is missing. See cannot find symbol lines above."
             elif grep -q "Unresolved reference" durbin-build.log; then
               echo "::error title=Kotlin compile error::A Kotlin function/import/class is missing. See unresolved reference lines above."
+            elif grep -qE "Not enough memory|OOMErrorException|OutOfMemory|Kotlin daemon" durbin-build.log; then
+              echo "::error title=Kotlin compiler out of memory::V33 increases Gradle and Kotlin memory. If this still appears, use a larger runner or reduce Compose dependencies."
             elif grep -q "No APK" durbin-build.log; then
               echo "::error title=APK missing::Build ran but no APK was produced. See logs above."
             else

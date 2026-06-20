@@ -442,11 +442,12 @@ private fun DurbinHeroCard(modifier: Modifier, compact: Boolean, selectedInstanc
     val key = (nameText + " " + versionText).lowercase()
 
     val bannerRes = when {
+        key.contains("durbin") -> R.drawable.durbin_forge_banner
         key.contains("forge") -> R.drawable.durbin_forge_banner
         key.contains("optifine") || key.contains("of") -> R.drawable.durbin_optifine_banner
-        key.contains("fabric") -> R.drawable.durbin_fabric_banner
-        key.contains("durbin") -> R.drawable.durbin_forge_banner
-        else -> R.drawable.durbin_fabric_banner
+        key.contains("fabric") -> R.drawable.durbin_minecraft_banner
+        key.contains("vanilla") || key.contains("release") -> R.drawable.durbin_minecraft_banner
+        else -> R.drawable.durbin_minecraft_banner
     }
 
     val modeLabel = when {

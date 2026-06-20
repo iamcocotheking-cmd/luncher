@@ -315,8 +315,16 @@ jobs:
       - name: Build full debug APK
         shell: bash
         run: |
-          echo "DURBIN V49 build capture"
-          echo "This build step will NOT hide the error. The next step shows the real error."
+          echo "DURBIN V50 build capture with root log path"
+          ROOT="$GITHUB_WORKSPACE"
+          LOG_DIR="$ROOT/durbin_logs"
+          mkdir -p "$LOG_DIR"
+          echo "Root: $ROOT"
+          echo "Project dir: $PROJECT_DIR"
+          echo "Log file: $LOG_DIR/durbin-build-full.log"
+
+          cd "$ROOT/$PROJECT_DIR"
+
           echo "Check GLFW folder before build:"
           ls -la dnbglfw/src/main/cpp || true
           if [ -d "dnbglfw/src/main/cpp/glfw" ]; then
@@ -324,58 +332,78 @@ jobs:
           else
             echo "GLFW missing before build: dnbglfw/src/main/cpp/glfw"
           fi
+
+          echo "===== DURBIN BUILD START ====="
           set +e
-          gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace 2>&1 | tee durbin-build-full.log
+          gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace 2>&1 | tee "$LOG_DIR/durbin-build-full.log"
           BUILD_EXIT=${PIPESTATUS[0]}
-          echo "$BUILD_EXIT" > durbin-build-exit-code.txt
+          echo "$BUILD_EXIT" > "$LOG_DIR/durbin-build-exit-code.txt"
           echo "Gradle exit code: $BUILD_EXIT"
-          echo "Build log saved inside runner at: $PWD/durbin-build-full.log"
+          echo "Build log saved at: $LOG_DIR/durbin-build-full.log"
           echo "Next step will show DURBIN REAL ERROR HERE."
           exit 0
 
       - name: SHOW DURBIN REAL ERROR HERE
         if: always()
         shell: bash
-        working-directory: ${{ env.PROJECT_DIR }}
         run: |
           echo "===== DURBIN REAL ERROR HERE ====="
-          if [ ! -f durbin-build-full.log ]; then
-            echo "::error title=DURBIN log missing::durbin-build-full.log was not created. The build step may not have started."
+          ROOT="$GITHUB_WORKSPACE"
+          LOG_DIR="$ROOT/durbin_logs"
+          LOG_FILE="$LOG_DIR/durbin-build-full.log"
+          EXIT_FILE="$LOG_DIR/durbin-build-exit-code.txt"
+
+          echo "Looking for log at: $LOG_FILE"
+
+          if [ ! -f "$LOG_FILE" ]; then
+            echo "Log not found at default path. Searching workspace..."
+            find "$ROOT" -name "durbin-build-full.log" -print || true
+            FOUND="$(find "$ROOT" -name "durbin-build-full.log" -print -quit || true)"
+            if [ -n "$FOUND" ]; then
+              LOG_FILE="$FOUND"
+              echo "Found log at: $LOG_FILE"
+            fi
+          fi
+
+          if [ ! -f "$LOG_FILE" ]; then
+            echo "===== WORKSPACE FILE CHECK ====="
+            find "$ROOT" -maxdepth 3 -type f | head -120 || true
+            echo "::error title=DURBIN log missing::durbin-build-full.log was not created. Build step likely failed before Gradle started."
             exit 1
           fi
 
           echo "===== IMPORTANT ERROR LINES ====="
-          grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments|BUILD FAILED" durbin-build-full.log | tail -80 || true
+          grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments|BUILD FAILED|fatal:" "$LOG_FILE" | tail -100 || true
 
           echo ""
-          echo "===== LAST 220 LINES ====="
-          tail -n 220 durbin-build-full.log
+          echo "===== LAST 260 LINES ====="
+          tail -n 260 "$LOG_FILE"
 
           {
             echo "## DURBIN REAL ERROR HERE"
             echo ""
             echo "### Important error lines"
             echo "```text"
-            grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments|BUILD FAILED" durbin-build-full.log | tail -80 || true
+            grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments|BUILD FAILED|fatal:" "$LOG_FILE" | tail -100 || true
             echo "```"
             echo ""
-            echo "### Last 220 lines"
+            echo "### Last 260 lines"
             echo "```text"
-            tail -n 220 durbin-build-full.log
+            tail -n 260 "$LOG_FILE"
             echo "```"
           } >> "$GITHUB_STEP_SUMMARY"
 
-          SHORT="$(grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments|BUILD FAILED" durbin-build-full.log | tail -30 || true)"
+          SHORT="$(grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments|BUILD FAILED|fatal:" "$LOG_FILE" | tail -40 || true)"
           if [ -z "$SHORT" ]; then
-            SHORT="$(tail -n 60 durbin-build-full.log)"
+            SHORT="$(tail -n 80 "$LOG_FILE")"
           fi
           SHORT="${SHORT//'%'/'%25'}"
           SHORT="${SHORT//$'\n'/'%0A'}"
           SHORT="${SHORT//$'\r'/'%0D'}"
 
           BUILD_EXIT=1
-          if [ -f durbin-build-exit-code.txt ]; then
-            BUILD_EXIT="$(cat durbin-build-exit-code.txt)"
+          if [ -f "$EXIT_FILE" ]; then
+            BUILD_EXIT="$(cat "$EXIT_FILE")"
           fi
 
           if [ "$BUILD_EXIT" != "0" ]; then
@@ -384,6 +412,8 @@ jobs:
           else
             echo "Build succeeded. No error."
           fi
+
+
 
 
       - name: Collect APK

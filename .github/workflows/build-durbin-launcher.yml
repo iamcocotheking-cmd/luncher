@@ -1,4 +1,4 @@
-name: Build DURBIN Launcher APK
+name: Build DURBIN Launcher APK - Clear Diagnostics
 
 permissions:
   contents: write
@@ -11,7 +11,8 @@ on:
       - master
 
 jobs:
-  build:
+  diagnose-and-build:
+    name: Diagnose and Build
     runs-on: ubuntu-latest
 
     steps:
@@ -31,38 +32,73 @@ jobs:
         with:
           gradle-version: "8.14.3"
 
-      - name: Locate project
+      - name: Locate project and print repo info
         shell: bash
         run: |
+          echo "========== DURBIN DIAGNOSTIC START =========="
+          echo "Repo root:"
+          pwd
+          echo ""
+          echo "Top level files:"
+          ls -la
+          echo ""
+          echo "Gradle project candidates:"
+          find . -maxdepth 4 -name build.gradle -o -name settings.gradle | sort
+
           if [ -f "PojavLauncher-3_openjdk/build.gradle" ]; then
             echo "PROJECT_DIR=PojavLauncher-3_openjdk" >> "$GITHUB_ENV"
+            echo "Using project: PojavLauncher-3_openjdk"
           elif [ -f "build.gradle" ]; then
             echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+            echo "Using project: ."
           else
-            echo "ERROR: Gradle project not found"
-            find . -maxdepth 3 -name build.gradle -print
+            echo "::error title=Gradle project not found::No build.gradle found. Your repo must contain PojavLauncher-3_openjdk or a Gradle project at root."
             exit 1
           fi
 
-
-
-
-      - name: Verify Forge installer helper files
+      - name: Fix required Android Gradle properties
         shell: bash
         run: |
-          ROOT="PojavLauncher-3_openjdk"
-          if [ ! -d "$ROOT" ]; then ROOT="."; fi
-          DIR="$ROOT/forge_installer/src/main/java/git/artdeell/installer_agent"
-          test -f "$DIR/ComponentFilter.java"
-          test -f "$DIR/ComponentTimeoutTask.java"
-          test -f "$DIR/MainWindowFilter.java"
-          test -f "$DIR/DialogFilter.java"
-          echo "Forge installer helper files are present."
+          set -e
+          PROP_FILE="$PROJECT_DIR/gradle.properties"
+          touch "$PROP_FILE"
 
-      - name: Source sanity check
+          set_prop() {
+            KEY="$1"
+            VALUE="$2"
+            if grep -qE "^${KEY}[[:space:]]*=" "$PROP_FILE"; then
+              sed -i "s|^${KEY}[[:space:]]*=.*|${KEY}=${VALUE}|" "$PROP_FILE"
+            else
+              printf "\n%s=%s\n" "$KEY" "$VALUE" >> "$PROP_FILE"
+            fi
+          }
+
+          set_prop "android.useAndroidX" "true"
+          set_prop "android.enableJetifier" "true"
+          set_prop "org.gradle.jvmargs" "-Xmx4096m -Dfile.encoding=UTF-8"
+
+          echo "========== gradle.properties after fix =========="
+          cat "$PROP_FILE"
+
+      - name: Verify important source files
         shell: bash
         run: |
-          echo "Checking for real merge conflict markers only..."
+          set -e
+          ROOT="$PROJECT_DIR"
+          echo "========== Source checks =========="
+          test -f "$ROOT/settings.gradle" || { echo "::error title=Missing settings.gradle::Expected $ROOT/settings.gradle"; exit 1; }
+          test -f "$ROOT/app_pojavlauncher/build.gradle" || { echo "::error title=Missing app build.gradle::Expected $ROOT/app_pojavlauncher/build.gradle"; exit 1; }
+
+          FORGE_DIR="$ROOT/forge_installer/src/main/java/git/artdeell/installer_agent"
+          for file in ComponentFilter.java ComponentTimeoutTask.java MainWindowFilter.java DialogFilter.java Agent.java; do
+            if [ ! -f "$FORGE_DIR/$file" ]; then
+              echo "::error title=Missing Forge helper::$FORGE_DIR/$file is missing"
+              exit 1
+            fi
+          done
+          echo "Forge helper files OK."
+
+          echo "Checking for real merge conflict markers..."
           if grep -RInI -E '^(<<<<<<<|=======|>>>>>>>)( |$)' \
             --exclude-dir=.git \
             --exclude-dir=.gradle \
@@ -75,31 +111,86 @@ jobs:
             --exclude='*.jpg' \
             --exclude='*.jpeg' \
             --exclude='*.zip' \
-            . ; then
-            echo "ERROR: real merge conflict markers found"
+            "$ROOT" ; then
+            echo "::error title=Merge conflict markers found::Remove <<<<<<< ======= >>>>>>> from files above."
             exit 1
           fi
+          echo "No merge conflict markers found."
 
-      - name: Build full debug APK
+      - name: Show Gradle tasks and versions
         shell: bash
         run: |
+          set -e
           cd "$PROJECT_DIR"
-          gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace
+          echo "========== Gradle version =========="
+          gradle --version
+          echo "========== Projects =========="
+          gradle projects --no-daemon
+          echo "========== APK tasks matching FullDebug =========="
+          gradle :app_pojavlauncher:tasks --all --no-daemon | grep -E "assemble.*Full.*Debug|FullDebug|assembleFullDebug" || true
+
+      - name: Build APK with clear error output
+        id: build_apk
+        shell: bash
+        run: |
+          set +e
+          cd "$PROJECT_DIR"
+          echo "========== BUILD COMMAND =========="
+          echo "gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace --warning-mode all"
+          echo ""
+          gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace --warning-mode all 2>&1 | tee ../durbin-build.log
+          STATUS=${PIPESTATUS[0]}
+          cd ..
+
+          echo "========== DURBIN CLEAR ERROR SUMMARY =========="
+          if [ "$STATUS" -ne 0 ]; then
+            echo "Build failed. Important lines:"
+            grep -nE "(^FAILURE:|^\* What went wrong:|^Execution failed|^> | error: |e: file:|Caused by:|A problem occurred|AndroidX|useAndroidX|cannot find symbol|Unresolved reference|Invalid workflow|YAML|No APK|permission_denied)" durbin-build.log | head -n 120 || true
+            echo ""
+            echo "Last 120 log lines:"
+            tail -n 120 durbin-build.log
+
+            if grep -q "android.useAndroidX" durbin-build.log; then
+              echo "::error title=AndroidX property missing::android.useAndroidX=true was missing. This workflow patches gradle.properties. If it still appears, the wrong project folder is being built."
+            elif grep -q "cannot find symbol" durbin-build.log; then
+              echo "::error title=Java compile error::A Java class/file is missing. See cannot find symbol lines above."
+            elif grep -q "Unresolved reference" durbin-build.log; then
+              echo "::error title=Kotlin compile error::A Kotlin function/import/class is missing. See unresolved reference lines above."
+            elif grep -q "No APK" durbin-build.log; then
+              echo "::error title=APK missing::Build ran but no APK was produced. See logs above."
+            else
+              echo "::error title=Build failed::See DURBIN CLEAR ERROR SUMMARY above."
+            fi
+            exit "$STATUS"
+          fi
+
+          echo "Build successful."
 
       - name: Collect APK
+        if: success()
         shell: bash
         run: |
           mkdir -p apk-output
           APK="$(find "$PROJECT_DIR" -type f -name '*.apk' -path '*/outputs/apk/*debug/*.apk' | head -n 1)"
           if [ -z "$APK" ]; then
-            echo "No APK found"
+            echo "::error title=No APK found::Build succeeded but no debug APK was found."
             find "$PROJECT_DIR" -type f -name '*.apk' -print
             exit 1
           fi
           cp "$APK" apk-output/DURBIN-Launcher.apk
           ls -lh apk-output/DURBIN-Launcher.apk
 
+      - name: Upload build log
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: DURBIN-build-log
+          path: durbin-build.log
+          retention-days: 3
+
       - name: Upload APK artifact
+        if: success()
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
@@ -108,16 +199,12 @@ jobs:
           retention-days: 1
 
       - name: Upload APK to GitHub Release fallback
-        if: always()
+        if: success()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           APK_PATH="apk-output/DURBIN-Launcher.apk"
-          if [ ! -f "$APK_PATH" ]; then
-            echo "APK not found at $APK_PATH"
-            exit 1
-          fi
           TAG="durbin-build-${GITHUB_RUN_NUMBER}"
           TITLE="DURBIN Launcher Build ${GITHUB_RUN_NUMBER}"
           gh release create "$TAG" "$APK_PATH" --title "$TITLE" --notes "Auto-built DURBIN Launcher APK." --latest=false || gh release upload "$TAG" "$APK_PATH" --clobber

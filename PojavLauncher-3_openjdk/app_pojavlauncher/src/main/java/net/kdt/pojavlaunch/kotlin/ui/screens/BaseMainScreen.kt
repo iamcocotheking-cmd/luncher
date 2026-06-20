@@ -181,7 +181,7 @@ fun BaseMainScreen(
             }
         }
 
-        // DURBIN: sidebar/navigation rail removed for cleaner and faster gameplay screen.
+        // DURBIN V28: sidebar/navigation rail removed for cleaner and faster gameplay screen.
 
         AnimatedVisibility(
             visible = loadingVisible,
@@ -201,7 +201,7 @@ fun BaseMainScreen(
             ) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.90f),
+                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
                     tonalElevation = 8.dp,
                     modifier = Modifier.padding(24.dp)
                 ) {
@@ -248,9 +248,27 @@ private fun DurbinSpiralLoader(
 
     Canvas(modifier = modifier.rotate(rotation)) {
         val stroke = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
-        drawArc(color = color.copy(alpha = 0.20f), startAngle = 0f, sweepAngle = 360f, useCenter = false, style = stroke)
-        drawArc(color = color, startAngle = -90f, sweepAngle = 280f, useCenter = false, style = stroke)
-        drawArc(color = Color.White.copy(alpha = 0.82f), startAngle = 220f, sweepAngle = 58f, useCenter = false, style = stroke)
+        drawArc(
+            color = color.copy(alpha = 0.20f),
+            startAngle = 0f,
+            sweepAngle = 360f,
+            useCenter = false,
+            style = stroke
+        )
+        drawArc(
+            color = color,
+            startAngle = -90f,
+            sweepAngle = 280f,
+            useCenter = false,
+            style = stroke
+        )
+        drawArc(
+            color = Color.White.copy(alpha = 0.82f),
+            startAngle = 220f,
+            sweepAngle = 58f,
+            useCenter = false,
+            style = stroke
+        )
     }
 }
 

@@ -303,12 +303,6 @@ afterEvaluate {
 }
 
 dependencies {
-    implementation 'org.apache.commons:commons-compress:1.27.1'
-    implementation 'net.objecthunter:exp4j:0.4.8'
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'androidx.recyclerview:recyclerview:1.3.2'
-    implementation 'commons-io:commons-io:2.17.0'
-    implementation 'com.google.code.gson:gson:2.11.0'
     implementation project(':dnbglfw')
     implementation 'javax.annotation:javax.annotation-api:1.3.2'
     implementation 'commons-codec:commons-codec:1.19.0'
@@ -371,14 +365,4 @@ dependencies {
     implementation "io.ktor:ktor-server-cio:2.3.12"
     implementation "io.ktor:ktor-server-content-negotiation:2.3.12"
     implementation "io.ktor:ktor-serialization-kotlinx-json:2.3.12"
-}
-
-
-// DURBIN V39 safe Kotlin target
-// Do NOT use -Xjdk-release here; it can fail on GitHub runners with:
-// "JDK_HOME path is not specified in compiler configuration"
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 }

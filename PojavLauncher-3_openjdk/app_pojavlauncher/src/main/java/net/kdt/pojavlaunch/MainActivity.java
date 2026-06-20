@@ -326,11 +326,26 @@ public class MainActivity extends BaseActivity implements ControlButtonMenuListe
 
     private void runCraft(String versionId, File[] classpath) throws Throwable {
         String renderer = instance.getLaunchRenderer();
+
+        RendererCompatUtil.RenderersList durbinRenderersList = RendererCompatUtil.getCompatibleRenderers(this);
+        if (renderer == null || renderer.equals("ltw") || renderer.equals("opengles2")) {
+            if (Architecture.is32BitsDevice() && durbinRenderersList.rendererIds.contains("mobileglues")) {
+                Log.i("runCraft", "DURBIN auto renderer selected mobileglues for 32-bit device");
+                renderer = "mobileglues";
+                instance.renderer = renderer;
+            } else if (durbinRenderersList.rendererIds.contains("opengles3_ltw")) {
+                Log.i("runCraft", "DURBIN auto renderer selected opengles3_ltw");
+                renderer = "opengles3_ltw";
+                instance.renderer = renderer;
+            }
+        }
+
         if(!RendererCompatUtil.checkRendererCompatible(this, renderer)) {
             RendererCompatUtil.RenderersList renderersList = RendererCompatUtil.getCompatibleRenderers(this);
             String firstCompatibleRenderer = renderersList.rendererIds.get(0);
             Log.w("runCraft","Incompatible renderer "+renderer+ " will be replaced with "+firstCompatibleRenderer);
             renderer = firstCompatibleRenderer;
+            instance.renderer = renderer;
         }
         try {
             DurbinModPackInstaller.installForVersion(this, instance, versionId);
@@ -339,6 +354,7 @@ public class MainActivity extends BaseActivity implements ControlButtonMenuListe
         }
 
         Logger.appendToLog("--------- Starting game with Launcher Debug!");
+        Logger.appendToLog("Info: DURBIN auto renderer final: " + renderer);
         Tools.printLauncherInfo(versionId, instance.getLaunchArgs(), renderer);
         JREUtils.redirectAndPrintJRELog();
         GameRunner.launchMinecraft(this, minecraftAccount, instance, versionId, classpath, renderer);

@@ -126,7 +126,7 @@ fun ProfileTypeSelectScreen(
                 item {
                     ProfileTypeButton(
                         text = "Create DURBIN Client",
-                        subtitle = "Recommended: Fabric profile for DURBIN mod mode",
+                        subtitle = "Start with Fabric + bundled DURBIN mods",
                         icon = Icons.Rounded.PlayArrow,
                         featured = true,
                         onClick = onFabricClick
@@ -271,7 +271,7 @@ private fun DurbinCreateHero(onFabricClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("DURBIN Client Mode", fontWeight = FontWeight.Black, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    "Create a Fabric-based profile for FPS HUD, keystrokes, crosshair, and future DURBIN modules.",
+                    "Start with Fabric. DURBIN will auto-copy the correct 1.20.1 / 1.21.11 mods into this profile.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                     maxLines = 2,

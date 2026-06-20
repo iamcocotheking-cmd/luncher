@@ -22,6 +22,10 @@
       "admins": {
         ".read": "auth != null",
         ".write": "root.child('durbin/admins').child(auth.uid).val() === true"
+      },
+      "modpacks": {
+        ".read": true,
+        ".write": "root.child('durbin/admins').child(auth.uid).val() === true"
       }
     }
   }

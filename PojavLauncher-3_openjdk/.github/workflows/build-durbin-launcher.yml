@@ -26,10 +26,10 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Set up Gradle 8.11.1
+      - name: Set up Gradle 8.14.3
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.11.1"
+          gradle-version: "8.14.3"
 
       - name: Locate project
         shell: bash
@@ -40,257 +40,14 @@ jobs:
             echo "PROJECT_DIR=." >> "$GITHUB_ENV"
           else
             echo "ERROR: Gradle project not found"
-            find . -maxdepth 4 -name build.gradle -print
+            find . -maxdepth 3 -name build.gradle -print
             exit 1
           fi
-
-      - name: Patch missing source files and safe Firebase versions
-        shell: bash
-        run: |
-          set -e
-          cd "$PROJECT_DIR"
-
-          mkdir -p forge_installer/src/main/java/git/artdeell/installer_agent
-          cat > forge_installer/src/main/java/git/artdeell/installer_agent/ComponentFilter.java <<'JAVA'
-          package git.artdeell.installer_agent;
-
-          import java.awt.Component;
-
-          public interface ComponentFilter {
-              boolean checkComponent(Component component);
-          }
-          JAVA
-
-          cat > forge_installer/src/main/java/git/artdeell/installer_agent/ComponentTimeoutTask.java <<'JAVA'
-          package git.artdeell.installer_agent;
-
-          import java.util.TimerTask;
-
-          public class ComponentTimeoutTask extends TimerTask {
-              @Override
-              public void run() {
-                  System.out.println("Initialization timed out!");
-                  System.exit(17);
-              }
-          }
-          JAVA
-
-          cat > forge_installer/src/main/java/git/artdeell/installer_agent/MainWindowFilter.java <<'JAVA'
-          package git.artdeell.installer_agent;
-
-          import java.awt.Component;
-          import javax.swing.JButton;
-          import javax.swing.JRadioButton;
-          import javax.swing.JTextField;
-
-          public class MainWindowFilter implements ComponentFilter {
-              @Override
-              public boolean checkComponent(Component component) {
-                  return component instanceof JRadioButton
-                          || component instanceof JTextField
-                          || component instanceof JButton;
-              }
-          }
-          JAVA
-
-          cat > forge_installer/src/main/java/git/artdeell/installer_agent/DialogFilter.java <<'JAVA'
-          package git.artdeell.installer_agent;
-
-          import java.awt.Component;
-          import javax.swing.JOptionPane;
-          import javax.swing.JProgressBar;
-
-          public class DialogFilter implements ComponentFilter {
-              @Override
-              public boolean checkComponent(Component component) {
-                  return component instanceof JOptionPane
-                          || component instanceof JProgressBar;
-              }
-          }
-          JAVA
-
-          mkdir -p app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/modloaders
-
-          cat > app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/modloaders/FabricVersion.java <<'JAVA'
-          package net.kdt.pojavlaunch.modloaders;
-
-          import androidx.annotation.NonNull;
-
-          public class FabricVersion {
-              public String version;
-              public boolean stable;
-
-              public static class LoaderDescriptor extends FabricVersion {
-                  public FabricVersion loader;
-
-                  @NonNull
-                  @Override
-                  public String toString() {
-                      return loader != null ? loader.toString() : "null";
-                  }
-              }
-
-              @NonNull
-              @Override
-              public String toString() {
-                  return version;
-              }
-          }
-          JAVA
-
-          cat > app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/modloaders/ModloaderDownloadListener.java <<'JAVA'
-          package net.kdt.pojavlaunch.modloaders;
-
-          import java.io.File;
-
-          public interface ModloaderDownloadListener {
-              void onDownloadFinished(File downloadedFile);
-              void onDataNotAvailable();
-              void onDownloadError(Exception e);
-          }
-          JAVA
-
-          cat > app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/modloaders/ModloaderListenerProxy.java <<'JAVA'
-          package net.kdt.pojavlaunch.modloaders;
-
-          import java.io.File;
-
-          public class ModloaderListenerProxy implements ModloaderDownloadListener {
-              public static final int PROXY_RESULT_NONE = -1;
-              public static final int PROXY_RESULT_FINISHED = 0;
-              public static final int PROXY_RESULT_NOT_AVAILABLE = 1;
-              public static final int PROXY_RESULT_ERROR = 2;
-
-              private ModloaderDownloadListener mDestinationListener;
-              private Object mProxyResultObject;
-              private int mProxyResult = PROXY_RESULT_NONE;
-
-              @Override
-              public synchronized void onDownloadFinished(File downloadedFile) {
-                  if (mDestinationListener != null) {
-                      mDestinationListener.onDownloadFinished(downloadedFile);
-                  } else {
-                      mProxyResult = PROXY_RESULT_FINISHED;
-                      mProxyResultObject = downloadedFile;
-                  }
-              }
-
-              @Override
-              public synchronized void onDataNotAvailable() {
-                  if (mDestinationListener != null) {
-                      mDestinationListener.onDataNotAvailable();
-                  } else {
-                      mProxyResult = PROXY_RESULT_NOT_AVAILABLE;
-                      mProxyResultObject = null;
-                  }
-              }
-
-              @Override
-              public synchronized void onDownloadError(Exception e) {
-                  if (mDestinationListener != null) {
-                      mDestinationListener.onDownloadError(e);
-                  } else {
-                      mProxyResult = PROXY_RESULT_ERROR;
-                      mProxyResultObject = e;
-                  }
-              }
-
-              public synchronized void attachListener(ModloaderDownloadListener listener) {
-                  if (listener == null) return;
-                  switch (mProxyResult) {
-                      case PROXY_RESULT_FINISHED:
-                          listener.onDownloadFinished((File) mProxyResultObject);
-                          break;
-                      case PROXY_RESULT_NOT_AVAILABLE:
-                          listener.onDataNotAvailable();
-                          break;
-                      case PROXY_RESULT_ERROR:
-                          listener.onDownloadError((Exception) mProxyResultObject);
-                          break;
-                      default:
-                          break;
-                  }
-                  mDestinationListener = listener;
-              }
-
-              public synchronized void detachListener() {
-                  mDestinationListener = null;
-              }
-          }
-          JAVA
-
-          # Avoid Kotlin metadata mismatch from newest Firebase BOM with this project Kotlin.
-          python3 <<'PY'
-          from pathlib import Path
-          p = Path("app_pojavlauncher/build.gradle")
-          s = p.read_text(encoding="utf-8")
-
-          lines = []
-          for line in s.splitlines():
-              if "com.google.firebase:firebase-bom" in line:
-                  continue
-              if "com.google.firebase:firebase-database" in line:
-                  lines.append("    implementation 'com.google.firebase:firebase-database:21.0.0'")
-                  continue
-              if "com.google.firebase:firebase-auth" in line:
-                  lines.append("    implementation 'com.google.firebase:firebase-auth:23.1.0'")
-                  continue
-              if "com.google.android.gms:play-services-auth" in line:
-                  lines.append("    implementation 'com.google.android.gms:play-services-auth:21.2.0'")
-                  continue
-              lines.append(line)
-
-          out = "\n".join(lines) + "\n"
-          if "com.google.firebase:firebase-database" not in out:
-              out = out.replace("dependencies {", "dependencies {\n    implementation 'com.google.firebase:firebase-database:21.0.0'\n    implementation 'com.google.firebase:firebase-auth:23.1.0'\n    implementation 'com.google.android.gms:play-services-auth:21.2.0'", 1)
-          p.write_text(out, encoding="utf-8")
-
-          gp = Path("gradle.properties")
-          gps = gp.read_text(encoding="utf-8") if gp.exists() else ""
-          if "android.useAndroidX=true" not in gps:
-              gps += "\nandroid.useAndroidX=true\n"
-          if "android.enableJetifier=true" not in gps:
-              gps += "android.enableJetifier=true\n"
-          gp.write_text(gps, encoding="utf-8")
-          PY
-
-
-          # Fix Android resource linking error:
-          # resource dimen/padding_tiny not found
-          mkdir -p app_pojavlauncher/src/main/res/values
-          mkdir -p app_pojavlauncher/src/main/res/drawable
-
-          if ! grep -Rqs 'name="padding_tiny"' app_pojavlauncher/src/main/res/values; then
-            cat > app_pojavlauncher/src/main/res/values/durbin_missing_dimens.xml <<'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <dimen name="padding_tiny">4dp</dimen>
-          </resources>
-          XML
-          fi
-
-          # Fix warning: drawable/ic_social_media has no default value
-          if [ ! -f app_pojavlauncher/src/main/res/drawable/ic_social_media.xml ]; then
-            cat > app_pojavlauncher/src/main/res/drawable/ic_social_media.xml <<'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="24dp"
-              android:height="24dp"
-              android:viewportWidth="24"
-              android:viewportHeight="24">
-              <path
-                  android:fillColor="@android:color/white"
-                  android:pathData="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.86L8.91,12.71C8.96,12.48 9,12.24 9,12C9,11.76 8.96,11.52 8.91,11.29L15.96,7.18C16.5,7.68 17.21,8 18,8C19.66,8 21,6.66 21,5C21,3.34 19.66,2 18,2C16.34,2 15,3.34 15,5C15,5.24 15.04,5.48 15.09,5.71L8.04,9.82C7.5,9.32 6.79,9 6,9C4.34,9 3,10.34 3,12C3,13.66 4.34,15 6,15C6.79,15 7.5,14.68 8.04,14.18L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.92 18,21.92C19.61,21.92 20.92,20.61 20.92,19C20.92,17.39 19.61,16.08 18,16.08Z" />
-          </vector>
-          XML
-          fi
-
-          echo "Patch done."
 
       - name: Source sanity check
         shell: bash
         run: |
-          echo "Checking for real merge conflict markers..."
+          echo "Checking for real merge conflict markers only..."
           if grep -RInI -E '^(<<<<<<<|=======|>>>>>>>)( |$)' \
             --exclude-dir=.git \
             --exclude-dir=.gradle \
@@ -299,9 +56,10 @@ jobs:
             --exclude='*.so' \
             --exclude='*.jar' \
             --exclude='*.png' \
+            --exclude='*.webp' \
             --exclude='*.jpg' \
             --exclude='*.jpeg' \
-            --exclude='*.webp' \
+            --exclude='*.zip' \
             . ; then
             echo "ERROR: real merge conflict markers found"
             exit 1
@@ -311,12 +69,6 @@ jobs:
         shell: bash
         run: |
           cd "$PROJECT_DIR"
-                    echo "DURBIN V39 JDK/Kotlin safety"
-          export JAVA_HOME="${JAVA_HOME_21_X64:-$JAVA_HOME}"
-          export JDK_HOME="$JAVA_HOME"
-          export GRADLE_OPTS="-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
-          echo "JAVA_HOME=$JAVA_HOME"
-          echo "JDK_HOME=$JDK_HOME"
           gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace
 
       - name: Collect APK

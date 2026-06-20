@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "durbin": {
+      "modLinks": {
+        ".read": true,
+        ".write": "auth != null && root.child('durbin/admins').child(auth.uid).val() === true"
+      }
+    }
+  }
+}

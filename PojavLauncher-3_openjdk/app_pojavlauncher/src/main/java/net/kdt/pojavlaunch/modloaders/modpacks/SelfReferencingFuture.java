@@ -1,22 +1,40 @@
 package net.kdt.pojavlaunch.modloaders.modpacks;
 
+import android.util.Log;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public class SelfReferencingFuture {
-    public interface FutureInterface {
-        void run(Future<?> self);
+    private final Object mFutureLock = new Object();
+    private final FutureInterface mFutureInterface;
+    private Future<?> mMyFuture;
+
+    public SelfReferencingFuture(FutureInterface futureInterface) {
+        this.mFutureInterface = futureInterface;
     }
 
-    private final FutureInterface task;
-    private Future<?> future;
-
-    public SelfReferencingFuture(FutureInterface task) {
-        this.task = task;
-    }
-
-    public Future<?> startOnExecutor(ExecutorService executor) {
-        future = executor.submit(() -> task.run(future));
+    public Future<?> startOnExecutor(ExecutorService executorService) {
+        Future<?> future = executorService.submit(this::run);
+        synchronized (mFutureLock) {
+            mMyFuture = future;
+            mFutureLock.notify();
+        }
         return future;
+    }
+
+    private void run() {
+        try {
+            synchronized (mFutureLock) {
+                if (mMyFuture == null) mFutureLock.wait();
+            }
+            mFutureInterface.run(mMyFuture);
+        }catch (InterruptedException e) {
+            Log.i("SelfReferencingFuture", "Interrupted while acquiring own Future");
+        }
+    }
+
+    public interface FutureInterface {
+        void run(Future<?> myFuture);
     }
 }

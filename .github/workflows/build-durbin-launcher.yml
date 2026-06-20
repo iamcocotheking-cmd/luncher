@@ -316,7 +316,7 @@ jobs:
         shell: bash
         run: |
           cd "$PROJECT_DIR"
-                    echo "DURBIN V37 JDK/Kotlin memory safety"
+                    echo "DURBIN V39 JDK/Kotlin safety"
           export JAVA_HOME="${JAVA_HOME_21_X64:-$JAVA_HOME}"
           export JDK_HOME="$JAVA_HOME"
           export GRADLE_OPTS="-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"

@@ -372,9 +372,11 @@ dependencies {
 }
 
 
-// DURBIN V35 Kotlin compile memory guard
+// DURBIN V39 safe Kotlin target
+// Do NOT use -Xjdk-release here; it can fail on GitHub runners with:
+// "JDK_HOME path is not specified in compiler configuration"
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
     kotlinOptions {
-        freeCompilerArgs += ["-Xjdk-release=17"]
+        jvmTarget = "17"
     }
 }

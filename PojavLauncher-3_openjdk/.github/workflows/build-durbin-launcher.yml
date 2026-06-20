@@ -311,9 +311,12 @@ jobs:
         shell: bash
         run: |
           cd "$PROJECT_DIR"
-          echo "DURBIN V35 memory safety"
-          export GRADLE_OPTS="-Xmx6144m -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
-          export JAVA_TOOL_OPTIONS="-Xmx6144m -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
+                    echo "DURBIN V37 JDK/Kotlin memory safety"
+          export JAVA_HOME="${JAVA_HOME_21_X64:-$JAVA_HOME}"
+          export JDK_HOME="$JAVA_HOME"
+          export GRADLE_OPTS="-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8 -XX:+UseParallelGC"
+          echo "JAVA_HOME=$JAVA_HOME"
+          echo "JDK_HOME=$JDK_HOME"
           gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace
 
       - name: Collect APK

@@ -339,35 +339,40 @@ jobs:
             git clone --depth 1 https://github.com/MojoLauncher/glfw dnbglfw/src/main/cpp/glfw
           fi
           test -f dnbglfw/src/main/cpp/glfw/CMakeLists.txt
-
+          echo "DURBIN V48 native source sanity"
+          echo "Check GLFW folder:"
+          ls -la dnbglfw/src/main/cpp || true
+          if [ -d "dnbglfw/src/main/cpp/glfw" ]; then
+            ls -la dnbglfw/src/main/cpp/glfw | head -40 || true
+          else
+            echo "::warning title=GLFW missing before build::dnbglfw/src/main/cpp/glfw is missing"
+          fi
+          echo "===== DURBIN BUILD START ====="
           set +e
-
-
           gradle :app_pojavlauncher:assembleFullDebug --no-daemon --stacktrace 2>&1 | tee durbin-build-full.log
-
-
           BUILD_EXIT=${PIPESTATUS[0]}
-
-
-          echo "===== DURBIN SHORT ERROR =====" > DURBIN_SHORT_ERROR.txt
-
-
-          grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments" durbin-build-full.log >> DURBIN_SHORT_ERROR.txt || true
-
-
-          echo "" >> DURBIN_SHORT_ERROR.txt
-
-
-          echo "===== LAST 180 LINES =====" >> DURBIN_SHORT_ERROR.txt
-
-
-          tail -n 180 durbin-build-full.log >> DURBIN_SHORT_ERROR.txt
-
-
-          echo "Short error saved to DURBIN_SHORT_ERROR.txt"
-
-
-          exit $BUILD_EXIT
+          echo "===== DURBIN SHORT ERROR START ====="
+          grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments|BUILD FAILED" durbin-build-full.log || true
+          echo "===== DURBIN LAST 220 LINES START ====="
+          tail -n 220 durbin-build-full.log
+          echo "===== DURBIN LAST 220 LINES END ====="
+          {
+            echo "## DURBIN short build error"
+            echo ""
+            echo "### Important error lines"
+            echo "```text"
+            grep -n -E "FAILED|What went wrong|Execution failed|CMake Error|error:|Cannot find|add_subdirectory|No SOURCES|Duplicate resources|Invalid workflow|JDK_HOME|Not enough memory|Multiple arguments|BUILD FAILED" durbin-build-full.log || true
+            echo "```"
+            echo ""
+            echo "### Last 220 lines"
+            echo "```text"
+            tail -n 220 durbin-build-full.log
+            echo "```"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$BUILD_EXIT" -ne 0 ]; then
+            echo "::error title=DURBIN build failed::Open this step and search DURBIN SHORT ERROR START. No artifact is needed."
+            exit $BUILD_EXIT
+          fi
 
       - name: Collect APK
         shell: bash
@@ -391,6 +396,7 @@ jobs:
           retention-days: 1
 
       - name: Upload APK to GitHub Release fallback
+        continue-on-error: true
         if: always()
         shell: bash
         env:
@@ -404,13 +410,3 @@ jobs:
           TAG="durbin-build-${GITHUB_RUN_NUMBER}"
           TITLE="DURBIN Launcher Build ${GITHUB_RUN_NUMBER}"
           gh release create "$TAG" "$APK_PATH" --title "$TITLE" --notes "Auto-built DURBIN Launcher APK." --latest=false || gh release upload "$TAG" "$APK_PATH" --clobber
-
-      - name: Upload DURBIN short error log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: DURBIN-short-error-log
-          path: |
-            PojavLauncher-3_openjdk/DURBIN_SHORT_ERROR.txt
-            PojavLauncher-3_openjdk/durbin-build-full.log
-          if-no-files-found: ignore

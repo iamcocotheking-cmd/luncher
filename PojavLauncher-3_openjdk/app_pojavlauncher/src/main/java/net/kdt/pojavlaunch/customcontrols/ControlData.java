@@ -198,6 +198,10 @@ public class ControlData {
     /**
      * Create a builder, keep a weak reference to it to use it with all views on first inflation
      */
+    private static void buildExpressionBuilder() {
+        buildExpressionBuilder("1 + 1");
+    }
+
     private static void buildExpressionBuilder(String stringExpression) {
         ExpressionBuilder expressionBuilder = new ExpressionBuilder(stringExpression)
                 .function(new Function("dp", 1) {

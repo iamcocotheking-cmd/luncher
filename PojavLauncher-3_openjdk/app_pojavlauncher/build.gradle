@@ -353,6 +353,8 @@ dependencies {
     implementation 'androidx.compose.material:material-icons-extended'
     implementation 'net.sourceforge.streamsupport:streamsupport-cfuture:1.7.4'
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+    implementation 'org.apache.commons:commons-compress:1.26.2'
+    implementation 'net.objecthunter:exp4j:0.4.8'
     implementation 'com.google.firebase:firebase-database:21.0.0'
     implementation 'com.google.firebase:firebase-auth:23.1.0'
     implementation 'com.google.android.gms:play-services-auth:21.2.0'

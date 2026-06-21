@@ -140,22 +140,15 @@
     <attr name="seekBarPreferenceStyle" format="reference|string|integer|boolean|color|dimension"/>
     <attr name="state_activated" format="reference|string|integer|boolean|color|dimension"/>
     <declare-styleable name="CustomSeekbar_android">
-        <attr name="min" format="reference|string|integer|boolean|color|dimension"/>
-    </declare-styleable>
+            </declare-styleable>
     <declare-styleable name="CustomSeekbar_android_min">
-        <attr name="dummy" format="integer"/>
-    </declare-styleable>
+            </declare-styleable>
     <declare-styleable name="CustomSeekbar_seekBarIncrement">
-        <attr name="dummy" format="integer"/>
-    </declare-styleable>
+            </declare-styleable>
     <declare-styleable name="SeekBarPreference">
-        <attr name="min" format="reference|string|integer|boolean|color|dimension"/>
-        <attr name="seekBarIncrement" format="reference|string|integer|boolean|color|dimension"/>
-    </declare-styleable>
+                    </declare-styleable>
     <declare-styleable name="SeekBarPreference_min">
-        <attr name="dummy" format="integer"/>
-    </declare-styleable>
+            </declare-styleable>
     <declare-styleable name="SeekBarPreference_seekBarIncrement">
-        <attr name="dummy" format="integer"/>
-    </declare-styleable>
+            </declare-styleable>
 </resources>

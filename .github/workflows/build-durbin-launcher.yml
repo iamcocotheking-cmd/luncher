@@ -406,26 +406,56 @@ jobs:
           PY
 
 
-      - name: V38 duplicate resource cleanup
+      - name: V44 duplicate fallback cleanup
         shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
           import re
-
           root = Path("PojavLauncher-3_openjdk")
           if not root.exists():
               root = Path(".")
-
           res = root / "app_pojavlauncher/src/main/res"
           drawable = res / "drawable"
           values = res / "values"
-
-          print("========== V38 DUPLICATE RESOURCE CLEANUP ==========")
-
-          # Android treats icon.png and icon.xml as the same @drawable/icon.
-          # If a real image exists, delete fallback XML with the same basename.
-          removed = []
+          print("========== V44 DUPLICATE FALLBACK CLEANUP ==========")
+          def remove_duplicate_ids():
+              seen = {}
+              fallback_files = sorted([p for p in values.glob("*.xml") if p.name.startswith("durbin_")])
+              real_files = sorted([p for p in values.glob("*.xml") if not p.name.startswith("durbin_")])
+              patterns = [
+                  r'\n\s*<item[^>]*type="id"[^>]*name="{name}"[^>]*/>',
+                  r'\n\s*<item[^>]*name="{name}"[^>]*type="id"[^>]*/>',
+              ]
+              for vf in real_files:
+                  txt = vf.read_text(encoding="utf-8", errors="ignore")
+                  ids = set(re.findall(r'<item[^>]*type="id"[^>]*name="([^"]+)"[^>]*/?>', txt))
+                  ids.update(re.findall(r'<item[^>]*name="([^"]+)"[^>]*type="id"[^>]*/?>', txt))
+                  for name in ids:
+                      seen.setdefault(name, vf)
+              removed = []
+              for vf in fallback_files:
+                  txt = vf.read_text(encoding="utf-8", errors="ignore")
+                  ids = list(re.findall(r'<item[^>]*type="id"[^>]*name="([^"]+)"[^>]*/?>', txt))
+                  ids += list(re.findall(r'<item[^>]*name="([^"]+)"[^>]*type="id"[^>]*/?>', txt))
+                  before = txt
+                  local_seen = set()
+                  for name in ids:
+                      if name in seen or name in local_seen:
+                          for pat in patterns:
+                              txt = re.sub(pat.format(name=re.escape(name)), '', txt)
+                          removed.append(f"id/{name} from {vf.relative_to(root)}")
+                      else:
+                          local_seen.add(name)
+                  # after keeping first local ids, add them to global seen
+                  for name in local_seen:
+                      seen.setdefault(name, vf)
+                  if txt != before:
+                      txt = re.sub(r'\n\s*\n\s*\n+', '\n', txt)
+                      vf.write_text(txt, encoding="utf-8")
+              return removed
+          removed_ids = remove_duplicate_ids()
+          removed_drawables = []
           image_exts = {".png", ".webp", ".jpg", ".jpeg"}
           for folder in [drawable] + sorted(res.glob("drawable-*")):
               if not folder.exists():
@@ -439,44 +469,9 @@ jobs:
                   if has_real_image:
                       for f in files:
                           if f.suffix.lower() == ".xml":
-                              removed.append(str(f.relative_to(root)))
+                              removed_drawables.append(str(f.relative_to(root)))
                               f.unlink()
-
-          # Do not let generated fallback value files redefine IDs already defined in real project values.
-          real_defined_ids = set()
-          fallback_files = []
-          for vf in values.glob("*.xml"):
-              if vf.name.startswith("durbin_"):
-                  fallback_files.append(vf)
-                  continue
-              txt = vf.read_text(encoding="utf-8", errors="ignore")
-              real_defined_ids.update(re.findall(r'<item[^>]*type="id"[^>]*name="([^"]+)"[^>]*/?>', txt))
-              real_defined_ids.update(re.findall(r'<item[^>]*name="([^"]+)"[^>]*type="id"[^>]*/?>', txt))
-
-          for vf in fallback_files:
-              txt = vf.read_text(encoding="utf-8", errors="ignore")
-              before = txt
-              for name in sorted(real_defined_ids):
-                  txt = re.sub(r'\n\s*<item[^>]*type="id"[^>]*name="' + re.escape(name) + r'"[^>]*/>', '', txt)
-                  txt = re.sub(r'\n\s*<item[^>]*name="' + re.escape(name) + r'"[^>]*type="id"[^>]*/>', '', txt)
-              if txt != before:
-                  vf.write_text(txt, encoding="utf-8")
-                  print("Cleaned duplicate IDs from", vf.relative_to(root))
-
-          # Final duplicate scan for drawable/id resources that would fail mergeResources.
           dupes = []
-          for typ_dir in [drawable] + sorted(res.glob("drawable-*")):
-              if not typ_dir.exists():
-                  continue
-              seen = {}
-              for f in typ_dir.iterdir():
-                  if f.is_file():
-                      seen.setdefault(f.stem, []).append(f.name)
-              for name, files in seen.items():
-                  if len(files) > 1:
-                      dupes.append(f"{typ_dir.relative_to(root)}/{name}: {files}")
-
-          # Check duplicate id items across all values xml.
           id_owner = {}
           for vf in values.glob("*.xml"):
               txt = vf.read_text(encoding="utf-8", errors="ignore")
@@ -487,15 +482,24 @@ jobs:
                       dupes.append(f"id/{name}: {id_owner[name].relative_to(root)} and {vf.relative_to(root)}")
                   else:
                       id_owner[name] = vf
-
-          print("Removed duplicate drawable XML files:", removed)
+          for typ_dir in [drawable] + sorted(res.glob("drawable-*")):
+              if not typ_dir.exists():
+                  continue
+              seen = {}
+              for f in typ_dir.iterdir():
+                  if f.is_file():
+                      seen.setdefault(f.stem, []).append(f.name)
+              for name, files in seen.items():
+                  if len(files) > 1:
+                      dupes.append(f"{typ_dir.relative_to(root)}/{name}: {files}")
+          print("Removed duplicate fallback IDs:", len(removed_ids))
+          print("Removed duplicate drawable XML files:", removed_drawables)
           if dupes:
               print("Duplicate resources still found:")
-              print("\n".join(dupes[:80]))
+              print("\n".join(dupes[:120]))
               raise SystemExit(1)
           print("No duplicate drawable/id resources detected")
           PY
-
 
       - name: V41 dnbglfw GLFW preflight
         shell: bash

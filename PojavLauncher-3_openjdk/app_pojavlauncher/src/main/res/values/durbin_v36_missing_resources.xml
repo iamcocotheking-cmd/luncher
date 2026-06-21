@@ -1,9 +1,7 @@
 <resources>
     <dimen name="_22sdp">22dp</dimen>
-    <dimen name="_50sdp">50dp</dimen>
-    <dimen name="_184sdp">184dp</dimen>
-    <dimen name="_280sdp">280dp</dimen>
-    <item type="id" name="account_item" />
+        <dimen name="_184sdp">184dp</dimen>
+        <item type="id" name="account_item" />
     <item type="id" name="awt_touch_char" />
     <item type="id" name="color_selector_alpha_view" />
     <item type="id" name="color_selector_color_view" />

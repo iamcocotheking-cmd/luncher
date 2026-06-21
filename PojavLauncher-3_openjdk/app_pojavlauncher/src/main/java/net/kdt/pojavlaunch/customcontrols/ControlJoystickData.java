@@ -1,21 +1,22 @@
 package net.kdt.pojavlaunch.customcontrols;
 
-import androidx.annotation.Keep;
-
-@Keep
 public class ControlJoystickData extends ControlData {
-    public boolean forwardLock;
-    public boolean absolute;
 
-    public ControlJoystickData() {
-        super("Joystick", new int[]{}, "${margin}", "${bottom} - ${margin}", 90, 90, false);
-        this.forwardLock = true;
-        this.absolute = false;
+    /* Whether the joystick can stay forward */
+    public boolean forwardLock = false;
+    /*
+     * Whether the finger tracking is absolute (joystick jumps to where you touched)
+     * or relative (joystick stays in the center)
+     */
+    public boolean absolute = false;
+
+    public ControlJoystickData(){
+        super();
     }
 
-    public ControlJoystickData(ControlJoystickData data) {
-        super(data);
-        this.forwardLock = data.forwardLock;
-        this.absolute = data.absolute;
+    public ControlJoystickData(ControlJoystickData properties) {
+        super(properties);
+        forwardLock = properties.forwardLock;
+        absolute = properties.absolute;
     }
 }

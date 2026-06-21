@@ -97,13 +97,12 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix '.debug'
             minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.customDebug
-            resValue 'string', 'application_package', 'net.ashmeet.hyperlauncher.debug'
-            resValue 'string', 'storageProviderAuthorities', 'net.ashmeet.hyperlauncher.scoped.gamefolder.debug'
+            resValue 'string', 'application_package', 'net.ashmeet.hyperlauncher'
+            resValue 'string', 'storageProviderAuthorities', 'net.ashmeet.hyperlauncher.scoped.gamefolder'
         }
 
         release {
@@ -350,10 +349,10 @@ dependencies {
     implementation 'androidx.compose.ui:ui-tooling'
     implementation 'androidx.compose.material:material-icons-extended'
     implementation 'net.sourceforge.streamsupport:streamsupport-cfuture:1.7.4'
-    // V47: keep local jars from app_pojavlauncher/libs only; do not also add Maven Gson/exp4j/commons-io/commons-compress.
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
-    implementation 'com.google.firebase:firebase-database:21.0.0'
-    implementation 'com.google.firebase:firebase-auth:23.1.0'
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-database'
+    implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.android.gms:play-services-auth:21.2.0'
     implementation 'androidx.lifecycle:lifecycle-process:2.8.7'
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3'

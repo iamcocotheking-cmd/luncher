@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "364017714123",
+    "firebase_url": "https://durbin-f317c-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "durbin-f317c",
     "storage_bucket": "durbin-f317c.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "net.ashmeet.hyperlauncher"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "364017714123-sfg8rhurhi5qelbgj7n1lksn2ubggr1g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "net.ashmeet.hyperlauncher",
+            "certificate_hash": "17d6f8a1a38eb2efb7b2c7a775999cf40d468410"
+          }
+        },
+        {
+          "client_id": "364017714123-ek04bla6s4sckbk4p11lug7r5rbpfgv8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAMqOjyUyTWRcPmRnv_tfEdcQq6fO-ucqw"
@@ -20,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "364017714123-ek04bla6s4sckbk4p11lug7r5rbpfgv8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

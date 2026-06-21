@@ -1,15 +1,12 @@
-#pragma once
+//
+// Created by maks on 15.01.2025.
+//
 
-#include <jni.h>
+#ifndef POJAVLAUNCHER_STDIO_IS_H
+#define POJAVLAUNCHER_STDIO_IS_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdbool.h>
 
-JNIEXPORT void JNICALL Java_net_kdt_pojavlaunch_Logger_begin(JNIEnv *env, jclass clazz, jstring logPath);
-JNIEXPORT void JNICALL Java_net_kdt_pojavlaunch_Logger_appendToLog(JNIEnv *env, jclass clazz, jstring text);
-JNIEXPORT void JNICALL Java_net_kdt_pojavlaunch_Logger_setLogListener(JNIEnv *env, jclass clazz, jobject log_listener);
+_Noreturn void nominal_exit(int code, bool is_signal);
 
-#ifdef __cplusplus
-}
-#endif
+#endif //POJAVLAUNCHER_STDIO_IS_H

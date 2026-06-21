@@ -37,14 +37,6 @@ import net.kdt.pojavlaunch.customcontrols.keyboard.TouchCharInput
 import net.kdt.pojavlaunch.customcontrols.mouse.HotbarView
 import net.kdt.pojavlaunch.prefs.LauncherPreferences
 import net.kdt.pojavlaunch.ui.theme.PojavTheme
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 
 @Composable
 fun BaseMainScreen(
@@ -181,7 +173,57 @@ fun BaseMainScreen(
             }
         }
 
-        // DURBIN V28: sidebar/navigation rail removed for cleaner and faster gameplay screen.
+        if (drawerState.isOpen) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(scrimColor.copy(alpha = 0.32f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            isRailExpanded = false
+                            onDismissMenu()
+                        }
+                    )
+            )
+        }
+
+        AnimatedVisibility(
+            visible = drawerState.isOpen,
+            enter = slideInHorizontally(initialOffsetX = { -it }) + fadeIn(),
+            exit = slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.CenterStart)
+        ) {
+            NavigationRail(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(railWidth),
+                containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.94f),
+                header = {
+                    IconButton(onClick = { isRailExpanded = !isRailExpanded }) {
+                        Icon(
+                            imageVector = if (isRailExpanded)
+                                Icons.AutoMirrored.Filled.KeyboardArrowLeft
+                            else
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Expand menu",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    drawerContent(isRailExpanded)
+                }
+            }
+        }
 
         AnimatedVisibility(
             visible = loadingVisible,
@@ -191,7 +233,7 @@ fun BaseMainScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(scrimColor.copy(alpha = 0.34f))
+                    .background(scrimColor.copy(alpha = 0.5f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -201,14 +243,16 @@ fun BaseMainScreen(
             ) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
+                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.90f),
                     tonalElevation = 8.dp,
                     modifier = Modifier.padding(24.dp)
                 ) {
                     Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        DurbinSpiralLoader(
-                            modifier = Modifier.size(54.dp),
-                            color = primaryColor
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(48.dp),
+                            color = primaryColor,
+                            trackColor = primaryColor.copy(alpha = 0.2f),
+                            strokeWidth = 4.dp
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
@@ -229,49 +273,6 @@ fun BaseMainScreen(
         }
     }
 }
-
-
-@Composable
-private fun DurbinSpiralLoader(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary
-) {
-    val transition = rememberInfiniteTransition(label = "durbinSpiralLoader")
-    val rotation by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900, easing = LinearEasing)
-        ),
-        label = "durbinSpiralRotation"
-    )
-
-    Canvas(modifier = modifier.rotate(rotation)) {
-        val stroke = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
-        drawArc(
-            color = color.copy(alpha = 0.20f),
-            startAngle = 0f,
-            sweepAngle = 360f,
-            useCenter = false,
-            style = stroke
-        )
-        drawArc(
-            color = color,
-            startAngle = -90f,
-            sweepAngle = 280f,
-            useCenter = false,
-            style = stroke
-        )
-        drawArc(
-            color = Color.White.copy(alpha = 0.82f),
-            startAngle = 220f,
-            sweepAngle = 58f,
-            useCenter = false,
-            style = stroke
-        )
-    }
-}
-
 
 @Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
 @Composable

@@ -1,16 +1,14 @@
-#pragma once
+//
+// Created by maks on 23.01.2025.
+//
+
+#ifndef POJAVLAUNCHER_JVM_HOOKS_H
+#define POJAVLAUNCHER_JVM_HOOKS_H
 
 #include <jni.h>
-#include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void hookExec(JNIEnv *env);
-void installLwjglDlopenHook(JNIEnv *env);
 void installEMUIIteratorMititgation(JNIEnv *env);
+void installLwjglDlopenHook(JNIEnv *env);
+void hookExec(JNIEnv *env);
 
-#ifdef __cplusplus
-}
-#endif
+#endif //POJAVLAUNCHER_JVM_HOOKS_H

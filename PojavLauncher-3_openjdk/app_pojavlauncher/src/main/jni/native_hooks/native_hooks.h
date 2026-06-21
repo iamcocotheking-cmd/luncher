@@ -1,14 +1,15 @@
-#pragma once
+//
+// Created by maks on 23.01.2025.
+//
 
-#include <jni.h>
-#include <stdbool.h>
+#ifndef POJAVLAUNCHER_NATIVE_HOOKS_H
+#define POJAVLAUNCHER_NATIVE_HOOKS_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <bytehook.h>
 
-void installExitHook(JNIEnv *env);
+typedef bytehook_stub_t (*bytehook_hook_all_t)(const char *callee_path_name, const char *sym_name, void *new_func,
+                                               bytehook_hooked_t hooked, void *hooked_arg);
 
-#ifdef __cplusplus
-}
-#endif
+void create_chmod_hooks(bytehook_hook_all_t bytehook_hook_all_p);
+
+#endif //POJAVLAUNCHER_NATIVE_HOOKS_H

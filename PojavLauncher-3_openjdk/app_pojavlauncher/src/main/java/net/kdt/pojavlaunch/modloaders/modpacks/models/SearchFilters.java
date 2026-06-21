@@ -1,7 +1,13 @@
 package net.kdt.pojavlaunch.modloaders.modpacks.models;
 
+import org.jetbrains.annotations.Nullable;
+
+/**
+ * Search filters, passed to APIs
+ */
 public class SearchFilters {
     public boolean isModpack;
     public String name;
-    public String mcVersion;
+    @Nullable public String mcVersion;
+
 }

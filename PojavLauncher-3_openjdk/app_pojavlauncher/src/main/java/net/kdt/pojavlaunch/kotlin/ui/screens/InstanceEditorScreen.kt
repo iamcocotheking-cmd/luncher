@@ -145,7 +145,7 @@ fun InstanceEditorScreen(
                                 val bitmap = remember(instanceIcon) { instanceIcon.toBitmap().asImageBitmap() }
                                 Image(bitmap = bitmap, contentDescription = "Instance Icon", modifier = Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Fit)
                             } else {
-                                Icon(painter = painterResource(id = R.drawable.ic_px_java), contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                                Image(painter = painterResource(id = R.drawable.icon), contentDescription = null, modifier = Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Fit)
                             }
                             Box(modifier = Modifier.align(Alignment.BottomEnd).size(24.dp).background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f), RoundedCornerShape(topStart = 8.dp))) {
                                 Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp).align(Alignment.Center), tint = Color.White)

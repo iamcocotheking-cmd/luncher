@@ -104,18 +104,6 @@
     },
     "admins": {
       "PUT_YOUR_FIREBASE_UID_HERE": true
-    },
-    "modpacks": {
-      "1_20_1": {
-        "url": "PASTE_1_20_1_MODPACK_DIRECT_ZIP_LINK_HERE",
-        "version": "1.20.1",
-        "updatedAt": 1797379200000
-      },
-      "1_21_11": {
-        "url": "PASTE_1_21_11_MODPACK_DIRECT_ZIP_LINK_HERE",
-        "version": "1.21.11",
-        "updatedAt": 1797379200000
-      }
     }
   }
 }

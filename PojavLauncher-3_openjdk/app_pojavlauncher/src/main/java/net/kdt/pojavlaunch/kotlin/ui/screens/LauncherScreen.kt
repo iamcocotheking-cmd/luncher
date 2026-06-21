@@ -190,7 +190,7 @@ fun TaskProgressItem(task: TaskProgress) {
             Text(
                 text = task.text,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -407,16 +407,16 @@ fun AccountSelector(
         FilledTonalButton(
             onClick = { expanded = true },
             modifier = Modifier
-                .height(topBarHeight - 8.dp)
+                .height(40.dp)
                 .wrapContentWidth()
-                .padding(horizontal = 4.dp),
-            shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                .padding(horizontal = 3.dp),
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)),
             colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                contentColor = MaterialTheme.colorScheme.onSurface
+                containerColor = Color.Transparent,
+                contentColor = Color.White
             ),
-            contentPadding = PaddingValues(horizontal = 16.dp)
+            contentPadding = PaddingValues(horizontal = 11.dp)
         ) {
             if (currentHead != null) {
                 Image(
@@ -543,8 +543,8 @@ fun TopBarButton(
     isSpecialActive: Boolean = false,
     badgeCount: Int = 0
 ) {
-    val defaultContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-    val activeColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.90f)
+    val defaultContainerColor = Color.Transparent
+    val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
 
     val finalContainerColor = if (isSelected || isSpecialActive) activeColor else defaultContainerColor
 
@@ -552,19 +552,19 @@ fun TopBarButton(
         FilledTonalButton(
             onClick = onClick,
             modifier = Modifier
-                .height(topBarHeight - 16.dp)
-                .padding(horizontal = 4.dp),
-            shape = RoundedCornerShape(12.dp),
+                .height(40.dp)
+                .padding(horizontal = 3.dp),
+            shape = RoundedCornerShape(17.dp),
             colors = ButtonDefaults.filledTonalButtonColors(
                 containerColor = finalContainerColor,
-                contentColor = if (isSelected || isSpecialActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                contentColor = if (isSelected || isSpecialActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
             ),
-            contentPadding = PaddingValues(horizontal = 12.dp)
+            contentPadding = PaddingValues(horizontal = 11.dp)
         ) {
             Icon(
                 painter = painterResource(id = icon),
                 contentDescription = label,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(17.dp)
             )
 
             @Suppress("DEPRECATION")
@@ -578,7 +578,7 @@ fun TopBarButton(
                     @Suppress("DEPRECATION")
                     Text(
                         text = label,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Clip
@@ -623,11 +623,7 @@ fun TopBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(topBarHeight)
-            .background(
-                MaterialTheme.colorScheme.background.copy(
-                    alpha = if (hasBackground) 0.85f else 1f
-                )
-            )
+            .background(Color.Transparent)
     ) {
         Row(
             modifier = Modifier
@@ -668,9 +664,45 @@ fun TopBar(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // DURBIN V48: hide old HyperLauncher top-right tools (Tasks / Files / Installer / Settings).
-            // User asked for clean horizontal launcher only, no old feature access from the home UI.
-            Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .animateContentSize(animationSpec = m3SizeSpec),
+                verticalAlignment = Alignment.CenterVertically) {
+                TopBarButton(
+                    onClick = onProgressClick,
+                    isSelected = isProgressVisible,
+                    isSpecialActive = taskCount > 0 && !isProgressVisible,
+                    badgeCount = taskCount,
+                    icon = R.drawable.ic_px_progress,
+                    label = "Tasks",
+                    topBarHeight = topBarHeight
+                )
+
+                TopBarButton(
+                    onClick = { onCategoryClick(1) },
+                    isSelected = selectedCategory == 1,
+                    icon = R.drawable.ic_px_folder,
+                    label = "Files",
+                    topBarHeight = topBarHeight
+                )
+
+                TopBarButton(
+                    onClick = { onCategoryClick(2) },
+                    isSelected = selectedCategory == 2,
+                    icon = R.drawable.ic_px_download,
+                    label = "Installer",
+                    topBarHeight = topBarHeight
+                )
+
+                TopBarButton(
+                    onClick = { onCategoryClick(3) },
+                    isSelected = selectedCategory == 3,
+                    icon = R.drawable.ic_px_alt_sliders,
+                    label = "Settings",
+                    topBarHeight = topBarHeight
+                )
+            }
         }
     }
 }
@@ -685,7 +717,7 @@ fun LauncherScreen(
 ) {
     val isPreview = LocalInspectionMode.current
     val context = LocalContext.current
-    val topBarHeight = dimensionResource(id = R.dimen._50sdp)
+    val topBarHeight = 46.dp
     val ignoreNotch = remember { if (isPreview) true else LauncherPreferences.PREF_IGNORE_NOTCH }
 
     val backgroundPath = LauncherPreferences.PREF_BACKGROUND_PATH_STATE.value
@@ -1007,7 +1039,7 @@ fun CrynoixLoadingOverlay() {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                painter = painterResource(id = R.drawable.icon),
+                painter = painterResource(id = R.drawable.icon_hyper),
                 contentDescription = null,
                 modifier = Modifier.size(100.dp)
             )

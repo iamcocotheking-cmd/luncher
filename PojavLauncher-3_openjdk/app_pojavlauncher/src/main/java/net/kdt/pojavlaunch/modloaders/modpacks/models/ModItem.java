@@ -2,15 +2,12 @@ package net.kdt.pojavlaunch.modloaders.modpacks.models;
 
 import androidx.annotation.NonNull;
 
-public class ModItem {
-    public int apiSource;
-    public boolean isModpack;
+public class ModItem extends ModSource {
+
     public String id;
     public String title;
     public String description;
     public String imageUrl;
-
-    public ModItem() {}
 
     public ModItem(int apiSource, boolean isModpack, String id, String title, String description, String imageUrl) {
         this.apiSource = apiSource;
@@ -21,14 +18,20 @@ public class ModItem {
         this.imageUrl = imageUrl;
     }
 
-    public String getIconCacheTag() {
-        String safeId = id == null ? "unknown" : id;
-        return apiSource + "_" + safeId;
-    }
-
     @NonNull
     @Override
     public String toString() {
-        return title == null ? super.toString() : title;
+        return "ModItem{" +
+                "id='" + id + '\'' +
+                ", title='" + title + '\'' +
+                ", description='" + description + '\'' +
+                ", imageUrl='" + imageUrl + '\'' +
+                ", apiSource=" + apiSource +
+                ", isModpack=" + isModpack +
+                '}';
+    }
+
+    public String getIconCacheTag() {
+        return apiSource+"_"+id;
     }
 }

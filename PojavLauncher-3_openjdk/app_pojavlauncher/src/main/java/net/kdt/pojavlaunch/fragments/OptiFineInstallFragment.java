@@ -51,7 +51,7 @@ public class OptiFineInstallFragment extends ModVersionListFragment<OptiFineUtil
                 instance.name = "OptiFine";
                 instance.installer = instanceInstaller;
                 instance.sharedData = true;
-                instance.icon = "durbin";
+                instance.icon = "optifine";
             }, "OptiFine");
             ProgressLayout.clearProgress(ProgressLayout.INSTALL_MODPACK);
             instanceInstaller.start();

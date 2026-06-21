@@ -1,5 +1,6 @@
 package net.kdt.pojavlaunch.durbin.firebase
 
+import androidx.compose.foundation.verticalScroll
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -85,16 +86,6 @@ import net.kdt.pojavlaunch.ui.theme.PojavTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import androidx.compose.foundation.Image
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.net.URL
 
 class DurbinFirebaseHubActivity : ComponentActivity() {
     private var firebaseReady by mutableStateOf(false)
@@ -107,7 +98,7 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
     private var selectedTab by mutableIntStateOf(0)
 
     private val auth: FirebaseAuth? get() = runCatching { FirebaseAuth.getInstance() }.getOrNull()
-    private val database: FirebaseDatabase? get() = runCatching { FirebaseDatabase.getInstance() }.getOrNull()
+    private val database: FirebaseDatabase? get() = runCatching { FirebaseDatabase.getInstance(getString(R.string.durbin_firebase_database_url).trim()) }.getOrNull()
 
     private val signInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
@@ -244,26 +235,12 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
             return
         }
         val db = database ?: return
-        val collected = linkedMapOf<String, DurbinMyRank>()
-        var uidDone = false
-        var emailDone = false
-
-        fun finishRanks() {
-            if (uidDone && emailDone) {
-                myRanks = collected.values.sortedBy { tierWeight(it.tier) }
-            }
-        }
-
-        fun safeEmailKey(email: String): String {
-            return email.lowercase(Locale.US).replace("@", "_at_").replace(".", "_dot_")
-        }
-
         db.getReference("durbin/userRanks/${user.uid}/ranks").addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val categoriesById = tierCategories.associateBy { it.id }
-                snapshot.children.forEach { rank ->
+                myRanks = snapshot.children.map { rank ->
                     val categoryId = rank.key ?: ""
-                    collected[categoryId] = DurbinMyRank(
+                    DurbinMyRank(
                         categoryId = categoryId,
                         categoryName = rank.child("categoryName").getValue(String::class.java)
                             ?: categoriesById[categoryId]?.name
@@ -274,49 +251,15 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
                         region = rank.child("region").getValue(String::class.java) ?: "",
                         updatedAt = rank.child("updatedAt").getValue(Long::class.java) ?: 0L
                     )
-                }
-                uidDone = true
-                finishRanks()
+                }.sortedBy { tierWeight(it.tier) }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                // Do not block the whole hub if UID ranks are private/missing.
-                uidDone = true
-                finishRanks()
-            }
-        })
-
-        val email = user.email
-        if (email.isNullOrBlank()) {
-            emailDone = true
-            finishRanks()
-            return
-        }
-
-        db.getReference("durbin/userRanksByEmail/${safeEmailKey(email)}/ranks").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                snapshot.children.forEach { rank ->
-                    val categoryId = rank.key ?: ""
-                    collected[categoryId] = DurbinMyRank(
-                        categoryId = categoryId,
-                        categoryName = rank.child("categoryName").getValue(String::class.java) ?: categoryId,
-                        tier = rank.child("tier").getValue(String::class.java) ?: "Unranked",
-                        score = rank.child("score").getValue(Int::class.java) ?: 0,
-                        ign = rank.child("ign").getValue(String::class.java) ?: "",
-                        region = rank.child("region").getValue(String::class.java) ?: "",
-                        updatedAt = rank.child("updatedAt").getValue(Long::class.java) ?: 0L
-                    )
-                }
-                emailDone = true
-                finishRanks()
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                emailDone = true
-                finishRanks()
+                errorMessage = error.message
             }
         })
     }
+
     private fun saveUserProfile() {
         val user = currentUser ?: return
         val db = database ?: return
@@ -410,7 +353,7 @@ private fun DurbinFirebaseHubScreen(
             .background(Color.Black)
             .background(
                 Brush.radialGradient(
-                    colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.38f), Color.Transparent)
+                    colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), Color.Transparent)
                 )
             )
     ) {
@@ -422,7 +365,7 @@ private fun DurbinFirebaseHubScreen(
             }
         } else {
             Row(modifier = Modifier.fillMaxSize().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(modifier = Modifier.width(330.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.width(330.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     FirebaseHeader(currentUser, onBack, onRefresh, onSignIn, onSignOut, compact = true)
                     FirebaseTabs(selectedTab, onTabChange, vertical = true)
                     SetupHint(firebaseReady)
@@ -451,8 +394,8 @@ private fun FirebaseHeader(
         ) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
             Column(modifier = Modifier.weight(1f)) {
-                Text("DURBIN Hub", fontWeight = FontWeight.Black, fontSize = if (compact) 20.sp else 22.sp)
-                Text("News • PvP Tier • Google Rank", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Text("DURBIN Firebase Hub", fontWeight = FontWeight.Black, fontSize = if (compact) 18.sp else 22.sp)
+                Text("News + PvP Tier List", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
             IconButton(onClick = onRefresh) { Icon(Icons.Rounded.Refresh, contentDescription = null) }
             if (user == null) {
@@ -525,46 +468,15 @@ private fun FirebaseContent(
                 loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 !firebaseReady -> SetupMessage()
                 errorMessage != null -> Text("Firebase error: $errorMessage", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
-                else -> when (selectedTab) {
-                    0 -> NewsList(newsItems, onOpenLink)
-                    1 -> TierList(tierCategories)
-                    else -> MyRankScreen(currentUser, myRanks)
+                else -> AnimatedContent(targetState = selectedTab, label = "firebaseTab") { tab ->
+                    when (tab) {
+                        0 -> NewsList(newsItems, onOpenLink)
+                        1 -> TierList(tierCategories)
+                        else -> MyRankScreen(currentUser, myRanks)
+                    }
                 }
             }
         }
-    }
-}
-
-
-@Composable
-private fun FirebaseRemoteImage(url: String, modifier: Modifier) {
-    var bitmap by remember(url) { mutableStateOf<Bitmap?>(null) }
-
-    LaunchedEffect(url) {
-        bitmap = withContext(Dispatchers.IO) {
-            runCatching {
-                URL(url).openStream().use { stream ->
-                    BitmapFactory.decodeStream(stream)
-                }
-            }.getOrNull()
-        }
-    }
-
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap!!.asImageBitmap(),
-            contentDescription = null,
-            modifier = modifier,
-            contentScale = ContentScale.Crop
-        )
-    } else {
-        Box(
-            modifier = modifier.background(
-                Brush.radialGradient(
-                    colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.24f), Color(0xFF151515))
-                )
-            )
-        )
     }
 }
 
@@ -578,16 +490,6 @@ private fun NewsList(items: List<DurbinNewsItem>, onOpenLink: (String) -> Unit) 
         items(items, key = { it.id }) { item ->
             GlassCard(borderAlpha = if (item.pinned) 0.65f else 0.22f) {
                 Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    if (item.imageUrl.isNotBlank()) {
-                        FirebaseRemoteImage(
-                            url = item.imageUrl,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(150.dp)
-                                .clip(RoundedCornerShape(18.dp))
-                        )
-                    }
-
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Chip(item.tag)
                         if (item.pinned) Chip("PINNED")
@@ -617,26 +519,17 @@ private fun TierList(categories: List<DurbinTierCategory>) {
     val current = categories.firstOrNull { it.id == selectedCategory } ?: categories.first()
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            categories.chunked(4).forEach { rowItems ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    rowItems.forEach { category ->
-                        OutlinedButton(
-                            onClick = { selectedCategory = category.id },
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = if (category.id == selectedCategory) 0.85f else 0.22f)),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = if (category.id == selectedCategory) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent),
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) { Text(category.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                    }
-                    repeat(4 - rowItems.size) {
-                        Spacer(Modifier.weight(1f))
-                    }
-                }
+        Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            categories.forEach { category ->
+                OutlinedButton(
+                    onClick = { selectedCategory = category.id },
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = if (category.id == selectedCategory) 0.8f else 0.2f)),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = if (category.id == selectedCategory) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else Color.Transparent)
+                ) { Text(category.name, fontWeight = FontWeight.Bold) }
             }
         }
-        Text(current.description.ifBlank { "${current.name} leaderboard" }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(current.description.ifBlank { "${current.name} leaderboard" }, color = Color.White.copy(alpha = 0.82f), fontWeight = FontWeight.Bold)
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(current.entries, key = { it.uid + it.ign }) { entry ->
                 TierEntryRow(entry)
@@ -718,7 +611,7 @@ private fun SetupHint(firebaseReady: Boolean) {
     GlassCard(modifier = Modifier.fillMaxWidth(), borderAlpha = 0.32f) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(Icons.Rounded.Security, null, tint = MaterialTheme.colorScheme.primary)
-            Text("Firebase setup needed", fontWeight = FontWeight.Bold)
+            Text("Firebase setup needed", color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -727,7 +620,7 @@ private fun SetupHint(firebaseReady: Boolean) {
 private fun SetupMessage() {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Icon(Icons.Rounded.Security, contentDescription = null, modifier = Modifier.size(54.dp), tint = MaterialTheme.colorScheme.primary)
-        Text("Firebase setup needed", fontWeight = FontWeight.Black, fontSize = 22.sp)
+        Text("Firebase setup needed", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
         Text("Open DURBIN_FIREBASE_SETUP.md and paste your Firebase config values.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -746,8 +639,9 @@ private fun GlassCard(modifier: Modifier = Modifier, borderAlpha: Float = 0.25f,
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
             .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = borderAlpha)), RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.70f),
+            .background(Color(0xFF171717).copy(alpha = 0.82f))
+            .animateContentSize(),
+        color = Color(0xFF171717).copy(alpha = 0.82f),
         shape = RoundedCornerShape(24.dp),
         tonalElevation = 6.dp
     ) { content() }

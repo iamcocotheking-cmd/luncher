@@ -5,7 +5,7 @@ import java.util.TimerTask;
 public class ComponentTimeoutTask extends TimerTask {
     @Override
     public void run() {
-        System.out.println("Forge/OptiFine installer UI was not detected in time.");
-        System.exit(1);
+        System.out.println("Initialization timed out!");
+        System.exit(17);
     }
 }

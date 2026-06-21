@@ -23,14 +23,12 @@ public class InstanceIconProvider {
     private static final Map<String, Integer> sStaticIcons = new HashMap<>();
 
     static {
-        // DURBIN: use launcher spyglass logo for all version/profile icons.
-        sStaticIcons.put("default", R.drawable.icon);
-        sStaticIcons.put("durbin", R.drawable.icon);
-        sStaticIcons.put("fabric", R.drawable.icon);
-        sStaticIcons.put("quilt", R.drawable.icon);
-        sStaticIcons.put("forge", R.drawable.icon);
-        sStaticIcons.put("neoforge", R.drawable.icon);
-        sStaticIcons.put("optifine", R.drawable.icon);
+        sStaticIcons.put("default", R.drawable.ic_package);
+        sStaticIcons.put("fabric", R.drawable.ic_fabric);
+        sStaticIcons.put("quilt", R.drawable.ic_quilt);
+        sStaticIcons.put("forge", R.drawable.ic_forge);
+        sStaticIcons.put("neoforge", R.drawable.ic_neoforge);
+        sStaticIcons.put("optifine", R.drawable.ic_optifine);
     }
 
     /**

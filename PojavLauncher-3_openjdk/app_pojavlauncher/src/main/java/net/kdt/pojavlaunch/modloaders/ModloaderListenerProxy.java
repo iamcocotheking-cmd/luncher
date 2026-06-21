@@ -1,38 +1,61 @@
 package net.kdt.pojavlaunch.modloaders;
 
 import java.io.File;
-import java.lang.ref.WeakReference;
 
 public class ModloaderListenerProxy implements ModloaderDownloadListener {
-    private WeakReference<ModloaderDownloadListener> listenerRef = new WeakReference<>(null);
+    public static final int PROXY_RESULT_NONE = -1;
+    public static final int PROXY_RESULT_FINISHED = 0;
+    public static final int PROXY_RESULT_NOT_AVAILABLE = 1;
+    public static final int PROXY_RESULT_ERROR = 2;
+    private ModloaderDownloadListener mDestinationListener;
+    private Object mProxyResultObject;
+    private int mProxyResult = PROXY_RESULT_NONE;
 
-    public void attachListener(ModloaderDownloadListener listener) {
-        listenerRef = new WeakReference<>(listener);
-    }
-
-    public void detachListener() {
-        listenerRef.clear();
-    }
-
-    private ModloaderDownloadListener listener() {
-        return listenerRef.get();
+    @Override
+    public synchronized void onDownloadFinished(File downloadedFile) {
+        if(mDestinationListener != null) {
+            mDestinationListener.onDownloadFinished(downloadedFile);
+        }else{
+            mProxyResult = PROXY_RESULT_FINISHED;
+            mProxyResultObject = downloadedFile;
+        }
     }
 
     @Override
-    public void onDownloadFinished(File downloadedFile) {
-        ModloaderDownloadListener listener = listener();
-        if (listener != null) listener.onDownloadFinished(downloadedFile);
+    public synchronized void onDataNotAvailable() {
+        if(mDestinationListener != null) {
+            mDestinationListener.onDataNotAvailable();
+        }else{
+            mProxyResult = PROXY_RESULT_NOT_AVAILABLE;
+            mProxyResultObject = null;
+        }
     }
 
     @Override
-    public void onDataNotAvailable() {
-        ModloaderDownloadListener listener = listener();
-        if (listener != null) listener.onDataNotAvailable();
+    public synchronized void onDownloadError(Exception e) {
+        if(mDestinationListener != null) {
+            mDestinationListener.onDownloadError(e);
+        }else {
+            mProxyResult = PROXY_RESULT_ERROR;
+            mProxyResultObject = e;
+        }
     }
 
-    @Override
-    public void onDownloadError(Exception e) {
-        ModloaderDownloadListener listener = listener();
-        if (listener != null) listener.onDownloadError(e);
+    public synchronized void attachListener(ModloaderDownloadListener listener) {
+        switch(mProxyResult) {
+            case PROXY_RESULT_FINISHED:
+                listener.onDownloadFinished((File) mProxyResultObject);
+                break;
+            case PROXY_RESULT_NOT_AVAILABLE:
+                listener.onDataNotAvailable();
+                break;
+            case PROXY_RESULT_ERROR:
+                listener.onDownloadError((Exception) mProxyResultObject);
+                break;
+        }
+        mDestinationListener = listener;
+    }
+    public synchronized void detachListener() {
+        mDestinationListener = null;
     }
 }

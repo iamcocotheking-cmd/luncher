@@ -2,8 +2,9 @@ package net.kdt.pojavlaunch.modloaders.modpacks.imagecache;
 
 import android.graphics.Bitmap;
 
-/** Callback used by ModIconCache to return a loaded icon bitmap. */
-@FunctionalInterface
+/**
+ * ModIconCache will call your view back when the image becomes available with this interface
+ */
 public interface ImageReceiver {
-    void onImageAvailable(Bitmap bitmap);
+    void onImageAvailable(Bitmap image);
 }

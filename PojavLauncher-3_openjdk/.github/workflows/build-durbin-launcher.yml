@@ -243,6 +243,30 @@ jobs:
           done
           echo "Native header/source guard OK."
 
+      - name: V42 ensure debug keystore BEFORE build
+        shell: bash
+        run: |
+          set -e
+          ROOT="$PROJECT_DIR"
+          KEYSTORE="$ROOT/app_pojavlauncher/debug.keystore"
+          mkdir -p "$(dirname "$KEYSTORE")"
+          if [ ! -f "$KEYSTORE" ]; then
+            echo "debug.keystore missing, generating Android debug keystore..."
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          echo "debug.keystore is present:"
+          ls -lah "$KEYSTORE"
+          echo "Debug signing SHA1/SHA256:"
+          keytool -list -v -keystore "$KEYSTORE" -storepass android -alias androiddebugkey | grep -E "SHA1|SHA256" || true
+
       - name: Show Gradle tasks and versions
         shell: bash
         run: |

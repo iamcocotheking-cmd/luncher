@@ -346,6 +346,18 @@ jobs:
           print("No duplicate drawable/id resources detected")
           PY
 
+
+      - name: V41 dnbglfw GLFW preflight
+        shell: bash
+        run: |
+          set -e
+          ROOT="${PROJECT_DIR:-PojavLauncher-3_openjdk}"
+          if [ ! -d "$ROOT" ]; then ROOT="."; fi
+          test -d "$ROOT/dnbglfw/src/main/cpp/glfw" || { echo "::error title=dnbglfw glfw missing::Expected $ROOT/dnbglfw/src/main/cpp/glfw"; exit 1; }
+          test -f "$ROOT/dnbglfw/src/main/cpp/glfw/CMakeLists.txt" || { echo "::error title=dnbglfw glfw CMake missing::Expected glfw/CMakeLists.txt"; exit 1; }
+          test -f "$ROOT/dnbglfw/src/main/cpp/glfw/glfw_stub.c" || { echo "::error title=dnbglfw glfw source missing::Expected glfw_stub.c"; exit 1; }
+          echo "dnbglfw GLFW preflight OK."
+
       - name: Build APK with clear error output
         id: build_apk
         shell: bash

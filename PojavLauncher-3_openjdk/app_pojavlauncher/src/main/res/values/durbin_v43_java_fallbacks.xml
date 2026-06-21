@@ -131,23 +131,4 @@
     <item name="vprof_editor_save_button" type="id" />
     <item name="vprof_editor_version_button" type="id" />
     <item name="vprof_editor_version_spinner" type="id" />
-    <attr name="colorAccent" format="reference|string|integer|boolean|color|dimension" />
-    <attr name="colorError" format="reference|string|integer|boolean|color|dimension" />
-    <attr name="colorOnError" format="reference|string|integer|boolean|color|dimension" />
-    <attr name="editTextStyle" format="reference|string|integer|boolean|color|dimension" />
-    <attr name="progressBarStyleHorizontal" format="reference|string|integer|boolean|color|dimension" />
-    <attr name="seekBarPreferenceStyle" format="reference|string|integer|boolean|color|dimension" />
-    <attr name="state_activated" format="reference|string|integer|boolean|color|dimension" />
-    <declare-styleable name="CustomSeekbar_android">
-            </declare-styleable>
-    <declare-styleable name="CustomSeekbar_android_min">
-            </declare-styleable>
-    <declare-styleable name="CustomSeekbar_seekBarIncrement">
-            </declare-styleable>
-    <declare-styleable name="SeekBarPreference">
-                    </declare-styleable>
-    <declare-styleable name="SeekBarPreference_min">
-            </declare-styleable>
-    <declare-styleable name="SeekBarPreference_seekBarIncrement">
-            </declare-styleable>
 </resources>

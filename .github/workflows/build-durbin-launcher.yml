@@ -406,7 +406,7 @@ jobs:
           PY
 
 
-      - name: V44 duplicate fallback cleanup
+      - name: V46 duplicate fallback cleanup
         shell: bash
         run: |
           python3 <<'PY'
@@ -471,6 +471,31 @@ jobs:
                           if f.suffix.lower() == ".xml":
                               removed_drawables.append(str(f.relative_to(root)))
                               f.unlink()
+
+          # V46: remove fallback attrs/styleables that are provided by AndroidX/AppCompat/Material/Preference.
+          # Defining these locally causes mergeFullDebugResources duplicate attr failures.
+          fallback_files = sorted([p for p in values.glob("*.xml") if p.name.startswith("durbin_")])
+          dependency_attrs = [
+              "colorAccent", "colorError", "colorOnError", "editTextStyle",
+              "progressBarStyleHorizontal", "seekBarPreferenceStyle", "state_activated"
+          ]
+          dependency_styleables = [
+              "SeekBarPreference", "SeekBarPreference_min", "SeekBarPreference_seekBarIncrement",
+              "CustomSeekbar_android", "CustomSeekbar_android_min", "CustomSeekbar_seekBarIncrement"
+          ]
+          removed_attrs = []
+          for vf in fallback_files:
+              txt = vf.read_text(encoding="utf-8", errors="ignore")
+              before = txt
+              for attr in dependency_attrs:
+                  txt = re.sub(r'\n\s*<attr\s+name="' + re.escape(attr) + r'"[^>]*/>', '', txt)
+                  txt = re.sub(r'\n\s*<attr\s+name="' + re.escape(attr) + r'"[^>]*>.*?</attr>', '', txt, flags=re.S)
+              for ds in dependency_styleables:
+                  txt = re.sub(r'\n\s*<declare-styleable\s+name="' + re.escape(ds) + r'"[^>]*>.*?</declare-styleable>', '', txt, flags=re.S)
+              if txt != before:
+                  txt = re.sub(r'\n\s*\n\s*\n+', '\n', txt)
+                  vf.write_text(txt, encoding="utf-8")
+                  removed_attrs.append(str(vf.relative_to(root)))
           dupes = []
           id_owner = {}
           for vf in values.glob("*.xml"):
@@ -492,13 +517,26 @@ jobs:
               for name, files in seen.items():
                   if len(files) > 1:
                       dupes.append(f"{typ_dir.relative_to(root)}/{name}: {files}")
+          # Check local same-type duplicates across value XML and resource folders.
+          value_owners = {}
+          for vf in values.glob("*.xml"):
+              txt = vf.read_text(encoding="utf-8", errors="ignore")
+              # Do not count attrs nested inside declare-styleable as duplicate top-level attrs.
+              no_styleables = re.sub(r'<declare-styleable\s+name="[^"]+"[^>]*>.*?</declare-styleable>', '', txt, flags=re.S)
+              for typ, name in re.findall(r'<(color|string|dimen|bool|integer|style|attr)\s+name="([^"]+)"', no_styleables):
+                  key = f"{typ}/{name}"
+                  if key in value_owners:
+                      dupes.append(f"{key}: {value_owners[key].relative_to(root)} and {vf.relative_to(root)}")
+                  else:
+                      value_owners[key] = vf
           print("Removed duplicate fallback IDs:", len(removed_ids))
           print("Removed duplicate drawable XML files:", removed_drawables)
+          print("Removed fallback dependency attr/styleable files:", removed_attrs)
           if dupes:
               print("Duplicate resources still found:")
               print("\n".join(dupes[:120]))
               raise SystemExit(1)
-          print("No duplicate drawable/id resources detected")
+          print("No duplicate drawable/id/value resources detected")
           PY
 
       - name: V41 dnbglfw GLFW preflight

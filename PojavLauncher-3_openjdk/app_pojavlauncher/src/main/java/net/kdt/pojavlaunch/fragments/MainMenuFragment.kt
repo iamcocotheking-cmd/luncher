@@ -70,7 +70,7 @@ class MainMenuFragment : Fragment() {
                             Tools.fullyExit()
                         },
                         onInstanceSelect = {
-                            Tools.swapFragment(requireActivity(), ProfileSelectionFragment::class.java, ProfileSelectionFragment.TAG, null)
+                            Tools.swapFragment(requireActivity(), ProfileTypeSelectFragment::class.java, ProfileTypeSelectFragment.TAG, null)
                         }
                     )
                 }
@@ -101,7 +101,7 @@ class MainMenuFragment : Fragment() {
             Tools.swapFragment(requireActivity(), InstanceEditorFragment::class.java, InstanceEditorFragment.TAG, null)
         }
         view.findViewById<mcVersionSpinner>(R.id.mc_version_spinner)?.setOnClickListener {
-            Tools.swapFragment(requireActivity(), ProfileSelectionFragment::class.java, ProfileSelectionFragment.TAG, null)
+            Tools.swapFragment(requireActivity(), ProfileTypeSelectFragment::class.java, ProfileTypeSelectFragment.TAG, null)
         }
         view.findViewById<MineButton>(R.id.play_button)?.setOnClickListener {
             ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true)

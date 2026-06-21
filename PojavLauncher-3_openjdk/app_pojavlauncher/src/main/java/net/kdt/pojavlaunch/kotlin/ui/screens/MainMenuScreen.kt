@@ -1,7 +1,6 @@
 package net.kdt.pojavlaunch.kotlin.ui.screens
 
 import android.content.Intent
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import androidx.compose.animation.core.RepeatMode
@@ -41,7 +40,6 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
@@ -103,9 +101,6 @@ fun MainMenuRevamp(
 ) {
     val context = LocalContext.current
     val isPreview = LocalInspectionMode.current
-    val configuration = LocalConfiguration.current
-    val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-
     var selectedInstance by remember {
         mutableStateOf<Instance?>(if (isPreview) null else try { Instances.loadSelectedInstance() } catch (_: Exception) { null })
     }
@@ -194,49 +189,28 @@ fun MainMenuRevamp(
     }
 
     DurbinBackground(glowPulse = glowPulse) {
-        if (isPortrait) {
-            DurbinPortraitHome(
-                selectedInstance = selectedInstance,
-                instanceIcon = instanceIcon,
-                currentAccount = currentAccount,
-                skinHead = skinHead,
-                headScale = headScale,
-                headInteractionSource = headInteractionSource,
-                animatedTerminateRotation = animatedTerminateRotation,
-                glowPulse = glowPulse,
-                onEditProfileClick = onEditProfileClick,
-                onCustomControlsClick = onCustomControlsClick,
-                onInstallJarClick = onInstallJarClick,
-                onShareLogsClick = onShareLogsClick,
-                onOpenFilesClick = onOpenFilesClick,
-                onYoutubeClick = onYoutubeClick,
-                onSocialMediaClick = onSocialMediaClick,
-                onPlayClick = onPlayClick,
-                onTerminateClick = terminateClick,
-                onInstanceSelect = onInstanceSelect
-            )
-        } else {
-            DurbinLandscapeHome(
-                selectedInstance = selectedInstance,
-                instanceIcon = instanceIcon,
-                currentAccount = currentAccount,
-                skinHead = skinHead,
-                headScale = headScale,
-                headInteractionSource = headInteractionSource,
-                animatedTerminateRotation = animatedTerminateRotation,
-                glowPulse = glowPulse,
-                onEditProfileClick = onEditProfileClick,
-                onCustomControlsClick = onCustomControlsClick,
-                onInstallJarClick = onInstallJarClick,
-                onShareLogsClick = onShareLogsClick,
-                onOpenFilesClick = onOpenFilesClick,
-                onYoutubeClick = onYoutubeClick,
-                onSocialMediaClick = onSocialMediaClick,
-                onPlayClick = onPlayClick,
-                onTerminateClick = terminateClick,
-                onInstanceSelect = onInstanceSelect
-            )
-        }
+        // DURBIN V48: force the home screen to use the horizontal layout only.
+        // The app manifest also locks launcher activities to sensorLandscape.
+        DurbinLandscapeHome(
+            selectedInstance = selectedInstance,
+            instanceIcon = instanceIcon,
+            currentAccount = currentAccount,
+            skinHead = skinHead,
+            headScale = headScale,
+            headInteractionSource = headInteractionSource,
+            animatedTerminateRotation = animatedTerminateRotation,
+            glowPulse = glowPulse,
+            onEditProfileClick = onEditProfileClick,
+            onCustomControlsClick = onCustomControlsClick,
+            onInstallJarClick = onInstallJarClick,
+            onShareLogsClick = onShareLogsClick,
+            onOpenFilesClick = onOpenFilesClick,
+            onYoutubeClick = onYoutubeClick,
+            onSocialMediaClick = onSocialMediaClick,
+            onPlayClick = onPlayClick,
+            onTerminateClick = terminateClick,
+            onInstanceSelect = onInstanceSelect
+        )
     }
 }
 
@@ -453,9 +427,9 @@ private fun DurbinHeroCard(modifier: Modifier, compact: Boolean, selectedInstanc
     val modeLabel = when {
         key.contains("forge") -> "FORGE MODE"
         key.contains("optifine") || key.contains("of") -> "OPTIFINE MODE"
-        key.contains("fabric") -> "FABRIC MODE"
+        key.contains("fabric") -> "DURBIN MODE"
         key.contains("durbin") -> "DURBIN MODE"
-        else -> "MINECRAFT MODE"
+        else -> "DURBIN MODE"
     }
 
     Box(
@@ -554,7 +528,7 @@ private fun DurbinActionPanel(
                 DurbinStatusChip("no wiki")
             }
             Text(
-                text = "Community links, controls, tools, and logs in one clean panel.",
+                text = "DURBIN links only. Old tools are hidden from the home screen.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp
             )
@@ -584,10 +558,6 @@ private fun DurbinActionPanel(
                 }
             }
 
-            DurbinActionCard(Modifier.fillMaxWidth().height(58.dp), stringResource(id = R.string.mcl_option_customcontrol), Icons.Rounded.Build, "Edit mobile controls", onCustomControlsClick)
-            DurbinActionCard(Modifier.fillMaxWidth().height(58.dp), stringResource(id = R.string.main_install_jar_file), Icons.Rounded.Add, "Install local mod/client file", onInstallJarClick)
-            DurbinActionCard(Modifier.fillMaxWidth().height(58.dp), stringResource(id = R.string.main_share_logs), Icons.AutoMirrored.Rounded.Send, "Share crash/build logs", onShareLogsClick)
-            DurbinActionCard(Modifier.fillMaxWidth().height(58.dp), stringResource(id = R.string.mcl_button_open_directory), Icons.Rounded.Folder, "Open selected profile folder", onOpenFilesClick)
         }
     }
 }
@@ -678,19 +648,6 @@ private fun DurbinProfilePanel(
                 DurbinStatusChip("Minecraft Java")
                 DurbinStatusChip("Android")
             }
-
-            OutlinedButton(
-                onClick = onEditProfileClick,
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
-                colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f))
-            ) {
-                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Edit Profile", fontWeight = FontWeight.Bold)
-            }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
             OutlinedButton(
                 onClick = onInstanceSelect,

@@ -24,6 +24,9 @@ import java.util.concurrent.Future
 
 class FabricInstallFragment : Fragment(), ModloaderDownloadListener {
 
+    private val durbinSupportedGameVersions = listOf("1.21.11", "1.20.1")
+    private val durbinSupportedLoaderVersion = "0.19.3"
+
     private var mFabriclikeUtils = FabriclikeUtils.FABRIC_UTILS
     private var mExtraTag = TAG + "_proxy"
 
@@ -56,10 +59,10 @@ class FabricInstallFragment : Fragment(), ModloaderDownloadListener {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 val filteredGameVersions = remember(mGameVersions, mOnlyStable) {
-                    mGameVersions.filter { !mOnlyStable || it.stable }
+                    mGameVersions.filter { it.version == "1.21.11" || it.version == "1.20.1" }
                 }
                 val filteredLoaderVersions = remember(mLoaderVersions, mOnlyStable) {
-                    mLoaderVersions.filter { !mOnlyStable || it.stable }
+                    mLoaderVersions.filter { it.version == "0.19.3" }
                 }
 
                 PojavTheme {
@@ -126,11 +129,13 @@ class FabricInstallFragment : Fragment(), ModloaderDownloadListener {
                 val versions = mFabriclikeUtils.downloadGameVersions()
                 Tools.runOnUiThread {
                     if (versions != null) {
-                        mGameVersions = versions.toList()
+                        val allowed = versions.toList().filter { it.version == "1.21.11" || it.version == "1.20.1" }
+                        mGameVersions = allowed.ifEmpty {
+                            listOf(FabricVersion("1.21.11", true), FabricVersion("1.20.1", true))
+                        }
                         if (mSelectedGameVersion == null) {
-                            val filtered = mGameVersions.filter { !mOnlyStable || it.stable }
-                            mSelectedGameVersion = filtered.firstOrNull()?.version
-                            if (mSelectedGameVersion != null) updateLoaderVersions()
+                            mSelectedGameVersion = "1.21.11"
+                            updateLoaderVersions()
                         }
                         mIsLoading = false
                     } else {
@@ -153,9 +158,9 @@ class FabricInstallFragment : Fragment(), ModloaderDownloadListener {
                 val versions = mFabriclikeUtils.downloadLoaderVersions(gameVer)
                 Tools.runOnUiThread {
                     if (versions != null) {
-                        mLoaderVersions = versions.toList()
-                        val filtered = mLoaderVersions.filter { !mOnlyStable || it.stable }
-                        mSelectedLoaderVersion = filtered.firstOrNull()?.version
+                        val allowed = versions.toList().filter { it.version == "0.19.3" }
+                        mLoaderVersions = allowed.ifEmpty { listOf(FabricVersion("0.19.3", true)) }
+                        mSelectedLoaderVersion = "0.19.3"
                         mIsLoading = false
                     } else {
                         onException()

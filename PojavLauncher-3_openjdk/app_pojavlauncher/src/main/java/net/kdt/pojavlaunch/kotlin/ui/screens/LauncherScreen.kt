@@ -668,45 +668,9 @@ fun TopBar(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Row(
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .animateContentSize(animationSpec = m3SizeSpec),
-                verticalAlignment = Alignment.CenterVertically) {
-                TopBarButton(
-                    onClick = onProgressClick,
-                    isSelected = isProgressVisible,
-                    isSpecialActive = taskCount > 0 && !isProgressVisible,
-                    badgeCount = taskCount,
-                    icon = R.drawable.ic_px_progress,
-                    label = "Tasks",
-                    topBarHeight = topBarHeight
-                )
-
-                TopBarButton(
-                    onClick = { onCategoryClick(1) },
-                    isSelected = selectedCategory == 1,
-                    icon = R.drawable.ic_px_folder,
-                    label = "Files",
-                    topBarHeight = topBarHeight
-                )
-
-                TopBarButton(
-                    onClick = { onCategoryClick(2) },
-                    isSelected = selectedCategory == 2,
-                    icon = R.drawable.ic_px_download,
-                    label = "Installer",
-                    topBarHeight = topBarHeight
-                )
-
-                TopBarButton(
-                    onClick = { onCategoryClick(3) },
-                    isSelected = selectedCategory == 3,
-                    icon = R.drawable.ic_px_alt_sliders,
-                    label = "Settings",
-                    topBarHeight = topBarHeight
-                )
-            }
+            // DURBIN V48: hide old HyperLauncher top-right tools (Tasks / Files / Installer / Settings).
+            // User asked for clean horizontal launcher only, no old feature access from the home UI.
+            Spacer(modifier = Modifier.width(8.dp))
         }
     }
 }

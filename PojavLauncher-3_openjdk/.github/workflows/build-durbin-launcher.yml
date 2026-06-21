@@ -140,6 +140,109 @@ jobs:
           fi
           echo "No merge conflict markers found."
 
+
+      - name: V40 native header guard BEFORE build
+        shell: bash
+        run: |
+          set -e
+          ROOT="$PROJECT_DIR"
+          JNI="$ROOT/app_pojavlauncher/src/main/jni"
+          mkdir -p "$JNI/jvm_hooks" "$JNI/native_hooks"
+
+          cat > "$JNI/jvm_hooks/jvm_hooks.h" <<'EOF'
+          #pragma once
+
+          #include <jni.h>
+          #include <stdbool.h>
+
+          #ifdef __cplusplus
+          extern "C" {
+          #endif
+
+          void hookExec(JNIEnv *env);
+          void installLwjglDlopenHook(JNIEnv *env);
+          void installEMUIIteratorMititgation(JNIEnv *env);
+
+          #ifdef __cplusplus
+          }
+          #endif
+          EOF
+
+          cat > "$JNI/log.h" <<'EOF'
+          #pragma once
+          #include <android/log.h>
+          #ifndef TAG
+          #define TAG "DURBIN_NATIVE"
+          #endif
+          #ifndef LOGI
+          #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, ##__VA_ARGS__)
+          #endif
+          #ifndef LOGW
+          #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, TAG, ##__VA_ARGS__)
+          #endif
+          #ifndef LOGE
+          #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, ##__VA_ARGS__)
+          #endif
+          #ifndef LOGD
+          #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, ##__VA_ARGS__)
+          #endif
+          EOF
+
+          cat > "$JNI/stdio_is.h" <<'EOF'
+          #pragma once
+          #include <jni.h>
+          #ifdef __cplusplus
+          extern "C" {
+          #endif
+          JNIEXPORT void JNICALL Java_net_kdt_pojavlaunch_Logger_begin(JNIEnv *env, jclass clazz, jstring logPath);
+          JNIEXPORT void JNICALL Java_net_kdt_pojavlaunch_Logger_appendToLog(JNIEnv *env, jclass clazz, jstring text);
+          JNIEXPORT void JNICALL Java_net_kdt_pojavlaunch_Logger_setLogListener(JNIEnv *env, jclass clazz, jobject log_listener);
+          #ifdef __cplusplus
+          }
+          #endif
+          EOF
+
+          cat > "$JNI/native_hooks/native_hooks.h" <<'EOF'
+          #pragma once
+          #include <jni.h>
+          #include <stdbool.h>
+          #ifdef __cplusplus
+          extern "C" {
+          #endif
+          void installExitHook(JNIEnv *env);
+          #ifdef __cplusplus
+          }
+          #endif
+          EOF
+
+          cat > "$JNI/bytehook.h" <<'EOF'
+          #pragma once
+          #ifdef __cplusplus
+          extern "C" {
+          #endif
+          typedef void* bytehook_stub_t;
+          #define BYTEHOOK_MODE_AUTOMATIC 0
+          static inline int bytehook_init(int mode, int debug) { (void)mode; (void)debug; return 0; }
+          static inline bytehook_stub_t bytehook_hook_single(const char* caller_path_name, const char* callee_path_name, const char* sym_name, void* new_func, void** orig_func) {
+              (void)caller_path_name; (void)callee_path_name; (void)sym_name; (void)new_func; if (orig_func) *orig_func = 0; return 0;
+          }
+          static inline int bytehook_unhook(bytehook_stub_t stub) { (void)stub; return 0; }
+          static inline const char* bytehook_get_errmsg(int err) { (void)err; return "bytehook stub"; }
+          #ifdef __cplusplus
+          }
+          #endif
+          EOF
+
+          for file in \
+            "$JNI/jvm_hooks/jvm_hooks.h" \
+            "$JNI/log.h" \
+            "$JNI/stdio_is.h" \
+            "$JNI/driver_helper/hook.c" \
+            "$JNI/awt_xawt/xawt_fake.c"; do
+            test -f "$file" || { echo "::error title=Native file missing::$file missing"; exit 1; }
+          done
+          echo "Native header/source guard OK."
+
       - name: Show Gradle tasks and versions
         shell: bash
         run: |

@@ -375,6 +375,159 @@ jobs:
           print("No duplicate drawable/id resources detected")
           PY
 
+
+      - name: V45 universal fallback duplicate cleanup
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          root = Path("PojavLauncher-3_openjdk")
+          if not root.exists():
+              root = Path(".")
+          res = root / "app_pojavlauncher/src/main/res"
+          values = res / "values"
+          print("========== V45 UNIVERSAL FALLBACK DUPLICATE CLEANUP ==========")
+
+          def tag_name(elem):
+              return elem.tag.split('}', 1)[-1] if '}' in elem.tag else elem.tag
+
+          def resource_key(elem):
+              tag = tag_name(elem)
+              name = elem.attrib.get("name")
+              if not name:
+                  return None
+              if tag == "item":
+                  typ = elem.attrib.get("type")
+                  if not typ:
+                      return None
+                  return (typ, name)
+              if tag == "string-array" or tag == "integer-array" or tag == "array":
+                  return ("array", name)
+              if tag == "declare-styleable":
+                  return ("styleable", name)
+              if tag in {"string", "color", "dimen", "bool", "integer", "style", "plurals", "fraction", "attr", "id"}:
+                  return (tag, name)
+              return (tag, name)
+
+          def parse_values_file(path):
+              try:
+                  tree = ET.parse(path)
+                  return tree, tree.getroot()
+              except Exception as exc:
+                  print(f"Skipping unparsable XML {path}: {exc}")
+                  return None, None
+
+          seen = {}
+          # Real default resources from default typed folders like res/color/foo.xml, res/layout/foo.xml.
+          # Qualified folders like drawable-hdpi or layout-land are allowed duplicates and are ignored here.
+          for folder in res.iterdir() if res.exists() else []:
+              if not folder.is_dir() or folder.name == "values" or "-" in folder.name:
+                  continue
+              typ = folder.name
+              for f in folder.iterdir():
+                  if f.is_file() and not f.name.startswith('.'):
+                      seen.setdefault((typ, f.stem), f)
+
+          # Real default resources from normal values XML files.
+          real_value_files = sorted([p for p in values.glob("*.xml") if not p.name.startswith("durbin_")]) if values.exists() else []
+          for path in real_value_files:
+              tree, root_elem = parse_values_file(path)
+              if root_elem is None:
+                  continue
+              for elem in list(root_elem):
+                  key = resource_key(elem)
+                  if key:
+                      seen.setdefault(key, path)
+
+          removed = []
+          fallback_files = sorted([p for p in values.glob("durbin_*.xml")]) if values.exists() else []
+          for path in fallback_files:
+              tree, root_elem = parse_values_file(path)
+              if root_elem is None:
+                  continue
+              changed = False
+              local_seen = set()
+              for elem in list(root_elem):
+                  key = resource_key(elem)
+                  if not key:
+                      continue
+                  if key in seen or key in local_seen:
+                      root_elem.remove(elem)
+                      owner = seen.get(key, path)
+                      removed.append(f"{key[0]}/{key[1]} from {path.relative_to(root)} duplicate of {owner.relative_to(root) if hasattr(owner, 'relative_to') else owner}")
+                      changed = True
+                  else:
+                      local_seen.add(key)
+              for key in local_seen:
+                  seen.setdefault(key, path)
+              if changed:
+                  ET.indent(tree, space="    ")
+                  tree.write(path, encoding="utf-8", xml_declaration=True)
+
+          # Remove duplicate XML drawables when a real image/vector resource already exists in the same folder.
+          image_exts = {".png", ".webp", ".jpg", ".jpeg"}
+          removed_files = []
+          for folder in list(res.glob("drawable*")) + list(res.glob("mipmap*")):
+              if not folder.is_dir():
+                  continue
+              by_name = {}
+              for f in folder.iterdir():
+                  if f.is_file():
+                      by_name.setdefault(f.stem, []).append(f)
+              for name, files in by_name.items():
+                  has_image = any(f.suffix.lower() in image_exts for f in files)
+                  if has_image:
+                      for f in files:
+                          if f.suffix.lower() == ".xml":
+                              removed_files.append(str(f.relative_to(root)))
+                              f.unlink()
+
+          # Config-aware duplicate check. Same type+name is fine across qualified folders, but not in the same/default config.
+          dupes = []
+          owners = {}
+          for folder in res.iterdir() if res.exists() else []:
+              if not folder.is_dir():
+                  continue
+              if folder.name.startswith("values"):
+                  config = folder.name[len("values"):]
+                  for path in folder.glob("*.xml"):
+                      tree, root_elem = parse_values_file(path)
+                      if root_elem is None:
+                          continue
+                      for elem in list(root_elem):
+                          key = resource_key(elem)
+                          if not key:
+                              continue
+                          full = (key[0], key[1], config)
+                          if full in owners:
+                              dupes.append(f"{key[0]}/{key[1]}: {owners[full].relative_to(root)} and {path.relative_to(root)}")
+                          else:
+                              owners[full] = path
+              else:
+                  typ = folder.name.split("-", 1)[0]
+                  config = folder.name[len(typ):]
+                  by_name = {}
+                  for f in folder.iterdir():
+                      if f.is_file():
+                          full = (typ, f.stem, config)
+                          if full in owners:
+                              dupes.append(f"{typ}/{f.stem}: {owners[full].relative_to(root)} and {f.relative_to(root)}")
+                          else:
+                              owners[full] = f
+
+          print("Removed fallback duplicate resources:", len(removed))
+          for line in removed[:120]:
+              print("  " + line)
+          print("Removed duplicate XML/image files:", removed_files)
+          if dupes:
+              print("Duplicate resources still found:")
+              print("\n".join(dupes[:160]))
+              raise SystemExit(1)
+          print("No same-config duplicate resources detected")
+          PY
+
       - name: V41 dnbglfw GLFW preflight
         shell: bash
         run: |

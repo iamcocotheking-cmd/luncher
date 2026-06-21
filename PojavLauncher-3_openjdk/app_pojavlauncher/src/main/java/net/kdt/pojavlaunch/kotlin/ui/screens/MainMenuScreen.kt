@@ -160,10 +160,23 @@ fun MainMenuRevamp(
 
     var showTerminateConfirm by remember { mutableStateOf(false) }
     if (showTerminateConfirm) {
-        AlertDialog(
+        androidx.compose.material3.AlertDialog(
             onDismissRequest = { showTerminateConfirm = false },
-            title = { Text("Terminate Game", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
-            text = { Text(stringResource(id = R.string.mcn_exit_confirm), color = Color.White.copy(alpha = 0.82f), style = MaterialTheme.typography.bodyMedium) },
+            title = {
+                Text(
+                    text = "Terminate Game",
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(id = R.string.mcn_exit_confirm),
+                    color = Color.White.copy(alpha = 0.82f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -172,21 +185,22 @@ fun MainMenuRevamp(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
+                        contentColor = Color.White
                     ),
                     shape = RoundedCornerShape(14.dp)
-                ) { Text("Terminate", fontWeight = FontWeight.Bold) }
+                ) {
+                    Text("Terminate", color = Color.White, fontWeight = FontWeight.Bold)
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showTerminateConfirm = false }, shape = RoundedCornerShape(12.dp)) {
-                    Text(stringResource(id = android.R.string.cancel))
+                    Text(stringResource(id = android.R.string.cancel), color = Color.White)
                 }
             },
             shape = RoundedCornerShape(28.dp),
             containerColor = Color(0xFF111111),
             titleContentColor = Color.White,
             textContentColor = Color.White,
-            containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         )
     }

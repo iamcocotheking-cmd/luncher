@@ -148,3 +148,10 @@ Important:
 - Replaced Install DURBIN button with News + Rank Hub.
 - Made launcher/Firebase hub default text white.
 - Added extra lightweight button press animations.
+
+
+## v22 Dialog compile fix
+- Fixed MainMenuScreen.kt terminate dialog.
+- Removed duplicate `containerColor`.
+- Fixed Kotlin composable-context compile errors around lines 165–189.
+- Keeps all v21 changes: no DURBIN mod installer, backend folder, white text, animations.

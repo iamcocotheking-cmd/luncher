@@ -1,0 +1,12 @@
+DURBIN Dashboard Admin Login
+
+Username:
+COSA
+MOD
+
+Password:
+catslikecosa
+
+Note:
+This is a simple local dashboard lock for Netlify.
+Keep Firebase admin UID rules for real database protection.

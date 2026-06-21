@@ -1,0 +1,24 @@
+DURBIN Dashboard Ad Adder
+
+New tab:
+Ads
+
+Firebase path:
+durbin/ads/main
+
+Example:
+{
+  "imageUrl": "https://example.com/ad.png",
+  "linkUrl": "https://discord.gg/yourserver",
+  "type": "image",
+  "alt": "DURBIN Ad",
+  "enabled": true,
+  "aspectRatio": "9:16"
+}
+
+Use direct image links:
+png, jpg, jpeg, gif, webp
+
+Note:
+Dashboard saves the ad now.
+Launcher needs Firebase ad reader patch for live ad changing.

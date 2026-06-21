@@ -138,3 +138,13 @@ Important:
 - New banners are optimized to 1280x720 to reduce lag.
 - Added lightweight 90ms button press animations.
 - Fixed missing `DurbinInlineNewsPanel` and `DurbinActionCard` compile errors.
+
+
+## v21 No DURBIN Mod + Backend + White UI
+- Removed DURBIN mod installer from launcher UI.
+- Removed `DurbinInstaller.kt`.
+- Added backend dashboard folder: `DURBIN_BACKEND_DASHBOARD_NETLIFY`.
+- Backend supports news, PvP ranks, user rank, Gmail rank, ads, and admin rules.
+- Replaced Install DURBIN button with News + Rank Hub.
+- Made launcher/Firebase hub default text white.
+- Added extra lightweight button press animations.

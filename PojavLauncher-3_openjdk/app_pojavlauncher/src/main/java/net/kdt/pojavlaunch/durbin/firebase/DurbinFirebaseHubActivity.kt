@@ -49,6 +49,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -56,6 +57,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -100,6 +102,20 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
     private val auth: FirebaseAuth? get() = runCatching { FirebaseAuth.getInstance() }.getOrNull()
     private val database: FirebaseDatabase? get() = runCatching { FirebaseDatabase.getInstance(getString(R.string.durbin_firebase_database_url).trim()) }.getOrNull()
 
+    private fun emailKeyForRank(email: String?): String {
+        return email.orEmpty()
+            .trim()
+            .lowercase()
+            .replace(".", "_dot_")
+            .replace("@", "_at_")
+            .replace("#", "_")
+            .replace("$", "_")
+            .replace("[", "_")
+            .replace("]", "_")
+            .replace("/", "_")
+    }
+
+
     private val signInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
@@ -133,22 +149,24 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
 
         setContent {
             PojavTheme {
-                DurbinFirebaseHubScreen(
-                    firebaseReady = firebaseReady,
-                    loading = loading,
-                    errorMessage = errorMessage,
-                    currentUser = currentUser,
-                    selectedTab = selectedTab,
-                    onTabChange = { selectedTab = it },
-                    newsItems = newsItems,
-                    tierCategories = tierCategories,
-                    myRanks = myRanks,
-                    onBack = { finish() },
-                    onRefresh = { loadRemoteData() },
-                    onSignIn = { startGoogleSignIn() },
-                    onSignOut = { signOut() },
-                    onOpenLink = { url -> Tools.openURL(this, url) }
-                )
+                CompositionLocalProvider(LocalContentColor provides Color.White) {
+                    DurbinFirebaseHubScreen(
+                        firebaseReady = firebaseReady,
+                        loading = loading,
+                        errorMessage = errorMessage,
+                        currentUser = currentUser,
+                        selectedTab = selectedTab,
+                        onTabChange = { selectedTab = it },
+                        newsItems = newsItems,
+                        tierCategories = tierCategories,
+                        myRanks = myRanks,
+                        onBack = { finish() },
+                        onRefresh = { loadRemoteData() },
+                        onSignIn = { startGoogleSignIn() },
+                        onSignOut = { signOut() },
+                        onOpenLink = { url -> Tools.openURL(this, url) }
+                    )
+                }
             }
         }
 
@@ -235,23 +253,48 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
             return
         }
         val db = database ?: return
+        val categoriesById = tierCategories.associateBy { it.id }
+
+        fun parseRanks(snapshot: DataSnapshot): List<DurbinMyRank> {
+            return snapshot.children.map { rank ->
+                val categoryId = rank.key ?: ""
+                DurbinMyRank(
+                    categoryId = categoryId,
+                    categoryName = rank.child("categoryName").getValue(String::class.java)
+                        ?: categoriesById[categoryId]?.name
+                        ?: categoryId,
+                    tier = rank.child("tier").getValue(String::class.java) ?: "Unranked",
+                    score = rank.child("score").getValue(Int::class.java) ?: 0,
+                    ign = rank.child("ign").getValue(String::class.java) ?: "",
+                    region = rank.child("region").getValue(String::class.java) ?: "",
+                    updatedAt = rank.child("updatedAt").getValue(Long::class.java) ?: 0L
+                )
+            }.sortedBy { tierWeight(it.tier) }
+        }
+
         db.getReference("durbin/userRanks/${user.uid}/ranks").addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val categoriesById = tierCategories.associateBy { it.id }
-                myRanks = snapshot.children.map { rank ->
-                    val categoryId = rank.key ?: ""
-                    DurbinMyRank(
-                        categoryId = categoryId,
-                        categoryName = rank.child("categoryName").getValue(String::class.java)
-                            ?: categoriesById[categoryId]?.name
-                            ?: categoryId,
-                        tier = rank.child("tier").getValue(String::class.java) ?: "Unranked",
-                        score = rank.child("score").getValue(Int::class.java) ?: 0,
-                        ign = rank.child("ign").getValue(String::class.java) ?: "",
-                        region = rank.child("region").getValue(String::class.java) ?: "",
-                        updatedAt = rank.child("updatedAt").getValue(Long::class.java) ?: 0L
-                    )
-                }.sortedBy { tierWeight(it.tier) }
+                val uidRanks = parseRanks(snapshot)
+                if (uidRanks.isNotEmpty()) {
+                    myRanks = uidRanks
+                    return
+                }
+
+                val emailKey = emailKeyForRank(user.email)
+                if (emailKey.isBlank()) {
+                    myRanks = emptyList()
+                    return
+                }
+
+                db.getReference("durbin/userRanksByEmail/$emailKey/ranks").addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(emailSnapshot: DataSnapshot) {
+                        myRanks = parseRanks(emailSnapshot)
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        errorMessage = error.message
+                    }
+                })
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -424,7 +467,7 @@ private fun FirebaseTabs(selectedTab: Int, onTabChange: (Int) -> Unit, vertical:
             TabButton("My Rank", Icons.Rounded.AccountCircle, selectedTab == 2) { onTabChange(2) }
         }
     } else {
-        TabRow(selectedTabIndex = selectedTab, containerColor = Color.Transparent, contentColor = MaterialTheme.colorScheme.primary) {
+        TabRow(selectedTabIndex = selectedTab, containerColor = Color.Transparent, contentColor = Color.White) {
             Tab(selected = selectedTab == 0, onClick = { onTabChange(0) }, text = { Text("News") }, icon = { Icon(Icons.Rounded.Article, null) })
             Tab(selected = selectedTab == 1, onClick = { onTabChange(1) }, text = { Text("Tier List") }, icon = { Icon(Icons.Rounded.EmojiEvents, null) })
             Tab(selected = selectedTab == 2, onClick = { onTabChange(2) }, text = { Text("My Rank") }, icon = { Icon(Icons.Rounded.AccountCircle, null) })
@@ -494,10 +537,10 @@ private fun NewsList(items: List<DurbinNewsItem>, onOpenLink: (String) -> Unit) 
                         Chip(item.tag)
                         if (item.pinned) Chip("PINNED")
                         Spacer(Modifier.weight(1f))
-                        Text(formatDate(item.timestamp), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(formatDate(item.timestamp), fontSize = 11.sp, color = Color.White.copy(alpha = 0.72f))
                     }
                     Text(item.title, fontSize = 19.sp, fontWeight = FontWeight.Black)
-                    Text(item.body, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 6, overflow = TextOverflow.Ellipsis)
+                    Text(item.body, color = Color.White.copy(alpha = 0.72f), maxLines = 6, overflow = TextOverflow.Ellipsis)
                     if (item.linkUrl.isNotBlank()) {
                         ElevatedButton(onClick = { onOpenLink(item.linkUrl) }, shape = RoundedCornerShape(16.dp)) {
                             Text("Open link", fontWeight = FontWeight.Bold)
@@ -548,7 +591,7 @@ private fun TierEntryRow(entry: DurbinTierEntry) {
                     Text(entry.ign, fontWeight = FontWeight.Black, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (entry.verified) Icon(Icons.Rounded.Verified, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                 }
-                Text(listOf(entry.region, entry.country).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "No region" }, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(listOf(entry.region, entry.country).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "No region" }, fontSize = 11.sp, color = Color.White.copy(alpha = 0.72f))
             }
             Text("${entry.score}", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
         }
@@ -574,7 +617,7 @@ private fun MyRankScreen(user: FirebaseUser?, ranks: List<DurbinMyRank>) {
                         TierBadge(rank.tier)
                         Column(modifier = Modifier.weight(1f)) {
                             Text(rank.categoryName, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                            Text("IGN: ${rank.ign.ifBlank { "not set" }} • ${rank.region.ifBlank { "no region" }}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("IGN: ${rank.ign.ifBlank { "not set" }} • ${rank.region.ifBlank { "no region" }}", fontSize = 11.sp, color = Color.White.copy(alpha = 0.72f))
                         }
                         Text("${rank.score}", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                     }
@@ -590,9 +633,9 @@ private fun MyRanksPanel(user: FirebaseUser?, ranks: List<DurbinMyRank>, modifie
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("My Rank", fontWeight = FontWeight.Black, fontSize = 18.sp)
             if (user == null) {
-                Text("Login with Google to show your HT/LT ranks.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                Text("Login with Google to show your HT/LT ranks.", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
             } else if (ranks.isEmpty()) {
-                Text("No rank saved yet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                Text("No rank saved yet.", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
             } else {
                 ranks.take(5).forEach { rank ->
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -621,7 +664,7 @@ private fun SetupMessage() {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Icon(Icons.Rounded.Security, contentDescription = null, modifier = Modifier.size(54.dp), tint = MaterialTheme.colorScheme.primary)
         Text("Firebase setup needed", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
-        Text("Open DURBIN_FIREBASE_SETUP.md and paste your Firebase config values.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Open DURBIN_FIREBASE_SETUP.md and paste your Firebase config values.", color = Color.White.copy(alpha = 0.72f))
     }
 }
 
@@ -629,7 +672,7 @@ private fun SetupMessage() {
 private fun EmptyState(title: String, body: String) {
     Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(title, fontWeight = FontWeight.Black, fontSize = 20.sp)
-        Text(body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(body, color = Color.White.copy(alpha = 0.72f))
     }
 }
 

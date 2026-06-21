@@ -1,0 +1,12 @@
+DURBIN Dashboard Clean UI
+
+Changed:
+- Full dashboard CSS redesign
+- Better admin topbar
+- Better sidebar tabs
+- Better form/card spacing
+- Cleaner error messages
+- Cleaner mobile responsive layout
+- Updated Firebase rules:
+  news .indexOn timestamp
+  ads read/write path

@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DURBIN Admin Dashboard</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <div id="adminGate" class="admin-gate">
+    <div class="admin-card">
+      <img src="./logo.png" alt="DURBIN" />
+      <h2>DURBIN Admin Login</h2>
+      <p>Enter admin username and password.</p>
+      <input id="adminUsername" placeholder="Username: COSA or MOD" autocomplete="username" />
+      <input id="adminPassword" placeholder="Password" type="password" autocomplete="current-password" />
+      <button id="adminLoginBtn" class="primary">Unlock Dashboard</button>
+      <div id="adminLoginError" class="admin-error"></div>
+    </div>
+  </div>
+
+
+  <header class="topbar">
+    <div class="brand">
+      <img src="./logo.png" alt="DURBIN" />
+      <div>
+        <h1>DURBIN Admin</h1>
+        <p>Backend Control Panel</p>
+      </div>
+    </div>
+
+    <div class="auth-box">
+      <span id="adminNameBadge" class="admin-badge hidden"></span>
+      <div id="userBox" class="user-box hidden">
+        <span id="userName">Not signed in</span>
+        <button id="copyUidBtn" class="ghost">Copy UID</button>
+        <button id="signOutBtn" class="danger">Sign out</button>
+      </div>
+      <button id="loginBtn" class="primary">Sign in with Google</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <button class="nav active" data-panel="newsPanel">News</button>
+      <button class="nav" data-panel="tierPanel">Tier List</button>
+      <button class="nav" data-panel="rankPanel">Player Rank</button>
+      <button class="nav" data-panel="adPanel">Ads</button>
+      <button class="nav" data-panel="helpPanel">Setup</button>
+    </aside>
+
+    <section class="content">
+      <div id="notice" class="notice">
+        Sign in first. Your UID will show here so you can add yourself as admin in Firebase.
+      </div>
+
+      <div class="dashboard-stats">
+        <div class="stat-card">
+          <span>Database</span>
+          <b>Firebase RTDB</b>
+        </div>
+        <div class="stat-card">
+          <span>Content</span>
+          <b>News • Tiers • Ads</b>
+        </div>
+        <div class="stat-card">
+          <span>Access</span>
+          <b>Admin UID Rules</b>
+        </div>
+      </div>
+
+
+      <section id="newsPanel" class="panel active">
+        <div class="panel-head">
+          <h2>Add News</h2>
+          <p>Writes to <code>durbin/news</code></p>
+        </div>
+
+        <form id="newsForm" class="card form-grid">
+          <input id="newsId" placeholder="News ID, optional: news_001" />
+          <input id="newsTitle" placeholder="Title" required />
+          <input id="newsTag" placeholder="Tag, example: Update" value="Update" />
+          <input id="newsImageUrl" placeholder="Image URL, optional .png/.jpg/.webp" />
+          <input id="newsLinkUrl" placeholder="Link URL, optional" />
+          <textarea id="newsBody" placeholder="News body" required></textarea>
+          <label class="check"><input id="newsPinned" type="checkbox" /> Pinned</label>
+          <button class="primary" type="submit">Save News</button>
+        </form>
+
+        <div class="panel-head small">
+          <h3>Latest News</h3>
+          <button id="refreshNewsBtn" class="ghost">Refresh</button>
+        </div>
+        <div id="newsList" class="list"></div>
+      </section>
+
+      <section id="tierPanel" class="panel">
+        <div class="panel-head">
+          <h2>Add PvP Tier Entry</h2>
+          <p>Writes to <code>durbin/pvpTierLists/&lt;category&gt;/entries</code></p>
+        </div>
+
+        <form id="tierForm" class="card form-grid">
+          <select id="tierCategory" required>
+            <option value="axe">axe</option>
+            <option value="crystal">crystal</option>
+            <option value="nethpot">nethpot</option>
+            <option value="pot">pot</option>
+            <option value="sword">sword</option>
+            <option value="tank">tank</option>
+            <option value="uhc">uhc</option>
+            <option value="smp">smp</option>
+          </select>
+          <input id="tierIgn" placeholder="Minecraft IGN, example: cosa" required />
+          <select id="tierValue" required>
+            <option>HT1</option><option>LT1</option>
+            <option>HT2</option><option>LT2</option>
+            <option selected>HT3</option><option>LT3</option>
+            <option>HT4</option><option>LT4</option>
+            <option>HT5</option><option>LT5</option>
+          </select>
+          <input id="tierScore" type="number" placeholder="Score" value="100" />
+          <input id="tierRegion" placeholder="Region, example: AS" value="AS" />
+          <input id="tierCountry" placeholder="Country" value="Bangladesh" />
+          <input id="tierNotes" placeholder="Notes, optional" />
+          <label class="check"><input id="tierVerified" type="checkbox" checked /> Verified</label>
+          <button class="primary" type="submit">Save Tier Entry</button>
+        </form>
+
+        <div class="panel-head small">
+          <h3>Current Category Entries</h3>
+          <button id="refreshTierBtn" class="ghost">Refresh</button>
+        </div>
+        <div id="tierList" class="list"></div>
+      </section>
+
+      <section id="rankPanel" class="panel">
+        <div class="panel-head">
+          <h2>Add My Rank for Google User</h2>
+          <p>Writes to <code>durbin/userRanksByEmail/&lt;gmail&gt;/ranks/&lt;category&gt;</code></p>
+        </div>
+
+        <form id="rankForm" class="card form-grid">
+          <input id="rankEmail" placeholder="Player Gmail, example: player@gmail.com" type="email" required />
+          <input id="rankUid" placeholder="Firebase Auth UID, optional" />
+          <select id="rankCategory" required>
+            <option value="axe">axe</option>
+            <option value="crystal">crystal</option>
+            <option value="nethpot">nethpot</option>
+            <option value="pot">pot</option>
+            <option value="sword">sword</option>
+            <option value="tank">tank</option>
+            <option value="uhc">uhc</option>
+            <option value="smp">smp</option>
+          </select>
+          <input id="rankIgn" placeholder="Minecraft IGN" required />
+          <select id="rankTier" required>
+            <option>HT1</option><option>LT1</option>
+            <option>HT2</option><option>LT2</option>
+            <option selected>HT3</option><option>LT3</option>
+            <option>HT4</option><option>LT4</option>
+            <option>HT5</option><option>LT5</option>
+          </select>
+          <input id="rankScore" type="number" placeholder="Score" value="100" />
+          <input id="rankRegion" placeholder="Region" value="AS" />
+          <button class="primary" type="submit">Save Gmail Rank</button>
+        </form>
+
+        <div class="card help mini-help">
+          <b>How this works:</b>
+          Add the same Gmail the player uses to login in the launcher.
+          The dashboard writes to <code>durbin/userRanksByEmail</code>.
+          If you also paste UID, it writes to <code>durbin/userRanks</code> too.
+        </div>
+      </section>
+
+
+      <section id="adPanel" class="panel">
+        <div class="panel-head">
+          <h2>Ad Adder</h2>
+          <p>Writes to <code>durbin/ads/main</code></p>
+        </div>
+
+        <form id="adForm" class="card form-grid">
+          <input id="adImageUrl" placeholder="Ad image URL: .png / .jpg / .gif / .webp" required />
+          <input id="adLinkUrl" placeholder="Click link URL, optional" />
+          <select id="adType">
+            <option value="image">image</option>
+            <option value="gif">gif</option>
+          </select>
+          <input id="adAlt" placeholder="Alt name, optional" value="DURBIN Ad" />
+          <label class="check"><input id="adEnabled" type="checkbox" checked /> Enabled</label>
+          <button class="primary" type="submit">Save Ad</button>
+        </form>
+
+        <div class="panel-head small">
+          <h3>Current Ad Preview</h3>
+          <button id="refreshAdBtn" class="ghost">Refresh</button>
+        </div>
+
+        <div id="adPreview" class="ad-preview-box">
+          <div class="item"><p>No ad loaded yet.</p></div>
+        </div>
+      </section>
+
+      <section id="helpPanel" class="panel">
+        <div class="panel-head">
+          <h2>Setup Help</h2>
+          <p>Use this once after deploying to Netlify.</p>
+        </div>
+
+        <div class="card help">
+          <h3>1. Firebase Authorized Domain</h3>
+          <p>Go to Firebase Console → Authentication → Settings → Authorized domains.</p>
+          <p>Add your Netlify domain like <code>your-site-name.netlify.app</code>.</p>
+
+          <h3>2. Add yourself as admin</h3>
+          <p>After signing in, copy your UID from the top bar.</p>
+          <p>In Realtime Database, add:</p>
+          <pre>durbin/admins/YOUR_UID = true</pre>
+
+          <h3>3. Recommended rules</h3>
+          <p>Copy from <code>firebase-rules.json</code> in this ZIP.</p>
+
+          <h3>4. Netlify deploy</h3>
+          <p>Drag this folder to Netlify, or upload the ZIP to Netlify deploy.</p>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

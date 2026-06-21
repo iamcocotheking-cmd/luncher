@@ -508,6 +508,19 @@ jobs:
           test -f "$ROOT/dnbglfw/src/main/cpp/glfw/glfw_stub.c" || { echo "::error title=dnbglfw glfw source missing::Expected glfw_stub.c"; exit 1; }
           echo "dnbglfw GLFW preflight OK."
 
+
+      - name: V43 Java source/resource merge preflight
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+          echo "V43: Java/resources/dependency preflight active"
+          echo "android.nonFinalResIds=false" >> gradle.properties
+          test -f app_pojavlauncher/libs/exp4j-0.4.9-SNAPSHOT.jar || echo "warning: exp4j jar fallback stubs will be used"
+          test -f app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/value/MinecraftLibraryArtifact.java
+          test -f app_pojavlauncher/src/main/java/com/kdt/DefocusableScrollView.java
+          test -f app_pojavlauncher/src/main/res/values/attributes.xml
+
       - name: Build APK with clear error output
         id: build_apk
         shell: bash

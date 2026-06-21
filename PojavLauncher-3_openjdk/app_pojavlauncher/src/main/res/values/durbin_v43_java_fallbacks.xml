@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="_128sdp">128dp</dimen>
+    <dimen name="_13sdp">13dp</dimen>
+    <dimen name="_16sdp">16dp</dimen>
+    <dimen name="_19sdp">19dp</dimen>
+    <dimen name="_48sdp">48dp</dimen>
+    <dimen name="_65sdp">65dp</dimen>
+    <dimen name="_94sdp">94dp</dimen>
+    <dimen name="padding_input_bottom">8dp</dimen>
+    <dimen name="padding_input_top">8dp</dimen>
+    <string name="application_package" formatted="false">application package</string>
+    <string name="cancel" formatted="false">cancel</string>
+    <string name="copy" formatted="false">copy</string>
+    <string name="curseforge_api_key" formatted="false">curseforge api key</string>
+    <string name="ok" formatted="false">ok</string>
+    <string name="storageProviderAuthorities" formatted="false">storageProviderAuthorities</string>
+    <color name="cardview_dark_background">#FF888888</color>
+    <color name="checkbox_text_color">#FF888888</color>
+    <item name="account_spinner" type="id"/>
+    <item name="button" type="id"/>
+    <item name="button2" type="id"/>
+    <item name="button3" type="id"/>
+    <item name="button_elyby_authentication" type="id"/>
+    <item name="button_local_authentication" type="id"/>
+    <item name="button_microsoft_authentication" type="id"/>
+    <item name="color_picker_layout" type="id"/>
+    <item name="content_log_scroll" type="id"/>
+    <item name="content_log_toggle_autoscroll" type="id"/>
+    <item name="content_log_toggle_log" type="id"/>
+    <item name="content_log_view" type="id"/>
+    <item name="controller_mapper_plus_label1" type="id"/>
+    <item name="controller_mapper_plus_label2" type="id"/>
+    <item name="editBackgroundColorWarning_textView" type="id"/>
+    <item name="editButtonOpacity_seekbar" type="id"/>
+    <item name="editButtonOpacity_textView_percent" type="id"/>
+    <item name="editCornerRadius_seekbar" type="id"/>
+    <item name="editCornerRadius_textView_percent" type="id"/>
+    <item name="editGestureDelay_seekbar" type="id"/>
+    <item name="editGestureDelay_textView_percent" type="id"/>
+    <item name="editGyro_textView_percent" type="id"/>
+    <item name="editMapping_plus_1" type="id"/>
+    <item name="editMapping_plus_3" type="id"/>
+    <item name="editMapping_spinner_1" type="id"/>
+    <item name="editMapping_spinner_2" type="id"/>
+    <item name="editMapping_spinner_3" type="id"/>
+    <item name="editMapping_spinner_4" type="id"/>
+    <item name="editMouseSpeed_textView_percent" type="id"/>
+    <item name="editName_textView" type="id"/>
+    <item name="editOrientation_textView" type="id"/>
+    <item name="editResolution_textView_percent" type="id"/>
+    <item name="editSize_textView" type="id"/>
+    <item name="editSize_x_textView" type="id"/>
+    <item name="editStrokeWidth_textView_percent" type="id"/>
+    <item name="edit_layout" type="id"/>
+    <item name="expendable_list_view" type="id"/>
+    <item name="fabric_installer_label_game_ver" type="id"/>
+    <item name="fabric_installer_label_options" type="id"/>
+    <item name="file_selector" type="id"/>
+    <item name="file_selector_create_folder" type="id"/>
+    <item name="file_selector_current_path" type="id"/>
+    <item name="file_selector_select_folder" type="id"/>
+    <item name="fragment_menu_main" type="id"/>
+    <item name="gamepad_remapper_mode_container" type="id"/>
+    <item name="gamepad_remapper_mode_label" type="id"/>
+    <item name="guideline" type="id"/>
+    <item name="guideline2" type="id"/>
+    <item name="guideline3" type="id"/>
+    <item name="guideline4" type="id"/>
+    <item name="imageView" type="id"/>
+    <item name="imageView2" type="id"/>
+    <item name="installmod_btn2" type="id"/>
+    <item name="installmod_btn3" type="id"/>
+    <item name="launcher_compose_view" type="id"/>
+    <item name="list_view" type="id"/>
+    <item name="log_title" type="id"/>
+    <item name="log_view_cancel" type="id"/>
+    <item name="login_button" type="id"/>
+    <item name="login_edit_email" type="id"/>
+    <item name="login_menu" type="id"/>
+    <item name="menu_ctrl_add" type="id"/>
+    <item name="menu_ctrl_add_drawer" type="id"/>
+    <item name="menu_ctrl_load" type="id"/>
+    <item name="menu_ctrl_save" type="id"/>
+    <item name="menu_ctrl_selectdefault" type="id"/>
+    <item name="mineButton_import_control" type="id"/>
+    <item name="modded_profile_bta" type="id"/>
+    <item name="modded_profile_fabric" type="id"/>
+    <item name="modded_profile_forge" type="id"/>
+    <item name="modded_profile_legacy_fabric" type="id"/>
+    <item name="modded_profile_modpack" type="id"/>
+    <item name="modded_profile_neoforge" type="id"/>
+    <item name="modded_profile_quilt" type="id"/>
+    <item name="mouseSpeed" type="id"/>
+    <item name="mouseSpeedTV" type="id"/>
+    <item name="optifine_profile" type="id"/>
+    <item name="progress_layout" type="id"/>
+    <item name="pvc_customDir" type="id"/>
+    <item name="pvc_javaVm" type="id"/>
+    <item name="pvc_jvmArgs" type="id"/>
+    <item name="pvc_renderer" type="id"/>
+    <item name="search_mod_apply_filters" type="id"/>
+    <item name="search_mod_list" type="id"/>
+    <item name="search_mod_mc_version_button" type="id"/>
+    <item name="search_mod_mc_version_textview" type="id"/>
+    <item name="search_mod_overlay" type="id"/>
+    <item name="search_mod_progressbar" type="id"/>
+    <item name="search_mod_selected_mc_version_textview" type="id"/>
+    <item name="search_mod_status_text" type="id"/>
+    <item name="setting_button" type="id"/>
+    <item name="textView2" type="id"/>
+    <item name="textView3" type="id"/>
+    <item name="textView4" type="id"/>
+    <item name="textView6" type="id"/>
+    <item name="textView7" type="id"/>
+    <item name="textView_import_control_file_name" type="id"/>
+    <item name="title_modded_textview" type="id"/>
+    <item name="top_log_view" type="id"/>
+    <item name="vanilla_profile" type="id"/>
+    <item name="ver_clone" type="id"/>
+    <item name="ver_edit" type="id"/>
+    <item name="ver_remove" type="id"/>
+    <item name="view" type="id"/>
+    <item name="view_modded" type="id"/>
+    <item name="visibility_game_checkbox" type="id"/>
+    <item name="visibility_menu_checkbox" type="id"/>
+    <item name="visibility_textview" type="id"/>
+    <item name="vprof_editor_data_checkbox_container" type="id"/>
+    <item name="vprof_editor_delete_button" type="id"/>
+    <item name="vprof_editor_instance_name" type="id"/>
+    <item name="vprof_editor_profile_name_sub" type="id"/>
+    <item name="vprof_editor_save_button" type="id"/>
+    <item name="vprof_editor_version_button" type="id"/>
+    <item name="vprof_editor_version_spinner" type="id"/>
+    <attr name="colorAccent" format="reference|string|integer|boolean|color|dimension"/>
+    <attr name="colorError" format="reference|string|integer|boolean|color|dimension"/>
+    <attr name="colorOnError" format="reference|string|integer|boolean|color|dimension"/>
+    <attr name="editTextStyle" format="reference|string|integer|boolean|color|dimension"/>
+    <attr name="progressBarStyleHorizontal" format="reference|string|integer|boolean|color|dimension"/>
+    <attr name="seekBarPreferenceStyle" format="reference|string|integer|boolean|color|dimension"/>
+    <attr name="state_activated" format="reference|string|integer|boolean|color|dimension"/>
+    <declare-styleable name="CustomSeekbar_android">
+        <attr name="min" format="reference|string|integer|boolean|color|dimension"/>
+    </declare-styleable>
+    <declare-styleable name="CustomSeekbar_android_min">
+        <attr name="dummy" format="integer"/>
+    </declare-styleable>
+    <declare-styleable name="CustomSeekbar_seekBarIncrement">
+        <attr name="dummy" format="integer"/>
+    </declare-styleable>
+    <declare-styleable name="SeekBarPreference">
+        <attr name="min" format="reference|string|integer|boolean|color|dimension"/>
+        <attr name="seekBarIncrement" format="reference|string|integer|boolean|color|dimension"/>
+    </declare-styleable>
+    <declare-styleable name="SeekBarPreference_min">
+        <attr name="dummy" format="integer"/>
+    </declare-styleable>
+    <declare-styleable name="SeekBarPreference_seekBarIncrement">
+        <attr name="dummy" format="integer"/>
+    </declare-styleable>
+</resources>

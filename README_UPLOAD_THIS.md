@@ -220,3 +220,10 @@ Important:
 - It extracts the ZIP's `.jar` mods into the instance `mods` folder.
 - It installs/selects Fabric and launches Minecraft.
 - It only supports DURBIN 1.20.1 and DURBIN 1.21.11.
+
+
+## v32 Server compile fix
+- Fixed missing `border` import.
+- Fixed missing `Bitmap` import.
+- Added missing `ic_px_play.xml`.
+- Keeps v31 real DURBIN Install + Play.

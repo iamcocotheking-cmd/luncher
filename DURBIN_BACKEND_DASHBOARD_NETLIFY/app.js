@@ -5,6 +5,27 @@ const auth = firebase.auth();
 const db = firebase.database();
 const provider = new firebase.auth.GoogleAuthProvider();
 
+async function recordDashboardUser(user) {
+  if (!user) return;
+  try {
+    await withTimeout(db.ref(`durbin/dashboardUsers/${user.uid}`).update({
+      uid: user.uid,
+      email: user.email || "",
+      displayName: user.displayName || "",
+      photoURL: user.photoURL || "",
+      lastLoginAt: nowMs()
+    }));
+  } catch (error) {
+    console.warn("Could not record dashboard user:", error);
+  }
+}
+
+function setText(id, value) {
+  const el = $(id);
+  if (el) el.textContent = value;
+}
+
+
 const $ = (id) => document.getElementById(id);
 
 // Simple dashboard admin lock.
@@ -169,6 +190,7 @@ $("copyUidBtn").addEventListener("click", async () => {
 
 auth.onAuthStateChanged(user => {
   if (user) {
+    recordDashboardUser(user);
     $("loginBtn").classList.add("hidden");
     $("userBox").classList.remove("hidden");
     $("userName").textContent = `${user.displayName || user.email} • UID: ${user.uid}`;
@@ -178,6 +200,7 @@ auth.onAuthStateChanged(user => {
     loadNews();
     loadTier();
     loadAd();
+  loadAuthDashboard();
   } else {
     $("loginBtn").classList.remove("hidden");
     $("userBox").classList.add("hidden");
@@ -312,6 +335,7 @@ $("tierForm").addEventListener("submit", async (e) => {
 
     toast("Tier entry saved.");
     loadTier();
+    loadAllTiers();
   } catch (error) {
     toast(error.message || "Tier save failed.");
   }
@@ -359,6 +383,73 @@ async function loadTier() {
   }
 }
 
+
+const refreshAllTierButton = $("refreshAllTierBtn");
+if (refreshAllTierButton) refreshAllTierButton.addEventListener("click", loadAllTiers);
+
+async function loadAllTiers() {
+  const box = $("allTierList");
+  if (!box) return;
+
+  const path = "durbin/pvpTierLists";
+  box.innerHTML = `<div class="item"><p>Loading all ranks...</p><p class="mini">Reading every category.</p></div>`;
+
+  try {
+    const snap = await withTimeout(db.ref(path).get());
+    if (!snap.exists()) {
+      box.innerHTML = `<div class="item"><p>No rank categories found.</p><p class="mini">Add ranks using the form above.</p></div>`;
+      return;
+    }
+
+    const items = [];
+    snap.forEach(categorySnap => {
+      const category = categorySnap.key || "unknown";
+      const entriesSnap = categorySnap.child("entries");
+      if (!entriesSnap.exists()) return;
+
+      entriesSnap.forEach(entrySnap => {
+        items.push({
+          category,
+          id: entrySnap.key,
+          ...entrySnap.val()
+        });
+      });
+    });
+
+    if (!items.length) {
+      box.innerHTML = `<div class="item"><p>No rank entries found.</p><p class="mini">Categories exist, but entries are empty.</p></div>`;
+      return;
+    }
+
+    items.sort((a, b) => {
+      const cat = String(a.category || "").localeCompare(String(b.category || ""));
+      if (cat !== 0) return cat;
+      return (b.score || 0) - (a.score || 0);
+    });
+
+    box.innerHTML = items.map(p => `
+      <div class="item compact-rank">
+        <div class="row">
+          <div>
+            <span class="tag">${escapeHtml(p.category || "category")} • ${escapeHtml(p.tier || "UNRANKED")}</span>
+            <h4>${escapeHtml(p.ign || p.id)}</h4>
+          </div>
+          <span class="mini">${p.score || 0} pts • ${escapeHtml(p.region || "")}</span>
+        </div>
+        <p>${escapeHtml(p.country || "")} ${p.verified ? "• Verified" : ""}</p>
+        ${p.notes ? `<p>${escapeHtml(p.notes)}</p>` : ""}
+        <div class="item-actions">
+          <button class="ghost" onclick="editTier('${p.category}','${p.id}')">Edit</button>
+          <button class="danger" onclick="deleteTier('${p.category}','${p.id}')">Delete</button>
+        </div>
+      </div>
+    `).join("");
+  } catch (error) {
+    showLoadError(box, path, error);
+  }
+}
+
+
 window.editTier = async (category, id) => {
   try {
     const snap = await withTimeout(db.ref(`durbin/pvpTierLists/${category}/entries/${id}`).get());
@@ -385,6 +476,7 @@ window.deleteTier = async (category, id) => {
     await withTimeout(db.ref(`durbin/pvpTierLists/${category}/entries/${id}`).remove());
     toast("Tier entry deleted.");
     loadTier();
+    loadAllTiers();
   } catch (error) {
     toast(error.message || "Tier delete failed.");
   }
@@ -510,6 +602,121 @@ window.deleteAd = async () => {
   } catch (error) {
     toast(error.message || "Ad delete failed.");
   }
+};
+
+
+
+const copyAuthUidButton = $("copyAuthUidBtn");
+if (copyAuthUidButton) {
+  copyAuthUidButton.addEventListener("click", async () => {
+    const user = auth.currentUser;
+    if (!user) return toast("Sign in first.");
+    await navigator.clipboard.writeText(user.uid);
+    toast("UID copied.");
+  });
+}
+
+const refreshAuthDashButton = $("refreshAuthDashBtn");
+if (refreshAuthDashButton) refreshAuthDashButton.addEventListener("click", loadAuthDashboard);
+
+async function loadAuthDashboard() {
+  const user = auth.currentUser;
+
+  setText("authDashName", user?.displayName || "Not signed in");
+  setText("authDashEmail", user?.email || "Not signed in");
+  setText("authDashUid", user?.uid || "Sign in first");
+
+  const dashboardBox = $("dashboardUsersList");
+  const rankBox = $("rankUsersList");
+
+  if (dashboardBox) dashboardBox.innerHTML = `<div class="item"><p>Loading dashboard users...</p></div>`;
+  if (rankBox) rankBox.innerHTML = `<div class="item"><p>Loading rank users...</p></div>`;
+
+  try {
+    if (dashboardBox) {
+      const snap = await withTimeout(db.ref("durbin/dashboardUsers").get());
+      if (!snap.exists()) {
+        dashboardBox.innerHTML = `<div class="item"><p>No dashboard users saved yet.</p><p class="mini">Sign in once and refresh.</p></div>`;
+      } else {
+        const users = [];
+        snap.forEach(child => users.push({ id: child.key, ...child.val() }));
+        users.sort((a, b) => (b.lastLoginAt || 0) - (a.lastLoginAt || 0));
+
+        dashboardBox.innerHTML = users.map(u => `
+          <div class="item">
+            <div class="row">
+              <div>
+                <span class="tag">AUTH UID</span>
+                <h4>${escapeHtml(u.displayName || u.email || u.id)}</h4>
+              </div>
+              <button class="ghost" onclick="copyText('${escapeHtml(u.uid || u.id)}')">Copy UID</button>
+            </div>
+            <p>${escapeHtml(u.email || "")}</p>
+            <code>${escapeHtml(u.uid || u.id)}</code>
+          </div>
+        `).join("");
+      }
+    }
+
+    if (rankBox) {
+      const uidSnap = await withTimeout(db.ref("durbin/userRanks").get());
+      const emailSnap = await withTimeout(db.ref("durbin/userRanksByEmail").get());
+
+      const items = [];
+
+      if (uidSnap.exists()) {
+        uidSnap.forEach(child => {
+          const v = child.val() || {};
+          items.push({
+            type: "UID",
+            id: child.key,
+            email: v.email || "",
+            ranks: v.ranks ? Object.keys(v.ranks).length : 0
+          });
+        });
+      }
+
+      if (emailSnap.exists()) {
+        emailSnap.forEach(child => {
+          const v = child.val() || {};
+          items.push({
+            type: "GMAIL",
+            id: child.key,
+            email: v.email || "",
+            ranks: v.ranks ? Object.keys(v.ranks).length : 0
+          });
+        });
+      }
+
+      if (!items.length) {
+        rankBox.innerHTML = `<div class="item"><p>No rank users found.</p><p class="mini">Save a Gmail rank or UID rank first.</p></div>`;
+      } else {
+        rankBox.innerHTML = items.map(u => `
+          <div class="item">
+            <div class="row">
+              <div>
+                <span class="tag">${escapeHtml(u.type)}</span>
+                <h4>${escapeHtml(u.email || u.id)}</h4>
+              </div>
+              <span class="mini">${u.ranks} ranks</span>
+            </div>
+            <code>${escapeHtml(u.id)}</code>
+            <div class="item-actions">
+              <button class="ghost" onclick="copyText('${escapeHtml(u.id)}')">Copy Key/UID</button>
+            </div>
+          </div>
+        `).join("");
+      }
+    }
+  } catch (error) {
+    if (dashboardBox) showLoadError(dashboardBox, "durbin/dashboardUsers", error);
+    if (rankBox) showLoadError(rankBox, "durbin/userRanks + durbin/userRanksByEmail", error);
+  }
+}
+
+window.copyText = async (text) => {
+  await navigator.clipboard.writeText(text);
+  toast("Copied.");
 };
 
 

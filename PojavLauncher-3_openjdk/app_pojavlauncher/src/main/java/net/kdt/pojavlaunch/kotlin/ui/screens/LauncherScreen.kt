@@ -189,7 +189,7 @@ fun TaskProgressItem(task: TaskProgress) {
         ) {
             Text(
                 text = task.text,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color.White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -333,7 +333,7 @@ fun ProgressCard(
                     modifier = Modifier
                         .size(18.dp)
                         .alpha(0.6f),
-                    tint = MaterialTheme.colorScheme.onSurface
+                    tint = Color.White
                 )
             }
 
@@ -407,7 +407,7 @@ fun AccountSelector(
         FilledTonalButton(
             onClick = { expanded = true },
             modifier = Modifier
-                .height(40.dp)
+                .height(42.dp)
                 .wrapContentWidth()
                 .padding(horizontal = 3.dp),
             shape = RoundedCornerShape(18.dp),
@@ -416,7 +416,7 @@ fun AccountSelector(
                 containerColor = Color.Transparent,
                 contentColor = Color.White
             ),
-            contentPadding = PaddingValues(horizontal = 11.dp)
+            contentPadding = PaddingValues(horizontal = 13.dp)
         ) {
             if (currentHead != null) {
                 Image(
@@ -455,7 +455,7 @@ fun AccountSelector(
             onDismissRequest = { expanded = false },
             modifier = Modifier
                 .width(280.dp)
-                .background(MaterialTheme.colorScheme.surface)
+                .background(Color(0xFF101010))
         ) {
             accounts.forEach { account ->
                 DropdownMenuItem(
@@ -464,7 +464,7 @@ fun AccountSelector(
                         @Suppress("DEPRECATION")
                         Text(
                             account.username,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -482,7 +482,7 @@ fun AccountSelector(
                                 modifier = Modifier.size(32.dp)
                             )
                         } else {
-                            Icon(painterResource(id = R.drawable.ic_px_home), null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onSurface)
+                            Icon(painterResource(id = R.drawable.ic_px_home), null, Modifier.size(28.dp), tint = Color.White)
                         }
                     },
                     trailingIcon = {
@@ -502,7 +502,7 @@ fun AccountSelector(
                                     painter = painterResource(id = R.drawable.ic_px_trash),
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface
+                                    tint = Color.White
                                 )
                             }
                         }
@@ -514,7 +514,7 @@ fun AccountSelector(
 
             DropdownMenuItem(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                text = { Text("Add Account", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp) },
+                text = { Text("Add Account", color = Color.White, fontSize = 16.sp) },
                 onClick = {
                     expanded = false
                     ExtraCore.setValue(ExtraConstants.SELECT_AUTH_METHOD, true)
@@ -524,7 +524,7 @@ fun AccountSelector(
                         painter = painterResource(id = R.drawable.ic_add),
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.onSurface
+                        tint = Color.White
                     )
                 }
             )
@@ -544,7 +544,7 @@ fun TopBarButton(
     badgeCount: Int = 0
 ) {
     val defaultContainerColor = Color.Transparent
-    val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+    val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
 
     val finalContainerColor = if (isSelected || isSpecialActive) activeColor else defaultContainerColor
 
@@ -554,17 +554,17 @@ fun TopBarButton(
             modifier = Modifier
                 .height(40.dp)
                 .padding(horizontal = 3.dp),
-            shape = RoundedCornerShape(17.dp),
+            shape = RoundedCornerShape(18.dp),
             colors = ButtonDefaults.filledTonalButtonColors(
                 containerColor = finalContainerColor,
-                contentColor = if (isSelected || isSpecialActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                contentColor = Color.White
             ),
-            contentPadding = PaddingValues(horizontal = 11.dp)
+            contentPadding = PaddingValues(horizontal = 13.dp)
         ) {
             Icon(
                 painter = painterResource(id = icon),
                 contentDescription = label,
-                modifier = Modifier.size(17.dp)
+                modifier = Modifier.size(18.dp)
             )
 
             @Suppress("DEPRECATION")
@@ -578,8 +578,9 @@ fun TopBarButton(
                     @Suppress("DEPRECATION")
                     Text(
                         text = label,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Clip
                     )
@@ -691,7 +692,7 @@ fun TopBar(
                     onClick = { onCategoryClick(2) },
                     isSelected = selectedCategory == 2,
                     icon = R.drawable.ic_px_download,
-                    label = "Installer",
+                    label = "Addons",
                     topBarHeight = topBarHeight
                 )
 

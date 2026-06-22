@@ -250,6 +250,7 @@ private fun DurbinBackground(glowPulse: Float, content: @Composable BoxScope.() 
 }
 
 
+
 @Composable
 private fun DurbinLandscapeHome(
     selectedInstance: Instance?,
@@ -273,71 +274,52 @@ private fun DurbinLandscapeHome(
 ) {
     val mainScroll = rememberScrollState()
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .verticalScroll(mainScroll),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        DurbinSideRail(
-            modifier = Modifier
-                .width(62.dp)
-                .fillMaxHeight(),
-            currentAccount = currentAccount,
-            skinHead = skinHead,
+        DurbinTopBar(
             onYoutubeClick = onYoutubeClick,
             onSocialMediaClick = onSocialMediaClick,
-            onOpenFilesClick = onOpenFilesClick,
-            onCustomControlsClick = onCustomControlsClick
+            compact = true,
+            glowPulse = glowPulse
         )
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .verticalScroll(mainScroll),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+        DurbinHeroLaunchBanner(
+            selectedInstance = selectedInstance,
+            onPlayClick = onPlayClick,
+            onInstanceSelect = onInstanceSelect
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            DurbinTopBar(
-                onYoutubeClick = onYoutubeClick,
-                onSocialMediaClick = onSocialMediaClick,
-                compact = true,
-                glowPulse = glowPulse
-            )
-
-            DurbinHeroLaunchBanner(
-                selectedInstance = selectedInstance,
-                onPlayClick = onPlayClick,
-                onInstanceSelect = onInstanceSelect
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            Column(
+                modifier = Modifier.weight(1.65f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
-                    modifier = Modifier.weight(1.60f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    DurbinLatestNewsGrid()
-                    DurbinQuickToolsPanel(
-                        selectedInstance = selectedInstance,
-                        onCustomControlsClick = onCustomControlsClick,
-                        onInstallJarClick = onInstallJarClick,
-                        onShareLogsClick = onShareLogsClick,
-                        onOpenFilesClick = onOpenFilesClick,
-                        onSocialMediaClick = onSocialMediaClick
-                    )
-                }
-
-                DurbinAdPanel(
-                    modifier = Modifier.weight(0.46f)
+                DurbinLatestNewsGrid()
+                DurbinQuickToolsPanel(
+                    selectedInstance = selectedInstance,
+                    onCustomControlsClick = onCustomControlsClick,
+                    onInstallJarClick = onInstallJarClick,
+                    onShareLogsClick = onShareLogsClick,
+                    onOpenFilesClick = onOpenFilesClick,
+                    onSocialMediaClick = onSocialMediaClick
                 )
             }
 
-            Text("v21 Backend • No DURBIN Mod • White UI", color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Bold, fontSize = 10.sp)
-            Spacer(Modifier.height(18.dp))
+            DurbinAdPanel(
+                modifier = Modifier.weight(0.44f)
+            )
         }
+
+        Text("v25 Clean UI • No Sidebar", color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Bold, fontSize = 10.sp)
+        Spacer(Modifier.height(18.dp))
     }
 }
 
@@ -659,7 +641,7 @@ private fun DurbinHeroLaunchBanner(
                 interactionSource = versionInteraction,
                 shape = RoundedCornerShape(15.dp),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.24f)),
-                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.Black.copy(alpha = 0.36f), contentColor = Color.White)
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF0D0D0D).copy(alpha = 0.58f), contentColor = Color.White)
             ) {
                 Text(
                     text = (selectedInstance?.name ?: "Choose instance") + " • " + versionText,

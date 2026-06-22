@@ -47,6 +47,7 @@
       <button class="nav active" data-panel="newsPanel">News</button>
       <button class="nav" data-panel="tierPanel">Tier List</button>
       <button class="nav" data-panel="rankPanel">Player Rank</button>
+      <button class="nav" data-panel="authPanel">Auth UID</button>
       <button class="nav" data-panel="adPanel">Ads</button>
       <button class="nav" data-panel="helpPanel">Setup</button>
     </aside>
@@ -134,6 +135,15 @@
           <button id="refreshTierBtn" class="ghost">Refresh</button>
         </div>
         <div id="tierList" class="list"></div>
+
+        <div class="panel-head small">
+          <h3>All Rank Entries</h3>
+          <button id="refreshAllTierBtn" class="ghost">Refresh All</button>
+        </div>
+        <div class="card help mini-help">
+          This shows every entry from <code>durbin/pvpTierLists</code>, not only the selected category.
+        </div>
+        <div id="allTierList" class="list"></div>
       </section>
 
       <section id="rankPanel" class="panel">
@@ -176,6 +186,54 @@
         </div>
       </section>
 
+
+
+      <section id="authPanel" class="panel">
+        <div class="panel-head">
+          <h2>Auth UID Dashboard</h2>
+          <p>See your Firebase Auth UID and dashboard-known users.</p>
+        </div>
+
+        <div class="card uid-card">
+          <h3>Your current signed-in account</h3>
+          <div class="uid-grid">
+            <div>
+              <span class="mini">Name</span>
+              <b id="authDashName">Not signed in</b>
+            </div>
+            <div>
+              <span class="mini">Email</span>
+              <b id="authDashEmail">Not signed in</b>
+            </div>
+            <div>
+              <span class="mini">UID</span>
+              <code id="authDashUid">Sign in first</code>
+            </div>
+          </div>
+          <div class="item-actions">
+            <button id="copyAuthUidBtn" class="ghost" type="button">Copy My UID</button>
+            <button id="refreshAuthDashBtn" class="ghost" type="button">Refresh UID Dashboard</button>
+          </div>
+        </div>
+
+        <div class="card help mini-help">
+          <b>Important:</b> A normal Netlify/Firebase web dashboard cannot list every Firebase Auth user by itself.
+          It can show users who logged into this dashboard, and users you saved ranks for.
+          Full Auth user listing needs Firebase Admin SDK on a server.
+        </div>
+
+        <div class="panel-head small">
+          <h3>Dashboard Users</h3>
+          <p>Users saved under <code>durbin/dashboardUsers</code></p>
+        </div>
+        <div id="dashboardUsersList" class="list"></div>
+
+        <div class="panel-head small">
+          <h3>Rank Users</h3>
+          <p>Users found under <code>durbin/userRanks</code> and <code>durbin/userRanksByEmail</code></p>
+        </div>
+        <div id="rankUsersList" class="list"></div>
+      </section>
 
       <section id="adPanel" class="panel">
         <div class="panel-head">

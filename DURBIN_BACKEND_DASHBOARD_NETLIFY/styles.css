@@ -221,3 +221,57 @@ body.admin-locked main,body.admin-locked header{filter:blur(10px);pointer-events
   .ad-preview-box{grid-template-columns:1fr}
   .ad-preview-card{width:min(280px,100%);margin:auto}
 }
+
+
+
+.uid-card code,
+.item code {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  color: #ffffff;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+
+.uid-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.uid-grid div {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.uid-grid b {
+  display: block;
+  color: #ffffff;
+  margin-top: 4px;
+  word-break: break-word;
+}
+
+.compact-rank {
+  border-left: 3px solid rgba(255, 77, 77, 0.9);
+}
+
+#allTierList {
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .uid-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+body, input, textarea, select, button { color: #ffffff; }

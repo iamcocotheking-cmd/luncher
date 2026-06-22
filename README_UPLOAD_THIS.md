@@ -155,3 +155,27 @@ Important:
 - Removed duplicate `containerColor`.
 - Fixed Kotlin composable-context compile errors around lines 165–189.
 - Keeps all v21 changes: no DURBIN mod installer, backend folder, white text, animations.
+
+
+## v23 Backend all ranks + Auth UID
+- Backend Tier List now shows current category entries and all entries across every category.
+- Added Auth UID dashboard panel.
+- Dashboard records signed-in users under `durbin/dashboardUsers`.
+- Auth UID panel shows current UID, dashboard users, and rank users by UID/Gmail.
+
+
+## v24 No Sidebar + UI refresh
+- Removed home side bar.
+- Updated account adder/login UI.
+- Updated file manager buttons.
+- Settings no longer uses the side rail.
+- Made topbar/selection text white.
+- Added lightweight button press animations.
+
+
+## v25 More UI polish
+- Cleaner top navigation with less orange.
+- Account Center UI improved.
+- File Manager UI improved.
+- Settings remains no-side-rail compact UI.
+- More white text fixes.

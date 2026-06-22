@@ -11,6 +11,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -156,17 +160,25 @@ fun SelectAuthScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-                            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)), RoundedCornerShape(12.dp))
+                            .background(Color.Black.copy(alpha = 0.42f))
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(12.dp))
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Select Login Method",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Column {
+                                Text(
+                                    text = "Account Center",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Login or create a local Minecraft profile",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White.copy(alpha = 0.62f)
+                                )
+                            }
                         }
                     }
 
@@ -208,8 +220,8 @@ fun SelectAuthScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-                        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)), RoundedCornerShape(14.dp)),
+                        .background(Color.Black.copy(alpha = 0.42f))
+                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isPreview) {
@@ -225,7 +237,7 @@ fun SelectAuthScreen(
                             Text(
                                 text = "3D Skin Preview\n(skinview3d)",
                                 fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = Color.WhiteVariant,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -306,14 +318,14 @@ fun SelectAuthScreen(
     if (showLocalDialog) {
         AlertDialog(
             onDismissRequest = { showLocalDialog = false },
-            title = { Text(stringResource(id = R.string.auth_select_local)) },
+            title = { Text(stringResource(id = R.string.auth_select_local), color = Color.White, fontWeight = FontWeight.Black) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     @Suppress("DEPRECATION")
                     Text(
                         text = stringResource(id = R.string.login_online_username_hint),
                         fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color.WhiteVariant
                     )
                     OutlinedTextField(
                         value = localUsername,
@@ -372,7 +384,10 @@ fun SelectAuthScreen(
                     Text(stringResource(id = android.R.string.cancel))
                 }
             },
-            shape = RoundedCornerShape(24.dp)
+            shape = RoundedCornerShape(24.dp),
+            containerColor = Color(0xFF111111),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
         )
     }
 }
@@ -451,6 +466,8 @@ fun Skin3DViewer(
     }
 }
 
+
+
 @Composable
 fun AuthActionButton(
     text: String,
@@ -458,15 +475,26 @@ fun AuthActionButton(
     onClick: () -> Unit,
     tint: Color = Color.Unspecified
 ) {
-    Button(
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.965f else 1f,
+        animationSpec = tween(durationMillis = 85),
+        label = "authButtonScale"
+    )
+
+    OutlinedButton(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 40.dp),
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
+            .scale(scale)
+            .heightIn(min = 54.dp),
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.34f)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color(0xFF0D0D0D).copy(alpha = 0.72f),
+            contentColor = Color.White
         ),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
     ) {
@@ -475,19 +503,28 @@ fun AuthActionButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            @Suppress("DEPRECATION")
-            Icon(
-                painter = painterResource(id = icon),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = tint
-            )
-            Spacer(modifier = Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(Color.White.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
+            ) {
+                @Suppress("DEPRECATION")
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = null,
+                    modifier = Modifier.size(21.dp),
+                    tint = tint
+                )
+            }
+            Spacer(modifier = Modifier.width(14.dp))
             @Suppress("DEPRECATION")
             Text(
                 text = text,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -642,8 +679,8 @@ fun LocalLoginScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-                        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)), RoundedCornerShape(14.dp)),
+                        .background(Color.Black.copy(alpha = 0.42f))
+                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     val skinUrl = remember(username, selectedSkinPath) {

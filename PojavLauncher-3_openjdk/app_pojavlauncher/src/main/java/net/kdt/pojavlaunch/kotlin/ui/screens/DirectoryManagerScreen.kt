@@ -2,6 +2,10 @@ package net.kdt.pojavlaunch.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -118,8 +122,8 @@ fun DirectoryManagerScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-                            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)), RoundedCornerShape(12.dp))
+                            .background(Color(0xFF0D0D0D).copy(alpha = 0.62f))
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), RoundedCornerShape(12.dp))
                             .padding(12.dp)
                     ) {
                         androidx.compose.foundation.layout.FlowRow(
@@ -131,7 +135,7 @@ fun DirectoryManagerScreen(
                                 Text(
                                     text = name,
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = Color.White,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(4.dp))
                                         .clickable { onCrumbClick(file) }
@@ -141,7 +145,7 @@ fun DirectoryManagerScreen(
                                     Text(
                                         text = "/",
                                         fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = Color.WhiteVariant,
                                         modifier = Modifier.padding(horizontal = 2.dp)
                                     )
                                 }
@@ -156,7 +160,7 @@ fun DirectoryManagerScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FileActionButton(
-                            text = "Up",
+                            text = "Back",
                             icon = R.drawable.ic_px_home,
                             onClick = onUpClick
                         )
@@ -189,7 +193,7 @@ fun DirectoryManagerScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = statusText,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color.WhiteVariant,
                             fontSize = 11.sp,
                             modifier = Modifier.padding(horizontal = 4.dp)
                         )
@@ -234,6 +238,8 @@ fun DirectoryManagerScreen(
     }
 }
 
+
+
 @Composable
 fun FileActionButton(
     text: String,
@@ -242,24 +248,37 @@ fun FileActionButton(
     enabled: Boolean = true,
     isError: Boolean = false
 ) {
-    Button(
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && enabled) 0.965f else 1f,
+        animationSpec = tween(durationMillis = 85),
+        label = "fileActionButtonScale"
+    )
+
+    OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 40.dp),
-        shape = CircleShape,
-        colors = if (isError) {
-            ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError
-            )
-        } else {
-            ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        },
+            .scale(scale)
+            .heightIn(min = 54.dp),
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(17.dp),
+        border = BorderStroke(
+            1.dp,
+            when {
+                isError -> MaterialTheme.colorScheme.error.copy(alpha = 0.50f)
+                enabled -> MaterialTheme.colorScheme.primary.copy(alpha = 0.34f)
+                else -> Color.White.copy(alpha = 0.12f)
+            }
+        ),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (enabled) Color(0xFF0D0D0D).copy(alpha = 0.72f) else Color.White.copy(alpha = 0.06f),
+            contentColor = if (enabled) Color.White else Color.White.copy(alpha = 0.40f),
+            disabledContainerColor = Color.White.copy(alpha = 0.06f),
+            disabledContentColor = Color.White.copy(alpha = 0.40f)
+        ),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(
@@ -270,13 +289,15 @@ fun FileActionButton(
             Icon(
                 painter = painterResource(id = icon),
                 contentDescription = null,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(20.dp),
+                tint = if (isError) MaterialTheme.colorScheme.error else Color.White
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = text,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
+                color = if (enabled) Color.White else Color.White.copy(alpha = 0.48f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black
             )
         }
     }
@@ -299,7 +320,7 @@ fun FileEntryItem(
             ),
         shape = RoundedCornerShape(14.dp),
         color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
     ) {
         Row(
             modifier = Modifier.padding(12.dp),

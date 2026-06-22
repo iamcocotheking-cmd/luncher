@@ -107,14 +107,14 @@ fun SettingsScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val isWide = maxWidth > 600.dp
+            val isWide = false
 
             if (isWide) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     NavigationRail(
                         modifier = Modifier.fillMaxHeight().width(80.dp),
                         containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        contentColor = Color.White,
                         windowInsets = WindowInsets(0, 0, 0, 0)
                     ) {
                         Spacer(modifier = Modifier.height(12.dp))
@@ -179,7 +179,7 @@ fun SettingsScreen(
                             contentWindowInsets = WindowInsets(0, 0, 0, 0),
                             topBar = {
                                 TopAppBar(
-                                    title = { Text("Settings", fontWeight = FontWeight.Bold) },
+                                    title = { Text("Settings", color = Color.White, fontWeight = FontWeight.Black) },
                                     navigationIcon = { },
                                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                                 )
@@ -199,7 +199,7 @@ fun SettingsScreen(
                             contentWindowInsets = WindowInsets(0, 0, 0, 0),
                             topBar = {
                                 TopAppBar(
-                                    title = { Text(stringResource(currentPage.titleRes), fontWeight = FontWeight.Bold) },
+                                    title = { Text(stringResource(currentPage.titleRes), color = Color.White, fontWeight = FontWeight.Bold) },
                                     navigationIcon = {
                                         IconButton(onClick = {
                                             isMainPage = true

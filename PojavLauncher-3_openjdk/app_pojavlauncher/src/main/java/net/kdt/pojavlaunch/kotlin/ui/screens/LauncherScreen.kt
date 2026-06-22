@@ -681,6 +681,14 @@ fun TopBar(
                 )
 
                 TopBarButton(
+                    onClick = { onCategoryClick(4) },
+                    isSelected = selectedCategory == 4,
+                    icon = R.drawable.ic_px_server,
+                    label = "Servers",
+                    topBarHeight = topBarHeight
+                )
+
+                TopBarButton(
                     onClick = { onCategoryClick(1) },
                     isSelected = selectedCategory == 1,
                     icon = R.drawable.ic_px_folder,
@@ -692,7 +700,7 @@ fun TopBar(
                     onClick = { onCategoryClick(2) },
                     isSelected = selectedCategory == 2,
                     icon = R.drawable.ic_px_download,
-                    label = "Addons",
+                    label = "DURBIN",
                     topBarHeight = topBarHeight
                 )
 
@@ -990,7 +998,8 @@ fun LauncherScreen(
                 ) { category ->
                     when (category) {
                         1 -> DirectoryManagerOverlay(onBack = { selectedCategory = -1 })
-                        2 -> ContentInstallerOverlay(onBack = { selectedCategory = -1 })
+                        4 -> DurbinServerListOverlay(onBack = { selectedCategory = -1 })
+                        2 -> DurbinClientDownloadsOverlay(onBack = { selectedCategory = -1 })
                         3 -> SettingsOverlay(onBack = { selectedCategory = -1 })
                     }
                 }
@@ -1179,6 +1188,224 @@ private fun DirectoryManagerOverlay(onBack: () -> Unit) {
             },
             onDeleteClick = { showDeleteConfirm = true }
         )
+    }
+}
+
+private data class DurbinClientBuild(
+    val version: String,
+    val minecraftVersion: String,
+    val url: String,
+    val note: String
+)
+
+private val durbinClientBuilds = listOf(
+    DurbinClientBuild(
+        version = "DURBIN 1.20.1",
+        minecraftVersion = "1.20.1",
+        url = "https://github.com/iamcocotheking-cmd/Durbin-launcher/releases/download/minecraft/1.20.1.zip",
+        note = "Stable DURBIN mod pack for Minecraft 1.20.1"
+    ),
+    DurbinClientBuild(
+        version = "DURBIN 1.21.11",
+        minecraftVersion = "1.21.11",
+        url = "https://github.com/iamcocotheking-cmd/Durbin-launcher/releases/download/minecraft/1.21.11.zip",
+        note = "Latest DURBIN mod pack for Minecraft 1.21.11"
+    )
+)
+
+@Composable
+private fun DurbinClientDownloadsOverlay(onBack: () -> Unit) {
+    val context = LocalContext.current
+    BackHandler { onBack() }
+
+    Surface(modifier = Modifier.fillMaxSize(), color = Color.Transparent) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .weight(0.82f)
+                    .fillMaxHeight(),
+                color = Color.Black.copy(alpha = 0.34f),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("DURBIN Builds", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
+                    Text(
+                        "Only 2 official DURBIN mod builds are available right now.",
+                        color = Color.White.copy(alpha = 0.72f),
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Surface(
+                        color = Color(0xFF0D0D0D).copy(alpha = 0.72f),
+                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text("Available versions", color = Color.White, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                            Text("1.20.1 and 1.21.11 only. No other DURBIN versions will be shown here.", color = Color.White.copy(alpha = 0.68f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+
+                    DurbinClientActionButton(
+                        text = "Back Home",
+                        icon = R.drawable.ic_px_home,
+                        onClick = onBack
+                    )
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .weight(1.55f)
+                    .fillMaxHeight(),
+                color = Color.Black.copy(alpha = 0.40f),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(durbinClientBuilds, key = { it.minecraftVersion }) { build ->
+                        DurbinClientBuildCard(
+                            build = build,
+                            onDownload = {
+                                val activity = context as? FragmentActivity
+                                if (activity == null) {
+                                    Toast.makeText(context, "Could not open download link.", Toast.LENGTH_LONG).show()
+                                } else {
+                                    Tools.openURL(activity, build.url)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DurbinClientBuildCard(
+    build: DurbinClientBuild,
+    onDownload: () -> Unit
+) {
+    Surface(
+        color = Color(0xFF0D0D0D).copy(alpha = 0.74f),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f), RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.icon),
+                    contentDescription = null,
+                    modifier = Modifier.size(42.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(
+                    text = build.version,
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 20.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Minecraft ${build.minecraftVersion}",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = build.note,
+                    color = Color.White.copy(alpha = 0.66f),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            DurbinClientActionButton(
+                text = "Download",
+                icon = R.drawable.ic_px_download,
+                onClick = onDownload,
+                compact = true
+            )
+        }
+    }
+}
+
+@Composable
+private fun DurbinClientActionButton(
+    text: String,
+    icon: Int,
+    onClick: () -> Unit,
+    compact: Boolean = false
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.96f else 1f,
+        animationSpec = tween(durationMillis = 90),
+        label = "durbinClientButtonScale"
+    )
+
+    OutlinedButton(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        modifier = Modifier
+            .scale(scale)
+            .height(if (compact) 46.dp else 54.dp)
+            .then(if (compact) Modifier.widthIn(min = 126.dp) else Modifier.fillMaxWidth()),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.Black.copy(alpha = 0.26f),
+            contentColor = Color.White
+        ),
+        contentPadding = PaddingValues(horizontal = 14.dp)
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(if (compact) 18.dp else 20.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = Color.White, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

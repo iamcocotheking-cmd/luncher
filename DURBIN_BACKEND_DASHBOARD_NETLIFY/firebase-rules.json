@@ -22,6 +22,11 @@
         ".read": true,
         ".write": "auth != null && root.child('durbin/admins').child(auth.uid).val() === true"
       },
+      "servers": {
+        ".read": true,
+        ".write": "auth != null && root.child('durbin/admins').child(auth.uid).val() === true",
+        ".indexOn": ["order", "featured", "enabled"]
+      },
       "admins": {
         ".read": "auth != null",
         ".write": "auth != null && root.child('durbin/admins').child(auth.uid).val() === true"

@@ -521,6 +521,122 @@ $("rankForm").addEventListener("submit", async (e) => {
 const refreshAdButton = $("refreshAdBtn");
 if (refreshAdButton) refreshAdButton.addEventListener("click", loadAd);
 
+
+const serverForm = $("serverForm");
+const refreshServerButton = $("refreshServerBtn");
+
+if (serverForm) {
+  serverForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const rawId = $("serverId").value.trim();
+    const name = $("serverName").value.trim();
+    const ip = $("serverIp").value.trim();
+
+    if (!name || !ip) return toast("Server name and IP required.");
+
+    const id = rawId || slugify(name || ip);
+
+    const data = {
+      name,
+      ip,
+      motd: $("serverMotd").value.trim(),
+      iconUrl: $("serverIconUrl").value.trim(),
+      order: Number($("serverOrder").value || 0),
+      featured: $("serverFeatured").checked,
+      enabled: $("serverEnabled").checked,
+      updatedAt: nowMs()
+    };
+
+    await withTimeout(db.ref(`durbin/servers/${id}`).set(data));
+    toast("Server saved.");
+    serverForm.reset();
+    $("serverOrder").value = "0";
+    $("serverFeatured").checked = true;
+    $("serverEnabled").checked = true;
+    loadServers();
+  });
+}
+
+if (refreshServerButton) refreshServerButton.addEventListener("click", loadServers);
+
+async function loadServers() {
+  const box = $("serverList");
+  if (!box) return;
+
+  const path = "durbin/servers";
+  box.innerHTML = `<div class="item"><p>Loading servers...</p></div>`;
+
+  try {
+    const snap = await withTimeout(db.ref(path).get());
+    if (!snap.exists()) {
+      box.innerHTML = `<div class="item"><p>No servers added yet.</p><p class="mini">Add your first server above.</p></div>`;
+      return;
+    }
+
+    const items = [];
+    snap.forEach(child => items.push({ id: child.key, ...child.val() }));
+
+    items.sort((a, b) => {
+      if (!!b.featured !== !!a.featured) return Number(!!b.featured) - Number(!!a.featured);
+      return (a.order || 0) - (b.order || 0);
+    });
+
+    box.innerHTML = items.map(s => `
+      <div class="item compact-rank">
+        <div class="row">
+          <div>
+            <span class="tag">${s.featured ? "FEATURED" : "SERVER"} ${s.enabled === false ? "• OFF" : ""}</span>
+            <h4>${escapeHtml(s.name || s.id)}</h4>
+          </div>
+          <span class="mini">${escapeHtml(s.ip || "")}</span>
+        </div>
+        ${s.motd ? `<p>${escapeHtml(s.motd)}</p>` : ""}
+        ${s.iconUrl ? `<p class="mini">${escapeHtml(s.iconUrl)}</p>` : ""}
+        <div class="item-actions">
+          <button class="ghost" onclick="editServer('${s.id}')">Edit</button>
+          <button class="danger" onclick="deleteServer('${s.id}')">Delete</button>
+        </div>
+      </div>
+    `).join("");
+  } catch (error) {
+    showLoadError(box, path, error);
+  }
+}
+
+window.editServer = async (id) => {
+  const snap = await withTimeout(db.ref(`durbin/servers/${id}`).get());
+  if (!snap.exists()) return toast("Server not found.");
+
+  const s = snap.val() || {};
+  $("serverId").value = id;
+  $("serverName").value = s.name || "";
+  $("serverIp").value = s.ip || "";
+  $("serverMotd").value = s.motd || "";
+  $("serverIconUrl").value = s.iconUrl || "";
+  $("serverOrder").value = s.order || 0;
+  $("serverFeatured").checked = !!s.featured;
+  $("serverEnabled").checked = s.enabled !== false;
+  showPanel("serverPanel");
+};
+
+window.deleteServer = async (id) => {
+  if (!confirm(`Delete server ${id}?`)) return;
+  await withTimeout(db.ref(`durbin/servers/${id}`).remove());
+  toast("Server deleted.");
+  loadServers();
+};
+
+function slugify(value) {
+  return String(value || "server")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    || `server_${Date.now()}`;
+}
+
+
 const adForm = $("adForm");
 if (adForm) {
   adForm.addEventListener("submit", async (e) => {

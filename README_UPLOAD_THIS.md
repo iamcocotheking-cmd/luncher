@@ -185,3 +185,18 @@ Important:
 - Fixed `Unresolved reference 'WhiteVariant'`.
 - Replaced `Color.WhiteVariant` with `Color.White.copy(alpha = 0.70f)`.
 - Keeps all v25 UI changes.
+
+
+## v27 Server List Dashboard
+- Added top-nav `Servers` button.
+- Added launcher server list screen.
+- Backend dashboard now supports adding/editing/deleting servers.
+- Launcher reads `durbin/servers` and syncs enabled servers into Minecraft `servers.dat`.
+- Existing `servers.dat` is backed up to `servers.dat.durbin_backup`.
+
+
+## v28 Only two DURBIN mod builds
+- Top nav `Addons` is now `DURBIN`.
+- Users only see DURBIN 1.20.1 and DURBIN 1.21.11.
+- The old Modrinth/extra versions are not shown from the top nav page.
+- Download buttons open the official GitHub release ZIP links.

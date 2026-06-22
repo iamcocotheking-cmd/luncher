@@ -227,3 +227,10 @@ Important:
 - Fixed missing `Bitmap` import.
 - Added missing `ic_px_play.xml`.
 - Keeps v31 real DURBIN Install + Play.
+
+
+## v33 Exact Bitmap import fix
+- Fixed `Unresolved reference 'Bitmap'`.
+- Added exact `import android.graphics.Bitmap`.
+- Made the remote banner bitmap state type explicit.
+- Keeps v31 real Install + Play and v32 server fixes.

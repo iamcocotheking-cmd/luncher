@@ -1,6 +1,7 @@
 package net.kdt.pojavlaunch.ui.screens
 
 import androidx.compose.foundation.border
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.clip
@@ -335,7 +336,7 @@ private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
 
 @Composable
 private fun RemoteServerBanner(url: String, modifier: Modifier = Modifier) {
-    var bitmap by remember(url) { mutableStateOf<Bitmap?>(null) }
+    var bitmap: Bitmap? by remember(url) { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(url) {
         bitmap = null

@@ -200,3 +200,9 @@ Important:
 - Users only see DURBIN 1.20.1 and DURBIN 1.21.11.
 - The old Modrinth/extra versions are not shown from the top nav page.
 - Download buttons open the official GitHub release ZIP links.
+
+
+## v29 Launcher imports fixed
+- Fixed LauncherScreen.kt compile error.
+- Added missing Compose imports for DURBIN button animation.
+- Keeps v28: only DURBIN 1.20.1 and 1.21.11 visible.

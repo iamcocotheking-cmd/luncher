@@ -179,3 +179,9 @@ Important:
 - File Manager UI improved.
 - Settings remains no-side-rail compact UI.
 - More white text fixes.
+
+
+## v26 WhiteVariant compile fix
+- Fixed `Unresolved reference 'WhiteVariant'`.
+- Replaced `Color.WhiteVariant` with `Color.White.copy(alpha = 0.70f)`.
+- Keeps all v25 UI changes.

@@ -145,7 +145,7 @@ fun DirectoryManagerScreen(
                                     Text(
                                         text = "/",
                                         fontSize = 12.sp,
-                                        color = Color.WhiteVariant,
+                                        color = Color.White.copy(alpha = 0.70f),
                                         modifier = Modifier.padding(horizontal = 2.dp)
                                     )
                                 }
@@ -193,7 +193,7 @@ fun DirectoryManagerScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = statusText,
-                            color = Color.WhiteVariant,
+                            color = Color.White.copy(alpha = 0.70f),
                             fontSize = 11.sp,
                             modifier = Modifier.padding(horizontal = 4.dp)
                         )

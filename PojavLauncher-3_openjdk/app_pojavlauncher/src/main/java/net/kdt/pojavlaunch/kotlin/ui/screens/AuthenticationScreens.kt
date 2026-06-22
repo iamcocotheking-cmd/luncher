@@ -237,7 +237,7 @@ fun SelectAuthScreen(
                             Text(
                                 text = "3D Skin Preview\n(skinview3d)",
                                 fontSize = 12.sp,
-                                color = Color.WhiteVariant,
+                                color = Color.White.copy(alpha = 0.70f),
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -325,7 +325,7 @@ fun SelectAuthScreen(
                     Text(
                         text = stringResource(id = R.string.login_online_username_hint),
                         fontSize = 14.sp,
-                        color = Color.WhiteVariant
+                        color = Color.White.copy(alpha = 0.70f)
                     )
                     OutlinedTextField(
                         value = localUsername,

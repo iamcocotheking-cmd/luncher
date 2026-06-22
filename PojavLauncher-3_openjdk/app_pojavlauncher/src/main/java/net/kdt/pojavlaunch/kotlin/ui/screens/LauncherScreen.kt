@@ -1310,14 +1310,31 @@ private fun DurbinClientBuildCard(
     build: DurbinClientBuild,
     onInstallAndPlay: () -> Unit
 ) {
-    Surface(
-        color = Color(0xFF0D0D0D).copy(alpha = 0.74f),
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(154.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)), RoundedCornerShape(20.dp))
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.durbin_mod_banner),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.84f), Color.Black.copy(alpha = 0.38f), Color.Transparent)
+                    )
+                )
+        )
         Row(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -1325,7 +1342,7 @@ private fun DurbinClientBuildCard(
             Box(
                 modifier = Modifier
                     .size(54.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f), RoundedCornerShape(16.dp)),
+                    .background(Color.Black.copy(alpha = 0.42f), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Image(

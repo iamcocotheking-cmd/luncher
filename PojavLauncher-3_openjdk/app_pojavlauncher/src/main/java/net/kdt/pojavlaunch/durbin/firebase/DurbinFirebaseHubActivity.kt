@@ -122,7 +122,7 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
             val account = task.getResult(ApiException::class.java)
             val idToken = account.idToken
             if (idToken.isNullOrBlank()) {
-                showToast("Google login failed: empty ID token")
+                signInFallback("Google token missing")
                 return@registerForActivityResult
             }
             val credential = GoogleAuthProvider.getCredential(idToken, null)
@@ -133,11 +133,11 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
                     loadMyRanks()
                     showToast("Signed in as ${currentUser?.displayName ?: currentUser?.email ?: "Google account"}")
                 } else {
-                    showToast(signInTask.exception?.message ?: "Firebase login failed")
+                    signInFallback(signInTask.exception?.message ?: "Firebase login failed")
                 }
             }
         } catch (e: Exception) {
-            showToast(e.message ?: "Google login cancelled")
+            signInFallback(e.message ?: "Google login cancelled")
         }
     }
 
@@ -321,7 +321,7 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
             return
         }
         if (!DurbinFirebaseConfig.isGoogleLoginConfigured(this)) {
-            showToast("Paste your Firebase Web Client ID first")
+            signInFallback("Google client ID not configured")
             return
         }
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -329,6 +329,26 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
             .requestEmail()
             .build()
         signInLauncher.launch(GoogleSignIn.getClient(this, gso).signInIntent)
+    }
+
+
+    private fun signInFallback(reason: String) {
+        val firebaseAuth = auth
+        if (firebaseAuth == null) {
+            showToast("Login failed: $reason")
+            return
+        }
+
+        firebaseAuth.signInAnonymously().addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                currentUser = firebaseAuth.currentUser
+                saveUserProfile()
+                loadMyRanks()
+                showToast("Signed in with guest UID. Google failed: $reason")
+            } else {
+                showToast(task.exception?.message ?: "Login failed: $reason")
+            }
+        }
     }
 
     private fun signOut() {
@@ -445,7 +465,7 @@ private fun FirebaseHeader(
                 Button(onClick = onSignIn, shape = RoundedCornerShape(18.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
                     Icon(Icons.Rounded.Login, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Google", fontWeight = FontWeight.Bold)
+                    Text("Login", fontWeight = FontWeight.Bold)
                 }
             } else {
                 OutlinedButton(onClick = onSignOut, shape = RoundedCornerShape(18.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
@@ -602,7 +622,7 @@ private fun TierEntryRow(entry: DurbinTierEntry) {
 private fun MyRankScreen(user: FirebaseUser?, ranks: List<DurbinMyRank>) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (user == null) {
-            EmptyState("Login required", "Use Google login to see your personal HT/LT ranks.")
+            EmptyState("Login required", "Login to see your personal HT/LT ranks. If Google fails, guest UID login will be used.")
             return@Column
         }
         Text("Signed in: ${user.displayName ?: user.email ?: "Google account"}", fontWeight = FontWeight.Bold)
@@ -633,7 +653,7 @@ private fun MyRanksPanel(user: FirebaseUser?, ranks: List<DurbinMyRank>, modifie
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("My Rank", fontWeight = FontWeight.Black, fontSize = 18.sp)
             if (user == null) {
-                Text("Login with Google to show your HT/LT ranks.", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
+                Text("Login to show your HT/LT ranks. Guest UID works if Google fails.", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
             } else if (ranks.isEmpty()) {
                 Text("No rank saved yet.", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
             } else {

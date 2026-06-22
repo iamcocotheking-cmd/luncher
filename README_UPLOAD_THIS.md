@@ -234,3 +234,11 @@ Important:
 - Added exact `import android.graphics.Bitmap`.
 - Made the remote banner bitmap state type explicit.
 - Keeps v31 real Install + Play and v32 server fixes.
+
+
+## v34 Launch + Google fallback + server UI fix
+- Fixed Minecraft 1.20.1 version JSON error by downloading base Mojang metadata before Fabric install.
+- Google login now has anonymous/guest UID fallback.
+- Server list no longer has an inner Home button.
+- Server refresh is on the top bar.
+- DURBIN mod card uses the uploaded DURBIN banner.

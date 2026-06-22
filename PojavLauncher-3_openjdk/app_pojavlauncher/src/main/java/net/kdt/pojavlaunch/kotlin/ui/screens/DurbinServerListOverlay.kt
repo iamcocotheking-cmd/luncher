@@ -74,16 +74,16 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
 
     val context = LocalContext.current
     var loading by remember { mutableStateOf(true) }
-    var status by remember { mutableStateOf("Loading server list...") }
+    var status by remember { mutableStateOf("Loading servers...") }
     var servers by remember { mutableStateOf<List<DurbinServerEntry>>(emptyList()) }
 
     fun loadServers() {
         loading = true
-        status = "Loading server list..."
+        status = "Loading servers..."
         runCatching {
             if (!DurbinFirebaseConfig.ensureInitialized(context)) {
                 loading = false
-                status = "Firebase config is not ready."
+                status = "Firebase is not ready."
                 return
             }
 
@@ -111,7 +111,7 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
 
                         servers = list
                         loading = false
-                        status = if (list.isEmpty()) "No servers added from dashboard yet." else "Loaded ${list.size} servers from dashboard."
+                        status = if (list.isEmpty()) "No servers added yet." else "${list.size} servers"
                     }
 
                     override fun onCancelled(error: DatabaseError) {
@@ -127,59 +127,53 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) { loadServers() }
 
-    LaunchedEffect(servers) {
-        val enabled = servers.filter { it.enabled }
-        if (enabled.isNotEmpty()) {
-            val result = withContext(Dispatchers.IO) { writeMinecraftServersDat(enabled) }
-            status = result
-        }
-    }
-
     Surface(modifier = Modifier.fillMaxSize(), color = Color.Transparent) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 18.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Surface(
-                modifier = Modifier
-                    .weight(0.82f)
-                    .fillMaxHeight(),
+                modifier = Modifier.fillMaxWidth(),
                 color = Color.Black.copy(alpha = 0.34f),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(22.dp),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
             ) {
-                Column(
-                    modifier = Modifier.padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Servers", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
-                    Text("Dashboard servers appear here. Tap PLAY to sync them into Minecraft.", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Bold)
-                    ServerActionButton(
-                        text = "Refresh Servers",
-                        icon = R.drawable.ic_px_refresh,
-                        onClick = { loadServers() }
+                    Text(
+                        text = "Servers",
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 30.sp,
+                        modifier = Modifier.weight(1f)
                     )
-                    ServerActionButton(
-                        text = "Back Home",
-                        icon = R.drawable.ic_px_home,
-                        onClick = onBack
-                    )
-                    AnimatedVisibility(visible = loading) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 3.dp)
-                            Text("Loading...", color = Color.White, fontWeight = FontWeight.Bold)
-                        }
+
+                    if (loading) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = MaterialTheme.colorScheme.primary)
+                    } else {
+                        Text(status, color = Color.White.copy(alpha = 0.70f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
-                    Text(status, color = Color.White.copy(alpha = 0.76f), fontWeight = FontWeight.Bold)
+
+                    ServerActionButton(
+                        text = "Refresh",
+                        icon = R.drawable.ic_px_refresh,
+                        onClick = { loadServers() },
+                        compact = true
+                    )
                 }
             }
 
             Surface(
                 modifier = Modifier
-                    .weight(1.55f)
-                    .fillMaxHeight(),
+                    .fillMaxWidth()
+                    .weight(1f),
                 color = Color.Black.copy(alpha = 0.40f),
                 shape = RoundedCornerShape(24.dp),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
@@ -195,7 +189,6 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
                         Icon(painter = painterResource(R.drawable.ic_px_server), contentDescription = null, tint = Color.White, modifier = Modifier.size(62.dp))
                         Spacer(Modifier.height(14.dp))
                         Text("No servers yet", color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp)
-                        Text("Open the backend dashboard and add your first server.", color = Color.White.copy(alpha = 0.70f), fontWeight = FontWeight.Bold)
                     }
                 } else {
                     LazyColumn(
@@ -207,7 +200,7 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
                             ServerCard(
                                 server = server,
                                 onSync = {
-                                    val enabled = servers.filter { it.enabled }
+                                    val enabled = listOf(server).filter { it.enabled }
                                     runCatching {
                                         val result = writeMinecraftServersDat(enabled)
                                         Toast.makeText(context, result, Toast.LENGTH_LONG).show()
@@ -224,7 +217,6 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
         }
     }
 }
-
 
 @Composable
 private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {

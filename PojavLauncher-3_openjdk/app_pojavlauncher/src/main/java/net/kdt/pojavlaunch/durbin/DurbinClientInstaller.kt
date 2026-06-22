@@ -11,12 +11,14 @@ import net.kdt.pojavlaunch.instances.Instances
 import net.kdt.pojavlaunch.modloaders.FabriclikeUtils
 import net.kdt.pojavlaunch.utils.DownloadUtils
 import java.io.File
+import org.json.JSONObject
 import java.io.IOException
 import java.util.Locale
 import java.util.zip.ZipFile
 
 object DurbinClientInstaller {
     private const val FABRIC_LOADER_VERSION = "0.19.3"
+    private const val VERSION_MANIFEST_V2 = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 
     fun installAndLaunch(
         context: Context,
@@ -59,6 +61,8 @@ object DurbinClientInstaller {
             throw IOException("Only DURBIN 1.20.1 and 1.21.11 are supported.")
         }
 
+        ensureBaseVersionJson(cleanVersion, onStatus)
+
         onStatus("Installing Fabric loader $FABRIC_LOADER_VERSION for $cleanVersion...")
         val fabricVersionId = installFabricProfile(cleanVersion)
 
@@ -89,6 +93,49 @@ object DurbinClientInstaller {
 
         onStatus("Ready: DURBIN $cleanVersion with $extracted mods.")
         return instance
+    }
+
+
+    @Throws(IOException::class)
+    private fun ensureBaseVersionJson(minecraftVersion: String, onStatus: (String) -> Unit) {
+        val versionDir = File(Tools.DIR_HOME_VERSION, minecraftVersion)
+        val versionJson = File(versionDir, "$minecraftVersion.json")
+
+        if (versionJson.isFile && versionJson.length() > 128) {
+            return
+        }
+
+        onStatus("Downloading Minecraft $minecraftVersion metadata...")
+
+        val manifestText = DownloadUtils.downloadString(VERSION_MANIFEST_V2)
+        val manifest = JSONObject(manifestText)
+        val versions = manifest.getJSONArray("versions")
+
+        var metadataUrl: String? = null
+        for (i in 0 until versions.length()) {
+            val item = versions.getJSONObject(i)
+            if (item.optString("id") == minecraftVersion) {
+                metadataUrl = item.optString("url")
+                break
+            }
+        }
+
+        val url = metadataUrl
+            ?: throw IOException(
+                "Minecraft $minecraftVersion was not found in Mojang's official version manifest. " +
+                    "Use 1.20.1, or confirm that $minecraftVersion is a real Java version supported by Fabric."
+            )
+
+        val json = DownloadUtils.downloadString(url)
+        if (!versionDir.exists() && !versionDir.mkdirs()) {
+            throw IOException("Could not create version folder: ${versionDir.absolutePath}")
+        }
+
+        Tools.write(versionJson, json)
+
+        if (!versionJson.isFile || versionJson.length() <= 128) {
+            throw IOException("Downloaded Minecraft $minecraftVersion version JSON is invalid.")
+        }
     }
 
     @Throws(IOException::class)

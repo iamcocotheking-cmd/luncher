@@ -1,0 +1,186 @@
+package net.kdt.pojavlaunch.durbin
+
+import android.content.Context
+import android.widget.Toast
+import net.kdt.pojavlaunch.PojavApplication
+import net.kdt.pojavlaunch.Tools
+import net.kdt.pojavlaunch.extra.ExtraConstants
+import net.kdt.pojavlaunch.extra.ExtraCore
+import net.kdt.pojavlaunch.instances.Instance
+import net.kdt.pojavlaunch.instances.Instances
+import net.kdt.pojavlaunch.modloaders.FabriclikeUtils
+import net.kdt.pojavlaunch.utils.DownloadUtils
+import java.io.File
+import java.io.IOException
+import java.util.Locale
+import java.util.zip.ZipFile
+
+object DurbinClientInstaller {
+    private const val FABRIC_LOADER_VERSION = "0.19.3"
+
+    fun installAndLaunch(
+        context: Context,
+        minecraftVersion: String,
+        zipUrl: String,
+        onStatus: (String) -> Unit
+    ) {
+        onStatus("Preparing DURBIN $minecraftVersion...")
+        PojavApplication.sExecutorService.execute {
+            try {
+                val instance = installBlocking(context, minecraftVersion, zipUrl) { message ->
+                    Tools.runOnUiThread { onStatus(message) }
+                }
+
+                Tools.runOnUiThread {
+                    Instances.setSelectedInstance(instance)
+                    onStatus("Installed DURBIN $minecraftVersion. Launching Minecraft...")
+                    Toast.makeText(context, "Launching DURBIN $minecraftVersion", Toast.LENGTH_LONG).show()
+                    ExtraCore.setValue(ExtraConstants.REFRESH_VERSION_SPINNER, null)
+                    ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true)
+                }
+            } catch (t: Throwable) {
+                Tools.runOnUiThread {
+                    onStatus("Install failed: ${t.message ?: "unknown error"}")
+                    Tools.showError(context, t)
+                }
+            }
+        }
+    }
+
+    @Throws(IOException::class)
+    private fun installBlocking(
+        context: Context,
+        minecraftVersion: String,
+        zipUrl: String,
+        onStatus: (String) -> Unit
+    ): Instance {
+        val cleanVersion = minecraftVersion.trim()
+        if (cleanVersion != "1.20.1" && cleanVersion != "1.21.11") {
+            throw IOException("Only DURBIN 1.20.1 and 1.21.11 are supported.")
+        }
+
+        onStatus("Installing Fabric loader $FABRIC_LOADER_VERSION for $cleanVersion...")
+        val fabricVersionId = installFabricProfile(cleanVersion)
+
+        onStatus("Creating DURBIN profile...")
+        val instance = findOrCreateDurbinInstance(cleanVersion, fabricVersionId)
+
+        val gameDir = instance.gameDirectory
+        val modsDir = File(gameDir, "mods")
+        if (!modsDir.exists() && !modsDir.mkdirs()) {
+            throw IOException("Could not create mods folder: ${modsDir.absolutePath}")
+        }
+
+        onStatus("Downloading DURBIN mod ZIP...")
+        val zipFile = File(Tools.DIR_CACHE, "durbin-client-$cleanVersion.zip")
+        if (zipFile.exists()) zipFile.delete()
+        DownloadUtils.downloadFile(zipUrl, zipFile)
+
+        onStatus("Extracting mods from ZIP...")
+        val extracted = extractModJars(zipFile, modsDir)
+        if (extracted <= 0) {
+            throw IOException("No .jar mods were found inside the DURBIN ZIP.")
+        }
+
+        instance.versionId = fabricVersionId
+        instance.sharedData = false
+        instance.name = "DURBIN $cleanVersion"
+        instance.maybeWrite()
+
+        onStatus("Ready: DURBIN $cleanVersion with $extracted mods.")
+        return instance
+    }
+
+    @Throws(IOException::class)
+    private fun installFabricProfile(minecraftVersion: String): String {
+        val versionId = try {
+            FabriclikeUtils.FABRIC_UTILS.install(minecraftVersion, FABRIC_LOADER_VERSION)
+        } catch (t: Throwable) {
+            null
+        }
+
+        if (!versionId.isNullOrBlank() && fabricVersionJsonExists(versionId)) {
+            return versionId
+        }
+
+        val fallbackVersionId = "fabric-loader-$FABRIC_LOADER_VERSION-$minecraftVersion"
+        if (fabricVersionJsonExists(fallbackVersionId)) {
+            return fallbackVersionId
+        }
+
+        throw IOException(
+            "Could not install Fabric $FABRIC_LOADER_VERSION for Minecraft $minecraftVersion. " +
+                "Check internet and Fabric support for this version."
+        )
+    }
+
+    private fun fabricVersionJsonExists(versionId: String): Boolean {
+        val versionDir = File(Tools.DIR_HOME_VERSION, versionId)
+        val versionJson = File(versionDir, "$versionId.json")
+        return versionJson.isFile && versionJson.length() > 0
+    }
+
+    @Throws(IOException::class)
+    private fun findOrCreateDurbinInstance(minecraftVersion: String, versionId: String): Instance {
+        val targetName = "DURBIN $minecraftVersion"
+
+        val existing = runCatching {
+            Instances.loadAllInstances().firstOrNull {
+                it.name.equals(targetName, ignoreCase = true)
+            }
+        }.getOrNull()
+
+        if (existing != null) {
+            existing.versionId = versionId
+            existing.sharedData = false
+            existing.maybeWrite()
+            return existing
+        }
+
+        return Instances.createInstance({ instance ->
+            instance.name = targetName
+            instance.icon = "icon"
+            instance.versionId = versionId
+            instance.sharedData = false
+        }, "durbin-$minecraftVersion")
+    }
+
+    @Throws(IOException::class)
+    private fun extractModJars(zipFile: File, modsDir: File): Int {
+        clearDurbinManagedMods(modsDir)
+
+        var count = 0
+        ZipFile(zipFile).use { zip ->
+            val entries = zip.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                if (entry.isDirectory) continue
+
+                val fileName = entry.name.substringAfterLast('/').trim()
+                val lower = fileName.lowercase(Locale.ROOT)
+                if (!lower.endsWith(".jar")) continue
+                if (lower.contains("sources") || lower.contains("javadoc")) continue
+
+                val safeName = "durbin_" + fileName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                val outFile = File(modsDir, safeName)
+                zip.getInputStream(entry).use { input ->
+                    outFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                count++
+            }
+        }
+
+        return count
+    }
+
+    private fun clearDurbinManagedMods(modsDir: File) {
+        val old = modsDir.listFiles() ?: return
+        old.forEach { file ->
+            if (file.isFile && file.name.startsWith("durbin_") && file.name.endsWith(".jar")) {
+                runCatching { file.delete() }
+            }
+        }
+    }
+}

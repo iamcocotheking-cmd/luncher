@@ -542,6 +542,7 @@ if (serverForm) {
       ip,
       motd: $("serverMotd").value.trim(),
       iconUrl: $("serverIconUrl").value.trim(),
+      bannerUrl: $("serverBannerUrl").value.trim(),
       order: Number($("serverOrder").value || 0),
       featured: $("serverFeatured").checked,
       enabled: $("serverEnabled").checked,
@@ -584,6 +585,7 @@ async function loadServers() {
 
     box.innerHTML = items.map(s => `
       <div class="item compact-rank">
+        ${s.bannerUrl ? `<div class="server-banner"><img src="${escapeHtml(s.bannerUrl)}" alt=""></div>` : ""}
         <div class="row">
           <div>
             <span class="tag">${s.featured ? "FEATURED" : "SERVER"} ${s.enabled === false ? "• OFF" : ""}</span>
@@ -614,6 +616,7 @@ window.editServer = async (id) => {
   $("serverIp").value = s.ip || "";
   $("serverMotd").value = s.motd || "";
   $("serverIconUrl").value = s.iconUrl || "";
+  $("serverBannerUrl").value = s.bannerUrl || "";
   $("serverOrder").value = s.order || 0;
   $("serverFeatured").checked = !!s.featured;
   $("serverEnabled").checked = s.enabled !== false;

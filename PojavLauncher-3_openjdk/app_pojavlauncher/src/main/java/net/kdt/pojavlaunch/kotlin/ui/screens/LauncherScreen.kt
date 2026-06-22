@@ -67,6 +67,7 @@ import net.kdt.pojavlaunch.progresskeeper.ProgressListener
 import net.kdt.pojavlaunch.ui.theme.PojavTheme
 import net.kdt.pojavlaunch.PojavApplication
 import net.kdt.pojavlaunch.Tools
+import net.kdt.pojavlaunch.durbin.DurbinClientInstaller
 import net.kdt.pojavlaunch.kotlin.ui.viewmodel.ContentInstallerViewModel
 import net.kdt.pojavlaunch.kotlin.ui.viewmodel.DirectoryManagerViewModel
 import net.kdt.pojavlaunch.skin.AndroidSkinAnalyzer
@@ -1219,6 +1220,7 @@ private val durbinClientBuilds = listOf(
 @Composable
 private fun DurbinClientDownloadsOverlay(onBack: () -> Unit) {
     val context = LocalContext.current
+    var installStatus by remember { mutableStateOf("Choose a DURBIN version. It will install Fabric, extract mods, select profile, then launch.") }
     BackHandler { onBack() }
 
     Surface(modifier = Modifier.fillMaxSize(), color = Color.Transparent) {
@@ -1244,7 +1246,7 @@ private fun DurbinClientDownloadsOverlay(onBack: () -> Unit) {
                 ) {
                     Text("DURBIN Builds", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
                     Text(
-                        "Only 2 official DURBIN mod builds are available right now.",
+                        "Only 2 official DURBIN builds are available. Install + Play will put the ZIP mods into the right profile.",
                         color = Color.White.copy(alpha = 0.72f),
                         fontWeight = FontWeight.Bold
                     )
@@ -1258,8 +1260,8 @@ private fun DurbinClientDownloadsOverlay(onBack: () -> Unit) {
                             modifier = Modifier.padding(14.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Text("Available versions", color = Color.White, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                            Text("1.20.1 and 1.21.11 only. No other DURBIN versions will be shown here.", color = Color.White.copy(alpha = 0.68f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Install status", color = Color.White, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                            Text(installStatus, color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
 
@@ -1287,13 +1289,13 @@ private fun DurbinClientDownloadsOverlay(onBack: () -> Unit) {
                     items(durbinClientBuilds, key = { it.minecraftVersion }) { build ->
                         DurbinClientBuildCard(
                             build = build,
-                            onDownload = {
-                                val activity = context as? FragmentActivity
-                                if (activity == null) {
-                                    Toast.makeText(context, "Could not open download link.", Toast.LENGTH_LONG).show()
-                                } else {
-                                    Tools.openURL(activity, build.url)
-                                }
+                            onInstallAndPlay = {
+                                DurbinClientInstaller.installAndLaunch(
+                                    context = context,
+                                    minecraftVersion = build.minecraftVersion,
+                                    zipUrl = build.url,
+                                    onStatus = { installStatus = it }
+                                )
                             }
                         )
                     }
@@ -1306,7 +1308,7 @@ private fun DurbinClientDownloadsOverlay(onBack: () -> Unit) {
 @Composable
 private fun DurbinClientBuildCard(
     build: DurbinClientBuild,
-    onDownload: () -> Unit
+    onInstallAndPlay: () -> Unit
 ) {
     Surface(
         color = Color(0xFF0D0D0D).copy(alpha = 0.74f),
@@ -1362,9 +1364,9 @@ private fun DurbinClientBuildCard(
             }
 
             DurbinClientActionButton(
-                text = "Download",
-                icon = R.drawable.ic_px_download,
-                onClick = onDownload,
+                text = "Install + Play",
+                icon = R.drawable.ic_px_play,
+                onClick = onInstallAndPlay,
                 compact = true
             )
         }
@@ -1392,7 +1394,7 @@ private fun DurbinClientActionButton(
         modifier = Modifier
             .scale(scale)
             .height(if (compact) 46.dp else 54.dp)
-            .then(if (compact) Modifier.widthIn(min = 126.dp) else Modifier.fillMaxWidth()),
+            .then(if (compact) Modifier.widthIn(min = 154.dp) else Modifier.fillMaxWidth()),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)),
         colors = ButtonDefaults.outlinedButtonColors(

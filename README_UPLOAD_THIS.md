@@ -206,3 +206,17 @@ Important:
 - Fixed LauncherScreen.kt compile error.
 - Added missing Compose imports for DURBIN button animation.
 - Keeps v28: only DURBIN 1.20.1 and 1.21.11 visible.
+
+
+## v30 Two versions + server banner cards
+- Version picker locked to only 1.21.11 and 1.20.1.
+- Server list redesigned as banner cards with name + PLAY button.
+- Backend server form now supports `bannerUrl`.
+
+
+## v31 Real Install + Play
+- DURBIN page now uses `Install + Play` instead of just opening download links.
+- It downloads the selected ZIP inside the launcher.
+- It extracts the ZIP's `.jar` mods into the instance `mods` folder.
+- It installs/selects Fabric and launches Minecraft.
+- It only supports DURBIN 1.20.1 and DURBIN 1.21.11.

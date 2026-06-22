@@ -90,6 +90,21 @@ fun FabricInstallScreen(
 ) {
     val scrollState = rememberScrollState()
 
+    val allowedDurbinMinecraftVersions = remember { listOf("1.21.11", "1.20.1") }
+    val visibleGameVersions = remember(gameVersions) {
+        allowedDurbinMinecraftVersions.mapNotNull { wanted ->
+            gameVersions.firstOrNull { it?.version == wanted }
+        }
+    }
+
+    LaunchedEffect(visibleGameVersions, selectedGameVersion) {
+        val allowedValues = visibleGameVersions.mapNotNull { it?.version }
+        if (allowedValues.isNotEmpty() && selectedGameVersion !in allowedValues) {
+            onGameVersionSelected(allowedValues.first())
+        }
+    }
+
+
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -121,7 +136,7 @@ fun FabricInstallScreen(
                 fontWeight = FontWeight.Bold
             )
             FabricVersionDropdown(
-                options = gameVersions,
+                options = visibleGameVersions,
                 selectedValue = selectedGameVersion,
                 enabled = !isLoading,
                 onValueSelected = {

@@ -1,5 +1,12 @@
 package net.kdt.pojavlaunch.ui.screens
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import java.net.URL
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -53,6 +60,7 @@ private data class DurbinServerEntry(
     val ip: String,
     val motd: String,
     val iconUrl: String,
+    val bannerUrl: String,
     val featured: Boolean,
     val enabled: Boolean,
     val order: Int
@@ -92,6 +100,7 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
                                 ip = ip,
                                 motd = child.child("motd").getValue(String::class.java).orEmpty(),
                                 iconUrl = child.child("iconUrl").getValue(String::class.java).orEmpty(),
+                                bannerUrl = child.child("bannerUrl").getValue(String::class.java).orEmpty(),
                                 featured = child.child("featured").getValue(Boolean::class.java) ?: false,
                                 enabled = child.child("enabled").getValue(Boolean::class.java) ?: true,
                                 order = (child.child("order").value as? Number)?.toInt() ?: 0
@@ -143,10 +152,10 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
                     modifier = Modifier.padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Server List", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
-                    Text("Add servers from the dashboard. This page syncs them into Minecraft automatically.", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Bold)
+                    Text("Servers", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
+                    Text("Dashboard servers appear here. Tap PLAY to sync them into Minecraft.", color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Bold)
                     ServerActionButton(
-                        text = "Refresh + Auto Sync",
+                        text = "Refresh Servers",
                         icon = R.drawable.ic_px_refresh,
                         onClick = { loadServers() }
                     )
@@ -214,48 +223,152 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
     }
 }
 
+
 @Composable
 private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
-    Surface(
-        color = Color(0xFF0D0D0D).copy(alpha = 0.74f),
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, if (server.featured) MaterialTheme.colorScheme.primary.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(138.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF101010))
+            .border(
+                BorderStroke(
+                    1.dp,
+                    if (server.featured) MaterialTheme.colorScheme.primary.copy(alpha = 0.48f)
+                    else Color.White.copy(alpha = 0.14f)
+                ),
+                RoundedCornerShape(20.dp)
+            )
     ) {
+        RemoteServerBanner(
+            url = server.bannerUrl,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.88f),
+                            Color.Black.copy(alpha = 0.50f),
+                            Color.Black.copy(alpha = 0.26f)
+                        )
+                    )
+                )
+        )
+
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(15.dp),
+                .fillMaxSize()
+                .padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f), RoundedCornerShape(14.dp)),
+                    .size(58.dp)
+                    .background(Color.Black.copy(alpha = 0.42f), RoundedCornerShape(16.dp))
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(painter = painterResource(R.drawable.ic_px_server), contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+                Icon(
+                    painter = painterResource(R.drawable.ic_px_server),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
             }
 
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(server.name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (server.featured) Text("FEATURED", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, fontSize = 10.sp)
-                    if (!server.enabled) Text("OFF", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Black, fontSize = 10.sp)
+                    Text(
+                        text = server.name,
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 20.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (server.featured) {
+                        Text("FEATURED", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, fontSize = 10.sp)
+                    }
+                    if (!server.enabled) {
+                        Text("OFF", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Black, fontSize = 10.sp)
+                    }
                 }
-                Text(server.ip, color = Color.White.copy(alpha = 0.78f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = server.ip,
+                    color = Color.White.copy(alpha = 0.84f),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 if (server.motd.isNotBlank()) {
-                    Text(server.motd, color = Color.White.copy(alpha = 0.60f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = server.motd,
+                        color = Color.White.copy(alpha = 0.68f),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
 
             ServerActionButton(
-                text = "Sync",
-                icon = R.drawable.ic_px_download,
+                text = "PLAY",
+                icon = R.drawable.ic_px_play,
                 onClick = onSync,
                 compact = true
             )
         }
+    }
+}
+
+@Composable
+private fun RemoteServerBanner(url: String, modifier: Modifier = Modifier) {
+    var bitmap by remember(url) { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(url) {
+        bitmap = null
+        if (url.isBlank()) return@LaunchedEffect
+
+        bitmap = withContext(Dispatchers.IO) {
+            runCatching {
+                URL(url).openStream().use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+            }.getOrNull()
+        }
+    }
+
+    val loaded = bitmap
+    if (loaded != null) {
+        Image(
+            bitmap = loaded.asImageBitmap(),
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Box(
+            modifier = modifier.background(
+                Brush.horizontalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.28f),
+                        Color(0xFF151515),
+                        Color.Black
+                    )
+                )
+            )
+        )
     }
 }
 

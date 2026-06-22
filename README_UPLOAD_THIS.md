@@ -242,3 +242,9 @@ Important:
 - Server list no longer has an inner Home button.
 - Server refresh is on the top bar.
 - DURBIN mod card uses the uploaded DURBIN banner.
+
+
+## v35 Launcher border import fix
+- Fixed `Unresolved reference 'border'` in `LauncherScreen.kt`.
+- Added `import androidx.compose.foundation.border`.
+- Keeps all v34 fixes.

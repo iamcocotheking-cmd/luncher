@@ -248,3 +248,16 @@ Important:
 - Fixed `Unresolved reference 'border'` in `LauncherScreen.kt`.
 - Added `import androidx.compose.foundation.border`.
 - Keeps all v34 fixes.
+
+
+## v36 Restore mod downloader + new DURBIN banner
+- Restored the normal Addons/mod downloader.
+- Added DURBIN as a separate top-nav page.
+- DURBIN page still only has 1.20.1 and 1.21.11 with Install + Play.
+- Replaced the DURBIN mod banner with the new uploaded banner.
+
+
+## v37 Home uses DURBIN banner
+- Home hero banner now uses your new DURBIN banner when selected profile is DURBIN.
+- DURBIN mod page also keeps the same banner.
+- Other profiles keep their normal banners.

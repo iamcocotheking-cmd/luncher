@@ -705,6 +705,14 @@ fun TopBar(
                     onClick = { onCategoryClick(2) },
                     isSelected = selectedCategory == 2,
                     icon = R.drawable.ic_px_download,
+                    label = "Addons",
+                    topBarHeight = topBarHeight
+                )
+
+                TopBarButton(
+                    onClick = { onCategoryClick(5) },
+                    isSelected = selectedCategory == 5,
+                    icon = R.drawable.ic_px_download,
                     label = "DURBIN",
                     topBarHeight = topBarHeight
                 )
@@ -1004,7 +1012,8 @@ fun LauncherScreen(
                     when (category) {
                         1 -> DirectoryManagerOverlay(onBack = { selectedCategory = -1 })
                         4 -> DurbinServerListOverlay(onBack = { selectedCategory = -1 })
-                        2 -> DurbinClientDownloadsOverlay(onBack = { selectedCategory = -1 })
+                        2 -> ContentInstallerOverlay(onBack = { selectedCategory = -1 })
+                        5 -> DurbinClientDownloadsOverlay(onBack = { selectedCategory = -1 })
                         3 -> SettingsOverlay(onBack = { selectedCategory = -1 })
                     }
                 }
@@ -1247,7 +1256,7 @@ private fun DurbinClientDownloadsOverlay(onBack: () -> Unit) {
                 ) {
                     Text("DURBIN Builds", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
                     Text(
-                        "Only 2 official DURBIN builds are available. Install + Play will put the ZIP mods into the right profile.",
+                        "Official DURBIN builds. Normal mod downloader is still in Addons.",
                         color = Color.White.copy(alpha = 0.72f),
                         fontWeight = FontWeight.Bold
                     )
@@ -1329,7 +1338,7 @@ private fun DurbinClientBuildCard(
                 .fillMaxSize()
                 .background(
                     androidx.compose.ui.graphics.Brush.horizontalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.84f), Color.Black.copy(alpha = 0.38f), Color.Transparent)
+                        colors = listOf(Color.Black.copy(alpha = 0.76f), Color.Black.copy(alpha = 0.30f), Color.Transparent)
                     )
                 )
         )

@@ -318,7 +318,7 @@ private fun DurbinLandscapeHome(
             )
         }
 
-        Text("v25 Clean UI • No Sidebar", color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Bold, fontSize = 10.sp)
+        Text("v37 Home DURBIN Banner", color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Bold, fontSize = 10.sp)
         Spacer(Modifier.height(18.dp))
     }
 }
@@ -522,7 +522,11 @@ private fun DurbinHeroLaunchBanner(
     val nameText = selectedInstance?.name ?: ""
     val key = remember(versionText, nameText) { "$versionText $nameText".lowercase() }
 
-    val isDurbin = remember(key) { key.contains("durbin") }
+    val isDurbin = remember(key) {
+        key.contains("durbin") ||
+        key.contains("durbin 1.20.1") ||
+        key.contains("durbin 1.21.11")
+    }
     val isForge = remember(key) { key.contains("forge") }
     val isFabric = remember(key) { key.contains("fabric") || key.contains("quilt") }
     val isOptifine = remember(key) {
@@ -530,7 +534,7 @@ private fun DurbinHeroLaunchBanner(
     }
 
     val bannerRes = when {
-        isDurbin -> R.drawable.durbin_banner
+        isDurbin -> R.drawable.durbin_mod_banner
         isForge -> R.drawable.forge_banner
         isFabric -> R.drawable.fabric_banner
         isOptifine -> R.drawable.optifine_banner

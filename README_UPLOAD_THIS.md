@@ -261,3 +261,12 @@ Important:
 - Home hero banner now uses your new DURBIN banner when selected profile is DURBIN.
 - DURBIN mod page also keeps the same banner.
 - Other profiles keep their normal banners.
+
+
+## v38 COSA only + LTW + loading animation fix
+- Fixed loading/spinning circle animation.
+- Removed old DURBIN mod build links.
+- Added only COSA 1.21.11:
+  https://github.com/iamcocotheking-cmd/luncher/releases/download/cosa/1.21.11.zip
+- COSA profile uses LTW renderer by default.
+- Launcher default renderer is LTW (`opengles3_ltw`).

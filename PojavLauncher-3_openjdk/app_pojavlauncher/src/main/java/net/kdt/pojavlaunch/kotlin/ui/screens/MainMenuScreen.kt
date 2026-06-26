@@ -318,7 +318,7 @@ private fun DurbinLandscapeHome(
             )
         }
 
-        Text("v37 Home DURBIN Banner", color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Bold, fontSize = 10.sp)
+        Text("v38 COSA + LTW", color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Bold, fontSize = 10.sp)
         Spacer(Modifier.height(18.dp))
     }
 }
@@ -524,6 +524,7 @@ private fun DurbinHeroLaunchBanner(
 
     val isDurbin = remember(key) {
         key.contains("durbin") ||
+        key.contains("cosa") ||
         key.contains("durbin 1.20.1") ||
         key.contains("durbin 1.21.11")
     }

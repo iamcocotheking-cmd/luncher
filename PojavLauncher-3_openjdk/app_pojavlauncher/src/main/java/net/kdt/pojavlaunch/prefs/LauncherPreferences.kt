@@ -31,7 +31,7 @@ object LauncherPreferences {
     var DEFAULT_PREF: SharedPreferences? = null
 
     @JvmField
-    var PREF_RENDERER = "ltw"
+    var PREF_RENDERER = "opengles3_ltw"
 
     @JvmField
     var PREF_IGNORE_NOTCH = false
@@ -260,7 +260,11 @@ object LauncherPreferences {
         val prefs = DEFAULT_PREF ?: return
         val isDevicePowerful = isDevicePowerful(ctx)
 
-        PREF_RENDERER = prefs.getString("renderer", "ltw") ?: "ltw"
+        PREF_RENDERER = prefs.getString("renderer", "opengles3_ltw") ?: "opengles3_ltw"
+        if (PREF_RENDERER == "ltw") {
+            PREF_RENDERER = "opengles3_ltw"
+            prefs.edit().putString("renderer", PREF_RENDERER).apply()
+        }
         PREF_BUTTONSIZE = prefs.getInt("buttonscale", 100).toFloat()
         PREF_MOUSESCALE = prefs.getInt("mousescale", 100) / 100f
         PREF_MOUSESPEED = prefs.getInt("mousespeed", 100) / 100f

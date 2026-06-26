@@ -24,7 +24,7 @@ import java.util.concurrent.Future
 
 class FabricInstallFragment : Fragment(), ModloaderDownloadListener {
 
-    private val DURBIN_SUPPORTED_GAME_VERSIONS = listOf("1.21.11", "1.20.1")
+    private val DURBIN_SUPPORTED_GAME_VERSIONS = listOf("1.21.11")
 
     private fun durbinOnlyGameVersions(input: Array<FabricVersion>?): List<FabricVersion> {
         val byVersion = input.orEmpty().associateBy { it.version }

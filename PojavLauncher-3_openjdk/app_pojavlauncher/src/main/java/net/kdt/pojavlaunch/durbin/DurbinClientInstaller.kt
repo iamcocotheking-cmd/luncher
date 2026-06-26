@@ -26,7 +26,7 @@ object DurbinClientInstaller {
         zipUrl: String,
         onStatus: (String) -> Unit
     ) {
-        onStatus("Preparing DURBIN $minecraftVersion...")
+        onStatus("Preparing COSA $minecraftVersion...")
         PojavApplication.sExecutorService.execute {
             try {
                 val instance = installBlocking(context, minecraftVersion, zipUrl) { message ->
@@ -35,8 +35,8 @@ object DurbinClientInstaller {
 
                 Tools.runOnUiThread {
                     Instances.setSelectedInstance(instance)
-                    onStatus("Installed DURBIN $minecraftVersion. Launching Minecraft...")
-                    Toast.makeText(context, "Launching DURBIN $minecraftVersion", Toast.LENGTH_LONG).show()
+                    onStatus("Installed COSA $minecraftVersion. Launching Minecraft...")
+                    Toast.makeText(context, "Launching COSA $minecraftVersion", Toast.LENGTH_LONG).show()
                     ExtraCore.setValue(ExtraConstants.REFRESH_VERSION_SPINNER, null)
                     ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true)
                 }
@@ -57,8 +57,8 @@ object DurbinClientInstaller {
         onStatus: (String) -> Unit
     ): Instance {
         val cleanVersion = minecraftVersion.trim()
-        if (cleanVersion != "1.20.1" && cleanVersion != "1.21.11") {
-            throw IOException("Only DURBIN 1.20.1 and 1.21.11 are supported.")
+        if (cleanVersion != "1.21.11") {
+            throw IOException("Only COSA 1.21.11 is supported.")
         }
 
         ensureBaseVersionJson(cleanVersion, onStatus)
@@ -76,7 +76,7 @@ object DurbinClientInstaller {
         }
 
         onStatus("Downloading DURBIN mod ZIP...")
-        val zipFile = File(Tools.DIR_CACHE, "durbin-client-$cleanVersion.zip")
+        val zipFile = File(Tools.DIR_CACHE, "cosa-client-$cleanVersion.zip")
         if (zipFile.exists()) zipFile.delete()
         DownloadUtils.downloadFile(zipUrl, zipFile)
 
@@ -87,11 +87,12 @@ object DurbinClientInstaller {
         }
 
         instance.versionId = fabricVersionId
+        instance.renderer = "opengles3_ltw"
         instance.sharedData = false
-        instance.name = "DURBIN $cleanVersion"
+        instance.name = "COSA $cleanVersion"
         instance.maybeWrite()
 
-        onStatus("Ready: DURBIN $cleanVersion with $extracted mods.")
+        onStatus("Ready: COSA $cleanVersion with $extracted mods.")
         return instance
     }
 
@@ -169,7 +170,7 @@ object DurbinClientInstaller {
 
     @Throws(IOException::class)
     private fun findOrCreateDurbinInstance(minecraftVersion: String, versionId: String): Instance {
-        val targetName = "DURBIN $minecraftVersion"
+        val targetName = "COSA $minecraftVersion"
 
         val existing = runCatching {
             Instances.loadAllInstances().firstOrNull {
@@ -179,6 +180,7 @@ object DurbinClientInstaller {
 
         if (existing != null) {
             existing.versionId = versionId
+            existing.renderer = "opengles3_ltw"
             existing.sharedData = false
             existing.maybeWrite()
             return existing
@@ -188,8 +190,9 @@ object DurbinClientInstaller {
             instance.name = targetName
             instance.icon = "icon"
             instance.versionId = versionId
+            instance.renderer = "opengles3_ltw"
             instance.sharedData = false
-        }, "durbin-$minecraftVersion")
+        }, "cosa-$minecraftVersion")
     }
 
     @Throws(IOException::class)
@@ -208,7 +211,7 @@ object DurbinClientInstaller {
                 if (!lower.endsWith(".jar")) continue
                 if (lower.contains("sources") || lower.contains("javadoc")) continue
 
-                val safeName = "durbin_" + fileName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                val safeName = "cosa_" + fileName.replace(Regex("[^A-Za-z0-9._-]"), "_")
                 val outFile = File(modsDir, safeName)
                 zip.getInputStream(entry).use { input ->
                     outFile.outputStream().use { output ->
@@ -225,7 +228,7 @@ object DurbinClientInstaller {
     private fun clearDurbinManagedMods(modsDir: File) {
         val old = modsDir.listFiles() ?: return
         old.forEach { file ->
-            if (file.isFile && file.name.startsWith("durbin_") && file.name.endsWith(".jar")) {
+            if (file.isFile && (file.name.startsWith("durbin_") || file.name.startsWith("cosa_")) && file.name.endsWith(".jar")) {
                 runCatching { file.delete() }
             }
         }

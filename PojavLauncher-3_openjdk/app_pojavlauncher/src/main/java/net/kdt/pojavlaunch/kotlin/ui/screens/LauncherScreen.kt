@@ -18,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -713,7 +714,7 @@ fun TopBar(
                     onClick = { onCategoryClick(5) },
                     isSelected = selectedCategory == 5,
                     icon = R.drawable.ic_px_download,
-                    label = "DURBIN",
+                    label = "COSA",
                     topBarHeight = topBarHeight
                 )
 
@@ -1054,6 +1055,17 @@ fun CrynoixLoadingOverlay() {
         LauncherPreferences.PREF_SHOW_CRYNOIX_LOADING.value = false
     }
 
+    val infiniteTransition = rememberInfiniteTransition(label = "durbinLoadingLoop")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 850, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "durbinLoadingRotation"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1062,21 +1074,32 @@ fun CrynoixLoadingOverlay() {
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                painter = painterResource(id = R.drawable.icon_hyper),
-                contentDescription = null,
-                modifier = Modifier.size(100.dp)
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            CircularProgressIndicator(
-                color = Color(0xFF0074FF),
-                strokeWidth = 4.dp
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier.size(112.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .rotate(rotation)
+                        .border(
+                            BorderStroke(5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.92f)),
+                            RoundedCornerShape(999.dp)
+                        )
+                )
+                Image(
+                    painter = painterResource(id = R.drawable.icon),
+                    contentDescription = null,
+                    modifier = Modifier.size(68.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
             Text(
-                "Applying Crynoix Theme...",
+                "Loading DURBIN...",
                 color = Color.White,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Black,
                 fontSize = 18.sp
             )
         }
@@ -1214,23 +1237,17 @@ private data class DurbinClientBuild(
 
 private val durbinClientBuilds = listOf(
     DurbinClientBuild(
-        version = "DURBIN 1.20.1",
-        minecraftVersion = "1.20.1",
-        url = "https://github.com/iamcocotheking-cmd/Durbin-launcher/releases/download/minecraft/1.20.1.zip",
-        note = "Stable DURBIN mod pack for Minecraft 1.20.1"
-    ),
-    DurbinClientBuild(
-        version = "DURBIN 1.21.11",
+        version = "COSA 1.21.11",
         minecraftVersion = "1.21.11",
-        url = "https://github.com/iamcocotheking-cmd/Durbin-launcher/releases/download/minecraft/1.21.11.zip",
-        note = "Latest DURBIN mod pack for Minecraft 1.21.11"
+        url = "https://github.com/iamcocotheking-cmd/luncher/releases/download/cosa/1.21.11.zip",
+        note = "Official COSA build for Minecraft 1.21.11"
     )
 )
 
 @Composable
 private fun DurbinClientDownloadsOverlay(onBack: () -> Unit) {
     val context = LocalContext.current
-    var installStatus by remember { mutableStateOf("Choose a DURBIN version. It will install Fabric, extract mods, select profile, then launch.") }
+    var installStatus by remember { mutableStateOf("Tap Install + Play. It will install Fabric, extract the COSA ZIP mods, select the profile, then launch.") }
     BackHandler { onBack() }
 
     Surface(modifier = Modifier.fillMaxSize(), color = Color.Transparent) {
@@ -1254,9 +1271,9 @@ private fun DurbinClientDownloadsOverlay(onBack: () -> Unit) {
                         .padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("DURBIN Builds", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
+                    Text("COSA Build", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
                     Text(
-                        "Official DURBIN builds. Normal mod downloader is still in Addons.",
+                        "Only the official COSA 1.21.11 build is shown here. Normal mod downloader is still in Addons.",
                         color = Color.White.copy(alpha = 0.72f),
                         fontWeight = FontWeight.Bold
                     )

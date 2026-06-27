@@ -13,6 +13,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -34,6 +35,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -110,8 +114,8 @@ fun getTransitionSpec(): AnimatedContentTransitionScope<*>.() -> ContentTransfor
                 )
             }
             else -> {
-                (fadeIn(m3MotionSpec) + scaleIn(initialScale = 0.92f, animationSpec = m3MotionSpec))
-                    .togetherWith(fadeOut(m3MotionSpec) + scaleOut(targetScale = 0.92f, animationSpec = m3MotionSpec))
+                (fadeIn(animationSpec = tween(240)) + scaleIn(initialScale = 0.96f, animationSpec = tween(240)))
+                    .togetherWith(fadeOut(animationSpec = tween(160)) + scaleOut(targetScale = 0.985f, animationSpec = tween(160)))
             }
         }
     }
@@ -714,7 +718,7 @@ fun TopBar(
                     onClick = { onCategoryClick(5) },
                     isSelected = selectedCategory == 5,
                     icon = R.drawable.ic_px_download,
-                    label = "COSA",
+                    label = "DURBIN",
                     topBarHeight = topBarHeight
                 )
 
@@ -1007,7 +1011,10 @@ fun LauncherScreen(
 
                 AnimatedContent(
                     targetState = selectedCategory,
-                    transitionSpec = transitionSpec,
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.97f, animationSpec = tween(220)))
+                            .togetherWith(fadeOut(animationSpec = tween(150)) + scaleOut(targetScale = 0.99f, animationSpec = tween(150)))
+                    },
                     label = "overlayTransition"
                 ) { category ->
                     when (category) {
@@ -1055,54 +1062,107 @@ fun CrynoixLoadingOverlay() {
         LauncherPreferences.PREF_SHOW_CRYNOIX_LOADING.value = false
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "durbinLoadingLoop")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 850, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "durbinLoadingRotation"
-    )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Color(0xFF202628))
             .clickable(enabled = false) {},
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier.size(112.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .rotate(rotation)
-                        .border(
-                            BorderStroke(5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.92f)),
-                            RoundedCornerShape(999.dp)
-                        )
-                )
-                Image(
-                    painter = painterResource(id = R.drawable.icon),
-                    contentDescription = null,
-                    modifier = Modifier.size(68.dp),
-                    contentScale = ContentScale.Fit
-                )
-            }
+            CssArcLoader()
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(22.dp))
             Text(
-                "Loading DURBIN...",
+                "Loading DURBIN Client...",
                 color = Color.White,
                 fontWeight = FontWeight.Black,
                 fontSize = 18.sp
             )
         }
+    }
+}
+
+@Composable
+private fun CssArcLoader() {
+    val infiniteTransition = rememberInfiniteTransition(label = "cssLoaderLoop")
+
+    val rotation1 by infiniteTransition.animateFloat(
+        initialValue = 360f * (0.8f / 1.15f),
+        targetValue = 360f + (360f * (0.8f / 1.15f)),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1150, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "cssLoaderRotate1"
+    )
+
+    val rotation2 by infiniteTransition.animateFloat(
+        initialValue = 360f * (0.4f / 1.15f),
+        targetValue = 360f + (360f * (0.4f / 1.15f)),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1150, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "cssLoaderRotate2"
+    )
+
+    val rotation3 by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1150, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "cssLoaderRotate3"
+    )
+
+    Box(
+        modifier = Modifier.size(96.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CssArc(
+            rotation = rotation1,
+            rotationX = 35f,
+            rotationY = -45f
+        )
+        CssArc(
+            rotation = rotation2,
+            rotationX = 50f,
+            rotationY = 10f
+        )
+        CssArc(
+            rotation = rotation3,
+            rotationX = 35f,
+            rotationY = 55f
+        )
+    }
+}
+
+@Composable
+private fun CssArc(
+    rotation: Float,
+    rotationX: Float,
+    rotationY: Float
+) {
+    Canvas(
+        modifier = Modifier
+            .size(70.dp)
+            .graphicsLayer {
+                this.rotationX = rotationX
+                this.rotationY = rotationY
+                this.rotationZ = rotation
+                cameraDistance = 14f * density
+            }
+    ) {
+        val strokeWidth = 5.dp.toPx()
+        drawArc(
+            color = Color(0xFFFF0000),
+            startAngle = 40f,
+            sweepAngle = 100f,
+            useCenter = false,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        )
     }
 }
 
@@ -1237,95 +1297,69 @@ private data class DurbinClientBuild(
 
 private val durbinClientBuilds = listOf(
     DurbinClientBuild(
-        version = "COSA 1.21.11",
+        version = "DURBIN Client 1.21.11",
         minecraftVersion = "1.21.11",
         url = "https://github.com/iamcocotheking-cmd/luncher/releases/download/cosa/1.21.11.zip",
-        note = "Official COSA build for Minecraft 1.21.11"
+        note = "Official DURBIN Client build for Minecraft 1.21.11"
     )
 )
 
 @Composable
 private fun DurbinClientDownloadsOverlay(onBack: () -> Unit) {
     val context = LocalContext.current
-    var installStatus by remember { mutableStateOf("Tap Install + Play. It will install Fabric, extract the COSA ZIP mods, select the profile, then launch.") }
     BackHandler { onBack() }
 
     Surface(modifier = Modifier.fillMaxSize(), color = Color.Transparent) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 18.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Surface(
-                modifier = Modifier
-                    .weight(0.82f)
-                    .fillMaxHeight(),
+                modifier = Modifier.fillMaxWidth(),
                 color = Color.Black.copy(alpha = 0.34f),
                 shape = RoundedCornerShape(24.dp),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
             ) {
-                Column(
+                Row(
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("COSA Build", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
-                    Text(
-                        "Only the official COSA 1.21.11 build is shown here. Normal mod downloader is still in Addons.",
-                        color = Color.White.copy(alpha = 0.72f),
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Surface(
-                        color = Color(0xFF0D0D0D).copy(alpha = 0.72f),
-                        shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text("Install status", color = Color.White, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                            Text(installStatus, color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("DURBIN Client", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
+                        Text("Fast install • Fabric • LTW renderer", color = Color.White.copy(alpha = 0.66f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
 
                     DurbinClientActionButton(
-                        text = "Back Home",
+                        text = "Back",
                         icon = R.drawable.ic_px_home,
-                        onClick = onBack
+                        onClick = onBack,
+                        compact = true
                     )
                 }
             }
 
-            Surface(
-                modifier = Modifier
-                    .weight(1.55f)
-                    .fillMaxHeight(),
-                color = Color.Black.copy(alpha = 0.40f),
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(durbinClientBuilds, key = { it.minecraftVersion }) { build ->
-                        DurbinClientBuildCard(
-                            build = build,
-                            onInstallAndPlay = {
-                                DurbinClientInstaller.installAndLaunch(
-                                    context = context,
-                                    minecraftVersion = build.minecraftVersion,
-                                    zipUrl = build.url,
-                                    onStatus = { installStatus = it }
-                                )
-                            }
-                        )
-                    }
+                items(durbinClientBuilds, key = { it.minecraftVersion }) { build ->
+                    DurbinClientBuildCard(
+                        build = build,
+                        onInstallAndPlay = {
+                            DurbinClientInstaller.installAndLaunch(
+                                context = context,
+                                minecraftVersion = build.minecraftVersion,
+                                zipUrl = build.url,
+                                onStatus = { /* progress appears in Tasks */ }
+                            )
+                        }
+                    )
                 }
             }
         }
@@ -1337,12 +1371,22 @@ private fun DurbinClientBuildCard(
     build: DurbinClientBuild,
     onInstallAndPlay: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val cardScale by animateFloatAsState(
+        targetValue = if (pressed) 0.985f else 1f,
+        animationSpec = tween(durationMillis = 110),
+        label = "durbinClientBuildCardScale"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(154.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)), RoundedCornerShape(20.dp))
+            .heightIn(min = 250.dp)
+            .scale(cardScale)
+            .clip(RoundedCornerShape(28.dp))
+            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.34f)), RoundedCornerShape(28.dp))
+            .clickable(interactionSource = interactionSource, indication = null) { }
     ) {
         Image(
             painter = painterResource(id = R.drawable.durbin_mod_banner),
@@ -1350,69 +1394,95 @@ private fun DurbinClientBuildCard(
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    androidx.compose.ui.graphics.Brush.horizontalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.76f), Color.Black.copy(alpha = 0.30f), Color.Transparent)
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.12f),
+                            Color.Black.copy(alpha = 0.50f),
+                            Color.Black.copy(alpha = 0.86f)
+                        )
                     )
                 )
         )
-        Row(
+
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(22.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .background(Color.Black.copy(alpha = 0.42f), RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.icon),
-                    contentDescription = null,
-                    modifier = Modifier.size(42.dp),
-                    contentScale = ContentScale.Fit
-                )
+                Surface(
+                    modifier = Modifier.size(62.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color.Black.copy(alpha = 0.48f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Image(
+                            painter = painterResource(id = R.drawable.icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(46.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        text = build.version,
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 28.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Minecraft ${build.minecraftVersion} • LTW default",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 13.sp
+                    )
+                }
             }
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = build.version,
-                    color = Color.White,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 20.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "Minecraft ${build.minecraftVersion}",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 12.sp
-                )
-                Text(
-                    text = build.note,
-                    color = Color.White.copy(alpha = 0.66f),
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Installs the official DURBIN Client ZIP, creates/selects the DURBIN Client profile, then starts Minecraft.",
+                        color = Color.White.copy(alpha = 0.78f),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        "Download progress will show in Tasks.",
+                        color = Color.White.copy(alpha = 0.56f),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+                }
+
+                DurbinClientActionButton(
+                    text = "Install + Play",
+                    icon = R.drawable.ic_px_play,
+                    onClick = onInstallAndPlay,
+                    compact = true
                 )
             }
-
-            DurbinClientActionButton(
-                text = "Install + Play",
-                icon = R.drawable.ic_px_play,
-                onClick = onInstallAndPlay,
-                compact = true
-            )
         }
     }
 }

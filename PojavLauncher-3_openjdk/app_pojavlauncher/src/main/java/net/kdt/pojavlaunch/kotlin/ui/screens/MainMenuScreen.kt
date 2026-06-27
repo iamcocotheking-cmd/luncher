@@ -2,8 +2,10 @@ package net.kdt.pojavlaunch.kotlin.ui.screens
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.drawable.Drawable
 import android.widget.Toast
+import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
@@ -67,6 +69,9 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.URL
 
 @Composable
 fun rememberDrawablePainter(drawable: Drawable?): Painter {
@@ -302,7 +307,6 @@ private fun DurbinLandscapeHome(
                 modifier = Modifier.weight(1.65f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                DurbinLatestNewsGrid()
                 DurbinQuickToolsPanel(
                     selectedInstance = selectedInstance,
                     onCustomControlsClick = onCustomControlsClick,
@@ -318,7 +322,7 @@ private fun DurbinLandscapeHome(
             )
         }
 
-        Text("v38 COSA + LTW", color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Bold, fontSize = 10.sp)
+        Text("v39 Ads + Rank Shop", color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Bold, fontSize = 10.sp)
         Spacer(Modifier.height(18.dp))
     }
 }
@@ -524,6 +528,7 @@ private fun DurbinHeroLaunchBanner(
 
     val isDurbin = remember(key) {
         key.contains("durbin") ||
+        key.contains("durbin client") ||
         key.contains("cosa") ||
         key.contains("durbin 1.20.1") ||
         key.contains("durbin 1.21.11")
@@ -751,6 +756,62 @@ private fun DurbinQuickToolsPanel(
 private fun DurbinAdPanel(
     modifier: Modifier
 ) {
+    val context = LocalContext.current
+    var imageUrl by remember { mutableStateOf("") }
+    var linkUrl by remember { mutableStateOf("") }
+    var enabled by remember { mutableStateOf(true) }
+    var loading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val ready = DurbinFirebaseConfig.ensureInitialized(context)
+            if (!ready) {
+                loading = false
+                return@LaunchedEffect
+            }
+
+            FirebaseDatabase.getInstance(context.getString(R.string.durbin_firebase_database_url).trim())
+                .getReference("durbin/ads/main")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        imageUrl = snapshot.child("imageUrl").getValue(String::class.java).orEmpty().trim()
+                        linkUrl = snapshot.child("linkUrl").getValue(String::class.java).orEmpty().trim()
+                        enabled = snapshot.child("enabled").getValue(Boolean::class.java) ?: true
+                        loading = false
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        loading = false
+                    }
+                })
+        } catch (_: Throwable) {
+            loading = false
+        }
+    }
+
+    val remoteAdBitmap by produceState<Bitmap?>(initialValue = null, imageUrl, enabled) {
+        value = null
+        if (enabled && imageUrl.isNotBlank()) {
+            value = withContext(Dispatchers.IO) {
+                runCatching {
+                    URL(imageUrl).openStream().use { BitmapFactory.decodeStream(it) }
+                }.getOrNull()
+            }
+        }
+    }
+
+    val clickModifier = if (enabled && linkUrl.isNotBlank()) {
+        Modifier.clickable {
+            runCatching {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(linkUrl)))
+            }.onFailure {
+                Toast.makeText(context, "Could not open ad link", Toast.LENGTH_SHORT).show()
+            }
+        }
+    } else {
+        Modifier
+    }
+
     Box(
         modifier = modifier,
         contentAlignment = Alignment.TopCenter
@@ -761,17 +822,56 @@ private fun DurbinAdPanel(
                 .aspectRatio(9f / 16f)
                 .clip(RoundedCornerShape(22.dp))
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), RoundedCornerShape(22.dp))
+                .then(clickModifier)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.durbin_ad_9_16),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            if (enabled && remoteAdBitmap != null) {
+                Image(
+                    bitmap = remoteAdBitmap!!.asImageBitmap(),
+                    contentDescription = "DURBIN Ad",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.durbin_ad_9_16),
+                    contentDescription = "DURBIN Ad",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            if (loading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.38f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        strokeWidth = 3.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            if (enabled && linkUrl.isNotBlank()) {
+                Text(
+                    text = "AD",
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 9.sp,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color.Black.copy(alpha = 0.52f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }
-
 
 @Composable
 private fun DurbinInlineNewsPanel() {

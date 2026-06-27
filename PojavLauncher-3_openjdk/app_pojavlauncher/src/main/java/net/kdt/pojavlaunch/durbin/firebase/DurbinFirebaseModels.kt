@@ -19,6 +19,7 @@ data class DurbinTierEntry(
     val region: String = "",
     val country: String = "",
     val notes: String = "",
+    val profileImageUrl: String = "",
     val verified: Boolean = false,
     val updatedAt: Long = 0L
 )
@@ -37,5 +38,6 @@ data class DurbinMyRank(
     val score: Int = 0,
     val ign: String = "",
     val region: String = "",
+    val profileImageUrl: String = "",
     val updatedAt: Long = 0L
 )

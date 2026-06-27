@@ -127,6 +127,7 @@
           <input id="tierRegion" placeholder="Region, example: AS" value="AS" />
           <input id="tierCountry" placeholder="Country" value="Bangladesh" />
           <input id="tierNotes" placeholder="Notes, optional" />
+          <input id="tierProfileImageUrl" placeholder="Profile pic URL for rank card, optional" />
           <label class="check"><input id="tierVerified" type="checkbox" checked /> Verified</label>
           <button class="primary" type="submit">Save Tier Entry</button>
         </form>
@@ -149,7 +150,7 @@
 
       <section id="rankPanel" class="panel">
         <div class="panel-head">
-          <h2>Add My Rank for Google User</h2>
+          <h2>Add Player Rank</h2>
           <p>Writes to <code>durbin/userRanksByEmail/&lt;gmail&gt;/ranks/&lt;category&gt;</code></p>
         </div>
 
@@ -176,12 +177,13 @@
           </select>
           <input id="rankScore" type="number" placeholder="Score" value="100" />
           <input id="rankRegion" placeholder="Region" value="AS" />
+          <input id="rankProfileImageUrl" placeholder="Profile pic URL shown in rank card, optional" />
           <button class="primary" type="submit">Save Gmail Rank</button>
         </form>
 
         <div class="card help mini-help">
           <b>How this works:</b>
-          Add the same Gmail the player uses to login in the launcher.
+          Add the same Gmail the player uses to login in the launcher. Add a profile pic URL if you want it shown in the rank card.
           The dashboard writes to <code>durbin/userRanksByEmail</code>.
           If you also paste UID, it writes to <code>durbin/userRanks</code> too.
         </div>

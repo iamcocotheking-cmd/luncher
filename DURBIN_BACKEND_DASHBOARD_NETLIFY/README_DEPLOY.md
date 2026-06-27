@@ -200,3 +200,13 @@ This version redesigns the admin dashboard UI:
 - better mobile layout
 - cleaner error cards
 - updated `firebase-rules.json` with `.indexOn: ["timestamp"]` for news
+
+
+## v40 rank profile pictures
+The Player Rank form supports:
+- profileImageUrl: player/profile picture URL shown in the app rank card
+
+The app reads this from:
+- durbin/userRanks/<uid>/ranks/<category>/profileImageUrl
+- durbin/userRanksByEmail/<emailKey>/ranks/<category>/profileImageUrl
+- durbin/pvpTierLists/<category>/entries/<player>/profileImageUrl

@@ -328,6 +328,7 @@ $("tierForm").addEventListener("submit", async (e) => {
       region: $("tierRegion").value.trim(),
       country: $("tierCountry").value.trim(),
       notes: $("tierNotes").value.trim(),
+      profileImageUrl: $("tierProfileImageUrl").value.trim(),
       verified: $("tierVerified").checked,
       updatedAt: nowMs(),
       updatedBy: auth.currentUser.uid
@@ -363,15 +364,16 @@ async function loadTier() {
 
     box.innerHTML = items.map(p => `
       <div class="item">
-        <div class="row">
-          <div>
+        <div class="rank-row-main">
+          ${p.profileImageUrl ? `<img class="rank-avatar" src="${escapeHtml(p.profileImageUrl)}" alt="">` : `<div class="rank-avatar avatar-fallback">R</div>`}
+          <div class="rank-main-info">
             <span class="tag">${escapeHtml(p.tier || "UNRANKED")}</span>
             <h4>${escapeHtml(p.ign || p.id)}</h4>
+            <p>${escapeHtml(p.country || "")} ${p.verified ? "• Verified" : ""}</p>
+            ${p.notes ? `<p>${escapeHtml(p.notes)}</p>` : ""}
           </div>
           <span class="mini">${p.score || 0} pts • ${escapeHtml(p.region || "")}</span>
         </div>
-        <p>${escapeHtml(p.country || "")} ${p.verified ? "• Verified" : ""}</p>
-        ${p.notes ? `<p>${escapeHtml(p.notes)}</p>` : ""}
         <div class="item-actions">
           <button class="ghost" onclick="editTier('${category}','${p.id}')">Edit</button>
           <button class="danger" onclick="deleteTier('${category}','${p.id}')">Delete</button>
@@ -429,15 +431,16 @@ async function loadAllTiers() {
 
     box.innerHTML = items.map(p => `
       <div class="item compact-rank">
-        <div class="row">
-          <div>
+        <div class="rank-row-main">
+          ${p.profileImageUrl ? `<img class="rank-avatar" src="${escapeHtml(p.profileImageUrl)}" alt="">` : `<div class="rank-avatar avatar-fallback">R</div>`}
+          <div class="rank-main-info">
             <span class="tag">${escapeHtml(p.category || "category")} • ${escapeHtml(p.tier || "UNRANKED")}</span>
             <h4>${escapeHtml(p.ign || p.id)}</h4>
+            <p>${escapeHtml(p.country || "")} ${p.verified ? "• Verified" : ""}</p>
+            ${p.notes ? `<p>${escapeHtml(p.notes)}</p>` : ""}
           </div>
           <span class="mini">${p.score || 0} pts • ${escapeHtml(p.region || "")}</span>
         </div>
-        <p>${escapeHtml(p.country || "")} ${p.verified ? "• Verified" : ""}</p>
-        ${p.notes ? `<p>${escapeHtml(p.notes)}</p>` : ""}
         <div class="item-actions">
           <button class="ghost" onclick="editTier('${p.category}','${p.id}')">Edit</button>
           <button class="danger" onclick="deleteTier('${p.category}','${p.id}')">Delete</button>
@@ -462,6 +465,7 @@ window.editTier = async (category, id) => {
     $("tierRegion").value = p.region || "AS";
     $("tierCountry").value = p.country || "";
     $("tierNotes").value = p.notes || "";
+    $("tierProfileImageUrl").value = p.profileImageUrl || "";
     $("tierVerified").checked = !!p.verified;
     toast("Loaded tier entry into form. Save again to update.");
   } catch (error) {
@@ -499,6 +503,7 @@ $("rankForm").addEventListener("submit", async (e) => {
       tier: $("rankTier").value,
       score: Number($("rankScore").value || 0),
       region: $("rankRegion").value.trim(),
+      profileImageUrl: $("rankProfileImageUrl").value.trim(),
       updatedAt: nowMs(),
       updatedBy: auth.currentUser.uid
     };

@@ -306,3 +306,31 @@ body, input, textarea, select, button { color: #ffffff; }
   height: 100%;
   object-fit: cover;
 }
+
+
+.rank-row-main{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+.rank-main-info{
+  min-width:0;
+  flex:1;
+}
+.rank-avatar{
+  width:52px;
+  height:52px;
+  border-radius:16px;
+  object-fit:cover;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.06);
+  flex:0 0 auto;
+}
+.avatar-fallback{
+  display:grid;
+  place-items:center;
+  font-weight:950;
+  color:#ff6a70;
+  background:rgba(255,61,69,.14);
+}

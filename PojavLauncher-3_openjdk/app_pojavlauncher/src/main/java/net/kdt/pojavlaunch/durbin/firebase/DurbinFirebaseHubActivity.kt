@@ -2,6 +2,8 @@ package net.kdt.pojavlaunch.durbin.firebase
 
 import androidx.compose.foundation.verticalScroll
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -10,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,13 +64,17 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -85,9 +92,12 @@ import com.google.firebase.database.ValueEventListener
 import net.ashmeet.hyperlauncher.R
 import net.kdt.pojavlaunch.Tools
 import net.kdt.pojavlaunch.ui.theme.PojavTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.net.URL
 
 class DurbinFirebaseHubActivity : ComponentActivity() {
     private var firebaseReady by mutableStateOf(false)
@@ -225,6 +235,7 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
                             region = entry.child("region").getValue(String::class.java) ?: "",
                             country = entry.child("country").getValue(String::class.java) ?: "",
                             notes = entry.child("notes").getValue(String::class.java) ?: "",
+                            profileImageUrl = entry.child("profileImageUrl").getValue(String::class.java) ?: "",
                             verified = entry.child("verified").getValue(Boolean::class.java) ?: false,
                             updatedAt = entry.child("updatedAt").getValue(Long::class.java) ?: 0L
                         )
@@ -267,6 +278,7 @@ class DurbinFirebaseHubActivity : ComponentActivity() {
                     score = rank.child("score").getValue(Int::class.java) ?: 0,
                     ign = rank.child("ign").getValue(String::class.java) ?: "",
                     region = rank.child("region").getValue(String::class.java) ?: "",
+                    profileImageUrl = rank.child("profileImageUrl").getValue(String::class.java) ?: "",
                     updatedAt = rank.child("updatedAt").getValue(Long::class.java) ?: 0L
                 )
             }.sortedBy { tierWeight(it.tier) }
@@ -604,16 +616,67 @@ private fun TierList(categories: List<DurbinTierCategory>) {
 @Composable
 private fun TierEntryRow(entry: DurbinTierEntry) {
     GlassCard(borderAlpha = 0.18f) {
-        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            RemoteRankAvatar(entry.profileImageUrl, entry.ign, 52)
             TierBadge(entry.tier)
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(entry.ign, fontWeight = FontWeight.Black, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (entry.verified) Icon(Icons.Rounded.Verified, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                 }
-                Text(listOf(entry.region, entry.country).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "No region" }, fontSize = 11.sp, color = Color.White.copy(alpha = 0.72f))
+
+                Text(
+                    listOf(entry.region, entry.country).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "No region" },
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.72f)
+                )
             }
+
             Text("${entry.score}", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+@Composable
+private fun RemoteRankAvatar(imageUrl: String, name: String, sizeDp: Int = 52) {
+    val bitmap by produceState<Bitmap?>(initialValue = null, imageUrl) {
+        value = null
+        if (imageUrl.isNotBlank()) {
+            value = withContext(Dispatchers.IO) {
+                runCatching {
+                    URL(imageUrl).openStream().use { BitmapFactory.decodeStream(it) }
+                }.getOrNull()
+            }
+        }
+    }
+
+    Surface(
+        modifier = Modifier.size(sizeDp.dp),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap!!.asImageBitmap(),
+                contentDescription = name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Icon(
+                    painter = painterResource(id = R.drawable.icon),
+                    contentDescription = name,
+                    modifier = Modifier.size((sizeDp * 0.62f).dp),
+                    tint = Color.White
+                )
+            }
         }
     }
 }
@@ -625,20 +688,30 @@ private fun MyRankScreen(user: FirebaseUser?, ranks: List<DurbinMyRank>) {
             EmptyState("Login required", "Login to see your personal HT/LT ranks. If Google fails, guest UID login will be used.")
             return@Column
         }
-        Text("Signed in: ${user.displayName ?: user.email ?: "Google account"}", fontWeight = FontWeight.Bold)
+        Text("Signed in: ${user.displayName ?: user.email ?: "Guest UID"}", fontWeight = FontWeight.Bold)
         if (ranks.isEmpty()) {
             EmptyState("You are not ranked yet", "Ask a DURBIN admin to add your UID rank in Firebase.")
             return@Column
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(ranks, key = { it.categoryId }) { rank ->
-                GlassCard {
-                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        TierBadge(rank.tier)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(rank.categoryName, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                GlassCard(borderAlpha = 0.25f) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val avatarUrl = rank.profileImageUrl.ifBlank { user.photoUrl?.toString().orEmpty() }
+                        RemoteRankAvatar(avatarUrl, rank.ign.ifBlank { rank.categoryName }, 56)
+
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(rank.categoryName, fontWeight = FontWeight.Black, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                TierBadge(rank.tier, small = true)
+                            }
                             Text("IGN: ${rank.ign.ifBlank { "not set" }} • ${rank.region.ifBlank { "no region" }}", fontSize = 11.sp, color = Color.White.copy(alpha = 0.72f))
                         }
+
                         Text("${rank.score}", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                     }
                 }
@@ -659,8 +732,10 @@ private fun MyRanksPanel(user: FirebaseUser?, ranks: List<DurbinMyRank>, modifie
             } else {
                 ranks.take(5).forEach { rank ->
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val avatarUrl = rank.profileImageUrl.ifBlank { user.photoUrl?.toString().orEmpty() }
+                        RemoteRankAvatar(avatarUrl, rank.ign.ifBlank { rank.categoryName }, 32)
                         TierBadge(rank.tier, small = true)
-                        Text(rank.categoryName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(rank.categoryName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     }
                 }
             }

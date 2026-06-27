@@ -1,6 +1,8 @@
 package net.kdt.pojavlaunch.durbin
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import com.kdt.mcgui.ProgressLayout
 import net.kdt.pojavlaunch.PojavApplication
@@ -51,13 +53,13 @@ object DurbinClientInstaller {
                     Toast.makeText(context, "Launching DURBIN Client $minecraftVersion", Toast.LENGTH_LONG).show()
                     ExtraCore.setValue(ExtraConstants.REFRESH_VERSION_SPINNER, null)
                     ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true)
-                    Tools.runOnUiThread({ clearInstallTask() }, 2500)
+                    Handler(Looper.getMainLooper()).postDelayed({ clearInstallTask() }, 2500L)
                 }
             } catch (t: Throwable) {
                 Tools.runOnUiThread {
                     updateInstallTask(-1, "Install failed: ${t.message ?: "unknown error"}", onStatus)
                     Tools.showError(context, t)
-                    Tools.runOnUiThread({ clearInstallTask() }, 4000)
+                    Handler(Looper.getMainLooper()).postDelayed({ clearInstallTask() }, 4000L)
                 }
             }
         }

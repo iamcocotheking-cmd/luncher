@@ -3,10 +3,13 @@ package net.kdt.pojavlaunch.ui.screens
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.graphics.drawable.AnimatedImageDrawable
 import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
 import android.widget.VideoView
+import android.widget.ImageView
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -178,6 +181,49 @@ private fun DurbinVideoBackground(
     )
 }
 
+private fun isDurbinAnimatedBackground(path: String?): Boolean {
+    if (path.isNullOrBlank()) return false
+    val lower = path.lowercase()
+    return lower.endsWith(".gif") || lower.endsWith(".webp")
+}
+
+@Composable
+private fun DurbinAnimatedBackground(
+    path: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            ImageView(ctx).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+            }
+        },
+        update = { view ->
+            if (view.tag != path) {
+                view.tag = path
+                runCatching {
+                    val drawable = if (path.startsWith("content://")) {
+                        val source = ImageDecoder.createSource(context.contentResolver, Uri.parse(path))
+                        ImageDecoder.decodeDrawable(source)
+                    } else {
+                        val source = ImageDecoder.createSource(File(path))
+                        ImageDecoder.decodeDrawable(source)
+                    }
+                    view.setImageDrawable(drawable)
+                    (drawable as? AnimatedImageDrawable)?.start()
+                }.onFailure {
+                    Toast.makeText(context, "Could not play animated background", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                (view.drawable as? AnimatedImageDrawable)?.start()
+            }
+        }
+    )
+}
+
 @Composable
 fun LauncherBackground() {
     val context = LocalContext.current
@@ -187,9 +233,10 @@ fun LauncherBackground() {
     val backgroundBlurEnabled = LauncherPreferences.PREF_BACKGROUND_BLUR_ENABLED_STATE.value
     val backgroundBlurIntensity = LauncherPreferences.PREF_BACKGROUND_BLUR_STATE.value
     val isVideoBackground = isDurbinVideoBackground(backgroundPath)
+    val isAnimatedBackground = isDurbinAnimatedBackground(backgroundPath)
 
-    val backgroundImage = remember(backgroundPath, isVideoBackground) {
-        if (backgroundPath != null && !isVideoBackground) {
+    val backgroundImage = remember(backgroundPath, isVideoBackground, isAnimatedBackground) {
+        if (backgroundPath != null && !isVideoBackground && !isAnimatedBackground) {
             try {
                 if (backgroundPath.startsWith("content://")) {
                     context.contentResolver.openInputStream(Uri.parse(backgroundPath))?.use {
@@ -212,6 +259,11 @@ fun LauncherBackground() {
     Box(modifier = Modifier.fillMaxSize()) {
         if (backgroundPath != null && isVideoBackground) {
             DurbinVideoBackground(
+                path = backgroundPath,
+                modifier = mediaModifier
+            )
+        } else if (backgroundPath != null && isAnimatedBackground) {
+            DurbinAnimatedBackground(
                 path = backgroundPath,
                 modifier = mediaModifier
             )
@@ -1215,37 +1267,69 @@ fun LauncherScreen(
 private fun DurbinReleaseSplashDialog(
     onContinue: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = {},
-        title = {
-            Text("DURBIN Launcher", fontWeight = FontWeight.Black)
-        },
-        text = {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.72f))
+            .padding(22.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier.widthIn(max = 420.dp),
+            shape = RoundedCornerShape(30.dp),
+            color = Color(0xFF101010).copy(alpha = 0.96f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+        ) {
             Column(
+                modifier = Modifier.padding(26.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.icon),
-                    contentDescription = "DURBIN",
-                    modifier = Modifier.size(78.dp),
-                    contentScale = ContentScale.Fit
-                )
-                Text("Made by COSA", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                Surface(
+                    modifier = Modifier.size(92.dp),
+                    shape = RoundedCornerShape(26.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Image(
+                            painter = painterResource(id = R.drawable.icon),
+                            contentDescription = "DURBIN",
+                            modifier = Modifier.size(68.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+
                 Text(
-                    "DURBIN Client • Server hub • Tournament area",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-                    fontWeight = FontWeight.Bold
+                    "DURBIN Launcher",
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 30.sp
                 )
-            }
-        },
-        confirmButton = {
-            Button(onClick = onContinue) {
-                Text("Continue")
+                Text(
+                    "Made by COSA",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 14.sp
+                )
+                Text(
+                    "DURBIN Client • Server Hub • Tournament",
+                    color = Color.White.copy(alpha = 0.70f),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+
+                Button(
+                    onClick = onContinue,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text("Start", fontWeight = FontWeight.Black)
+                }
             }
         }
-    )
+    }
 }
 
 @Composable
@@ -1255,43 +1339,67 @@ private fun DurbinFirstTimeSetupDialog(
     onOpenSettings: () -> Unit,
     onSkip: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = {},
-        title = {
-            Text("Welcome to DURBIN Launcher", fontWeight = FontWeight.Black)
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.62f))
+            .padding(22.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier.widthIn(max = 460.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = Color(0xFF111111).copy(alpha = 0.96f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+        ) {
+            Column(
+                modifier = Modifier.padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text("Quick Setup", color = Color.White, fontWeight = FontWeight.Black, fontSize = 26.sp)
                 Text(
-                    "Quick first-time setup before release:",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.74f),
-                    fontWeight = FontWeight.Bold
+                    "Choose the best preset for your phone. You can change it later in Settings.",
+                    color = Color.White.copy(alpha = 0.70f),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
                 )
-                DurbinSetupStep("1", "Choose a RAM/FPS preset")
-                DurbinSetupStep("2", "LTW renderer is selected for better low-end performance")
-                DurbinSetupStep("3", "Login or use offline account")
-                DurbinSetupStep("4", "Install DURBIN Client from the DURBIN page")
-            }
-        },
-        confirmButton = {
-            Button(onClick = onBalancedPreset) {
-                Text("Balanced")
-            }
-        },
-        dismissButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onLowEndPreset) {
-                    Text("Low-End")
+
+                Button(
+                    onClick = onBalancedPreset,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text("Balanced • 1024 MB • LTW", fontWeight = FontWeight.Black)
                 }
-                TextButton(onClick = onOpenSettings) {
-                    Text("Settings")
+
+                OutlinedButton(
+                    onClick = onLowEndPreset,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text("Low-End • 768 MB • LTW", fontWeight = FontWeight.Black)
                 }
-                TextButton(onClick = onSkip) {
-                    Text("Skip")
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    TextButton(
+                        onClick = onOpenSettings,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Settings", fontWeight = FontWeight.Black)
+                    }
+                    TextButton(
+                        onClick = onSkip,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Skip", fontWeight = FontWeight.Black)
+                    }
                 }
             }
         }
-    )
+    }
 }
 
 @Composable

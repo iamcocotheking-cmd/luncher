@@ -11,7 +11,9 @@ import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -611,15 +613,23 @@ fun AppearanceSettings() {
         item {
             PreferenceGroup(title = "Background Settings") {
                 val hasBackground = LauncherPreferences.PREF_BACKGROUND_PATH_STATE.value != null
-                val pickBackgroundLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                val pickBackgroundLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
                     if (uri != null) {
                         try {
                             val mime = context.contentResolver.getType(uri).orEmpty()
+                            val fileName = when {
+                                mime == "image/gif" -> "launcher_background_animated.gif"
+                                mime == "image/webp" -> "launcher_background_animated.webp"
+                                mime == "video/webm" -> "launcher_background_video.webm"
+                                mime == "video/3gpp" -> "launcher_background_video.3gp"
+                                mime == "video/quicktime" -> "launcher_background_video.mov"
+                                mime.startsWith("video/") -> "launcher_background_video.mp4"
+                                else -> "launcher_background_image.png"
+                            }
                             val isVideo = mime.startsWith("video/")
-                            val file = File(
-                                context.filesDir,
-                                if (isVideo) "launcher_background_video.mp4" else "launcher_background_image.png"
-                            )
+                            val isGif = mime == "image/gif" || mime == "image/webp"
+                            val file = File(context.filesDir, fileName)
+
                             context.contentResolver.openInputStream(uri)?.use { inputStream ->
                                 file.outputStream().use { outputStream ->
                                     inputStream.copyTo(outputStream)
@@ -630,7 +640,11 @@ fun AppearanceSettings() {
                                 LauncherPreferences.DEFAULT_PREF?.edit { putString("backgroundPath", path) }
                                 Toast.makeText(
                                     context,
-                                    if (isVideo) "Video background saved" else "Image background saved",
+                                    when {
+                                        isVideo -> "Video background saved"
+                                        isGif -> "Animated background saved"
+                                        else -> "Image background saved"
+                                    },
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -642,9 +656,13 @@ fun AppearanceSettings() {
 
                 PreferenceItem(
                     title = "Change Background",
-                    summary = "Select an image or video for the launcher background",
+                    summary = "Open Gallery and choose image, GIF, or video",
                     icon = painterResource(R.drawable.ic_px_image),
-                    onClick = { pickBackgroundLauncher.launch("*/*") }
+                    onClick = {
+                        pickBackgroundLauncher.launch(
+                            PickVisualMediaRequest(PickVisualMedia.ImageAndVideo)
+                        )
+                    }
                 )
 
                 PreferenceItem(

@@ -121,11 +121,16 @@ class ProfileSelectionViewModel : ViewModel() {
                 val uri = Uri.parse(path)
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
                     val mime = context.contentResolver.getType(uri).orEmpty()
-                    val isVideo = mime.startsWith("video/")
-                    val file = File(
-                        context.filesDir,
-                        if (isVideo) "launcher_background_video.mp4" else "launcher_background_image.png"
-                    )
+                    val fileName = when {
+                        mime == "image/gif" -> "launcher_background_animated.gif"
+                        mime == "image/webp" -> "launcher_background_animated.webp"
+                        mime == "video/webm" -> "launcher_background_video.webm"
+                        mime == "video/3gpp" -> "launcher_background_video.3gp"
+                        mime == "video/quicktime" -> "launcher_background_video.mov"
+                        mime.startsWith("video/") -> "launcher_background_video.mp4"
+                        else -> "launcher_background_image.png"
+                    }
+                    val file = File(context.filesDir, fileName)
                     file.outputStream().use { outputStream ->
                         inputStream.copyTo(outputStream)
                     }

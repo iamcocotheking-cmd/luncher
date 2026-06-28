@@ -3,8 +3,11 @@ package net.kdt.pojavlaunch.kotlin.ui.screens
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.AnimatedImageDrawable
 import android.widget.Toast
+import android.widget.ImageView
 import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -52,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import net.ashmeet.hyperlauncher.R
 import net.kdt.pojavlaunch.authenticator.accounts.Accounts
 import net.kdt.pojavlaunch.authenticator.accounts.MinecraftAccount
@@ -72,6 +76,7 @@ import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.URL
+import java.nio.ByteBuffer
 
 @Composable
 fun rememberDrawablePainter(drawable: Drawable?): Painter {
@@ -752,6 +757,55 @@ private fun DurbinQuickToolsPanel(
     }
 }
 
+private fun isDurbinAnimatedAdUrl(url: String): Boolean {
+    val lower = url.lowercase()
+    return lower.endsWith(".gif") || lower.endsWith(".webp")
+}
+
+@Composable
+private fun DurbinRemoteAnimatedImage(
+    imageUrl: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var bytes by remember(imageUrl) { mutableStateOf<ByteArray?>(null) }
+
+    LaunchedEffect(imageUrl) {
+        bytes = null
+        if (imageUrl.isBlank()) return@LaunchedEffect
+        bytes = withContext(Dispatchers.IO) {
+            runCatching {
+                URL(imageUrl).openStream().use { it.readBytes() }
+            }.getOrNull()
+        }
+    }
+
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            ImageView(ctx).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+            }
+        },
+        update = { view ->
+            val current = bytes
+            if (current != null && view.tag != imageUrl) {
+                view.tag = imageUrl
+                runCatching {
+                    val source = ImageDecoder.createSource(ByteBuffer.wrap(current))
+                    val drawable = ImageDecoder.decodeDrawable(source)
+                    view.setImageDrawable(drawable)
+                    (drawable as? AnimatedImageDrawable)?.start()
+                }.onFailure {
+                    Toast.makeText(context, "Could not play GIF ad", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                (view.drawable as? AnimatedImageDrawable)?.start()
+            }
+        }
+    )
+}
+
 @Composable
 private fun DurbinAdPanel(
     modifier: Modifier
@@ -824,7 +878,12 @@ private fun DurbinAdPanel(
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), RoundedCornerShape(22.dp))
                 .then(clickModifier)
         ) {
-            if (enabled && remoteAdBitmap != null) {
+            if (enabled && imageUrl.isNotBlank() && isDurbinAnimatedAdUrl(imageUrl)) {
+                DurbinRemoteAnimatedImage(
+                    imageUrl = imageUrl,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else if (enabled && remoteAdBitmap != null) {
                 Image(
                     bitmap = remoteAdBitmap!!.asImageBitmap(),
                     contentDescription = "DURBIN Ad",

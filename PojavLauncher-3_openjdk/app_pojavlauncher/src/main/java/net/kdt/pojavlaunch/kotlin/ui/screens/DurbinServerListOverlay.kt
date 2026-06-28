@@ -51,6 +51,8 @@ import kotlinx.coroutines.withContext
 import net.ashmeet.hyperlauncher.R
 import net.kdt.pojavlaunch.Tools
 import net.kdt.pojavlaunch.durbin.firebase.DurbinFirebaseConfig
+import org.json.JSONObject
+import java.net.URLEncoder
 import java.io.BufferedOutputStream
 import java.io.DataOutputStream
 import java.io.File
@@ -63,10 +65,20 @@ private data class DurbinServerEntry(
     val motd: String,
     val iconUrl: String,
     val bannerUrl: String,
+    val manualStatus: String,
     val featured: Boolean,
     val enabled: Boolean,
     val order: Int
 )
+
+private data class MinecraftServerLiveStatus(
+    val loading: Boolean = true,
+    val online: Boolean = false,
+    val statusText: String = "CHECKING",
+    val playersOnline: Int = -1,
+    val playersMax: Int = -1
+)
+
 
 @Composable
 fun DurbinServerListOverlay(onBack: () -> Unit) {
@@ -96,13 +108,18 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
                             val ip = child.child("ip").getValue(String::class.java).orEmpty().trim()
                             if (name.isBlank() || ip.isBlank()) return@mapNotNull null
 
+                            val rawStatus = child.child("status").getValue(String::class.java).orEmpty().trim()
+
                             DurbinServerEntry(
                                 id = child.key ?: ip,
                                 name = name,
                                 ip = ip,
                                 motd = child.child("motd").getValue(String::class.java).orEmpty(),
-                                iconUrl = child.child("iconUrl").getValue(String::class.java).orEmpty(),
+                                iconUrl = child.child("logoUrl").getValue(String::class.java).orEmpty().ifBlank {
+                                    child.child("iconUrl").getValue(String::class.java).orEmpty()
+                                },
                                 bannerUrl = child.child("bannerUrl").getValue(String::class.java).orEmpty(),
+                                manualStatus = rawStatus,
                                 featured = child.child("featured").getValue(Boolean::class.java) ?: false,
                                 enabled = child.child("enabled").getValue(Boolean::class.java) ?: true,
                                 order = (child.child("order").value as? Number)?.toInt() ?: 0
@@ -111,7 +128,7 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
 
                         servers = list
                         loading = false
-                        status = if (list.isEmpty()) "No servers added yet." else "${list.size} servers"
+                        status = if (list.isEmpty()) "No servers added yet." else "${list.size} servers • live API status"
                     }
 
                     override fun onCancelled(error: DatabaseError) {
@@ -220,6 +237,15 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
 
 @Composable
 private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
+    var liveStatus by remember(server.ip) { mutableStateOf(MinecraftServerLiveStatus()) }
+
+    LaunchedEffect(server.ip, server.manualStatus, server.enabled) {
+        liveStatus = MinecraftServerLiveStatus(loading = true, statusText = "CHECKING")
+        liveStatus = withContext(Dispatchers.IO) {
+            fetchMinecraftServerLiveStatus(server.ip, server.manualStatus, server.enabled)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -261,20 +287,10 @@ private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(58.dp)
-                    .background(Color.Black.copy(alpha = 0.42f), RoundedCornerShape(16.dp))
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_px_server),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
+            ServerLogoBox(
+                logoUrl = server.iconUrl,
+                serverName = server.name
+            )
 
             Column(
                 modifier = Modifier.weight(1f),
@@ -288,6 +304,13 @@ private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
                         fontSize = 20.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
+                    )
+                    ServerStatusBadge(
+                        loading = liveStatus.loading,
+                        online = liveStatus.online,
+                        statusText = liveStatus.statusText,
+                        playersOnline = liveStatus.playersOnline,
+                        playersMax = liveStatus.playersMax
                     )
                     if (server.featured) {
                         Text("FEATURED", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, fontSize = 10.sp)
@@ -323,6 +346,158 @@ private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
                 compact = true
             )
         }
+    }
+}
+
+private fun fetchMinecraftServerLiveStatus(
+    serverIp: String,
+    manualStatus: String,
+    enabled: Boolean
+): MinecraftServerLiveStatus {
+    if (!enabled) {
+        return MinecraftServerLiveStatus(
+            loading = false,
+            online = false,
+            statusText = "OFFLINE"
+        )
+    }
+
+    if (manualStatus.equals("maintenance", ignoreCase = true)) {
+        return MinecraftServerLiveStatus(
+            loading = false,
+            online = false,
+            statusText = "MAINTENANCE"
+        )
+    }
+
+    return runCatching {
+        val encodedIp = URLEncoder.encode(serverIp.trim(), "UTF-8")
+        val jsonText = URL("https://api.mcsrvstat.us/3/$encodedIp")
+            .openConnection()
+            .apply {
+                connectTimeout = 5000
+                readTimeout = 5000
+                setRequestProperty("User-Agent", "DURBIN-Launcher")
+            }
+            .getInputStream()
+            .bufferedReader()
+            .use { it.readText() }
+
+        val root = JSONObject(jsonText)
+        val online = root.optBoolean("online", false)
+        val players = root.optJSONObject("players")
+        val playersOnline = players?.optInt("online", -1) ?: -1
+        val playersMax = players?.optInt("max", -1) ?: -1
+
+        MinecraftServerLiveStatus(
+            loading = false,
+            online = online,
+            statusText = if (online) "ONLINE" else "OFFLINE",
+            playersOnline = playersOnline,
+            playersMax = playersMax
+        )
+    }.getOrElse {
+        MinecraftServerLiveStatus(
+            loading = false,
+            online = false,
+            statusText = "API ERROR"
+        )
+    }
+}
+
+
+
+@Composable
+private fun ServerStatusBadge(
+    loading: Boolean,
+    online: Boolean,
+    statusText: String,
+    playersOnline: Int,
+    playersMax: Int
+) {
+    val playerText = if (online && playersOnline >= 0 && playersMax > 0) " ${playersOnline}/${playersMax}" else ""
+    val label = when {
+        loading -> "CHECKING"
+        statusText.isNotBlank() -> statusText.uppercase() + playerText
+        online -> "ONLINE$playerText"
+        else -> "OFFLINE"
+    }
+
+    val color = when {
+        loading -> MaterialTheme.colorScheme.primary
+        online -> Color(0xFF35E884)
+        else -> Color(0xFFFF5C66)
+    }
+
+    Surface(
+        color = color.copy(alpha = 0.18f),
+        shape = RoundedCornerShape(999.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.36f))
+    ) {
+        Text(
+            text = label,
+            color = color,
+            fontWeight = FontWeight.Black,
+            fontSize = 10.sp,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+
+
+@Composable
+private fun ServerLogoBox(logoUrl: String, serverName: String) {
+    Box(
+        modifier = Modifier
+            .size(58.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.Black.copy(alpha = 0.42f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        RemoteServerLogo(
+            url = logoUrl,
+            fallbackName = serverName,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@Composable
+private fun RemoteServerLogo(url: String, fallbackName: String, modifier: Modifier = Modifier) {
+    var bitmap: Bitmap? by remember(url) { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(url) {
+        bitmap = null
+        if (url.isBlank()) return@LaunchedEffect
+
+        bitmap = withContext(Dispatchers.IO) {
+            runCatching {
+                URL(url).openStream().use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+            }.getOrNull()
+        }
+    }
+
+    val loaded = bitmap
+    if (loaded != null) {
+        Image(
+            bitmap = loaded.asImageBitmap(),
+            contentDescription = fallbackName,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Icon(
+            painter = painterResource(R.drawable.ic_px_server),
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(32.dp)
+        )
     }
 }
 

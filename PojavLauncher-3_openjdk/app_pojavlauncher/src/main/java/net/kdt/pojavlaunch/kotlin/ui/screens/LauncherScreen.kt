@@ -3,8 +3,10 @@ package net.kdt.pojavlaunch.ui.screens
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
+import android.widget.VideoView
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -56,7 +58,13 @@ import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentContainerView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kdt.mcgui.ProgressLayout
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import net.ashmeet.hyperlauncher.R
 import net.kdt.pojavlaunch.BaseActivity
 import net.kdt.pojavlaunch.authenticator.AuthType
@@ -74,6 +82,7 @@ import net.kdt.pojavlaunch.ui.theme.PojavTheme
 import net.kdt.pojavlaunch.PojavApplication
 import net.kdt.pojavlaunch.Tools
 import net.kdt.pojavlaunch.durbin.DurbinClientInstaller
+import net.kdt.pojavlaunch.durbin.firebase.DurbinFirebaseConfig
 import net.kdt.pojavlaunch.kotlin.ui.viewmodel.ContentInstallerViewModel
 import net.kdt.pojavlaunch.kotlin.ui.viewmodel.DirectoryManagerViewModel
 import net.kdt.pojavlaunch.skin.AndroidSkinAnalyzer
@@ -83,6 +92,7 @@ import net.kdt.pojavlaunch.skin.SkinModelType
 import net.kdt.pojavlaunch.skin.SkinUtils
 import net.kdt.pojavlaunch.utils.UpdateUtils
 import java.io.File
+import java.net.URL
 
 private val m3MotionSpec = spring<Float>(
     dampingRatio = 0.8f,
@@ -121,6 +131,53 @@ fun getTransitionSpec(): AnimatedContentTransitionScope<*>.() -> ContentTransfor
     }
 }
 
+private fun isDurbinVideoBackground(path: String?): Boolean {
+    if (path.isNullOrBlank()) return false
+    val lower = path.lowercase()
+    return lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mkv") ||
+           lower.endsWith(".3gp") || lower.endsWith(".mov") || lower.contains("video")
+}
+
+@Composable
+private fun DurbinVideoBackground(
+    path: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            VideoView(ctx).apply {
+                setOnPreparedListener { player ->
+                    player.isLooping = true
+                    player.setVolume(0f, 0f)
+                    start()
+                }
+            }
+        },
+        update = { view ->
+            if (view.tag != path) {
+                view.tag = path
+                val uri = if (path.startsWith("content://")) Uri.parse(path) else Uri.fromFile(File(path))
+                view.setVideoURI(uri)
+                view.setOnPreparedListener { player ->
+                    player.isLooping = true
+                    player.setVolume(0f, 0f)
+                    view.start()
+                }
+                view.setOnErrorListener { _, _, _ ->
+                    Toast.makeText(context, "Could not play background video", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                view.start()
+            } else if (!view.isPlaying) {
+                view.start()
+            }
+        }
+    )
+}
+
 @Composable
 fun LauncherBackground() {
     val context = LocalContext.current
@@ -129,9 +186,10 @@ fun LauncherBackground() {
     val backgroundTransparency = LauncherPreferences.PREF_BACKGROUND_TRANSPARENCY_STATE.value
     val backgroundBlurEnabled = LauncherPreferences.PREF_BACKGROUND_BLUR_ENABLED_STATE.value
     val backgroundBlurIntensity = LauncherPreferences.PREF_BACKGROUND_BLUR_STATE.value
+    val isVideoBackground = isDurbinVideoBackground(backgroundPath)
 
-    val backgroundImage = remember(backgroundPath) {
-        if (backgroundPath != null) {
+    val backgroundImage = remember(backgroundPath, isVideoBackground) {
+        if (backgroundPath != null && !isVideoBackground) {
             try {
                 if (backgroundPath.startsWith("content://")) {
                     context.contentResolver.openInputStream(Uri.parse(backgroundPath))?.use {
@@ -147,15 +205,21 @@ fun LauncherBackground() {
     }
 
     val previewBackgroundBitmap = if (isPreview) BaseActivity.getBackgroundBitmap() else null
+    val mediaModifier = Modifier
+        .fillMaxSize()
+        .then(if (backgroundBlurEnabled) Modifier.blur((backgroundBlurIntensity * 40).dp) else Modifier)
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (backgroundImage != null) {
+        if (backgroundPath != null && isVideoBackground) {
+            DurbinVideoBackground(
+                path = backgroundPath,
+                modifier = mediaModifier
+            )
+        } else if (backgroundImage != null) {
             Image(
                 bitmap = backgroundImage,
                 contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(if (backgroundBlurEnabled) Modifier.blur((backgroundBlurIntensity * 40).dp) else Modifier),
+                modifier = mediaModifier,
                 contentScale = ContentScale.Crop
             )
         } else if (isPreview && previewBackgroundBitmap != null) {
@@ -622,6 +686,7 @@ fun TopBar(
     isProgressVisible: Boolean,
     taskCount: Int,
     selectedCategory: Int,
+    hasTournament: Boolean,
     accounts: List<MinecraftAccount>,
     currentAccount: MinecraftAccount?,
     onAccountSelect: (MinecraftAccount) -> Unit,
@@ -722,6 +787,16 @@ fun TopBar(
                     topBarHeight = topBarHeight
                 )
 
+                if (hasTournament) {
+                    TopBarButton(
+                        onClick = { onCategoryClick(6) },
+                        isSelected = selectedCategory == 6,
+                        icon = R.drawable.ic_px_server,
+                        label = "Tournament",
+                        topBarHeight = topBarHeight
+                    )
+                }
+
                 TopBarButton(
                     onClick = { onCategoryClick(3) },
                     isSelected = selectedCategory == 3,
@@ -733,6 +808,15 @@ fun TopBar(
         }
     }
 }
+
+private data class DurbinTournamentInfo(
+    val enabled: Boolean = false,
+    val title: String = "",
+    val description: String = "",
+    val prizePool: String = "",
+    val imageUrl: String = "",
+    val joinUrl: String = ""
+)
 
 @Composable
 fun LauncherScreen(
@@ -751,6 +835,38 @@ fun LauncherScreen(
     val hasBackground = backgroundPath != null || isPreview
 
     var selectedCategory by rememberSaveable { mutableIntStateOf(-1) }
+    var showFirstTimeSetup by remember {
+        mutableStateOf(!isPreview && !(LauncherPreferences.DEFAULT_PREF?.getBoolean("durbinFirstSetupDone", false) ?: false))
+    }
+    var showReleaseSplash by remember {
+        mutableStateOf(!isPreview && !(LauncherPreferences.DEFAULT_PREF?.getBoolean("durbinReleaseSplashV47Done", false) ?: false))
+    }
+    var hasActiveTournament by remember { mutableStateOf(false) }
+
+    val finishReleaseSplash: () -> Unit = {
+        LauncherPreferences.DEFAULT_PREF?.edit()
+            ?.putBoolean("durbinReleaseSplashV47Done", true)
+            ?.apply()
+        showReleaseSplash = false
+    }
+
+    val finishFirstTimeSetup: (Int?) -> Unit = { ramMb ->
+        if (ramMb != null) {
+            LauncherPreferences.PREF_RENDERER = "opengles3_ltw"
+            LauncherPreferences.PREF_RAM_ALLOCATION = ramMb
+            LauncherPreferences.DEFAULT_PREF?.edit()
+                ?.putString("renderer", "opengles3_ltw")
+                ?.putInt("allocation", ramMb)
+                ?.putBoolean("durbinFirstSetupDone", true)
+                ?.apply()
+        } else {
+            LauncherPreferences.DEFAULT_PREF?.edit()
+                ?.putBoolean("durbinFirstSetupDone", true)
+                ?.apply()
+        }
+        showFirstTimeSetup = false
+    }
+
 
     val isAnyScreenOpen by remember(selectedCategory, isFragmentOpen) {
         derivedStateOf { selectedCategory != -1 || isFragmentOpen }
@@ -936,6 +1052,28 @@ fun LauncherScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        if (!isPreview) {
+            runCatching {
+                if (DurbinFirebaseConfig.ensureInitialized(context)) {
+                    FirebaseDatabase.getInstance(context.getString(R.string.durbin_firebase_database_url).trim())
+                        .getReference("durbin/tournament/current")
+                        .addValueEventListener(object : ValueEventListener {
+                            override fun onDataChange(snapshot: DataSnapshot) {
+                                val enabled = snapshot.child("enabled").getValue(Boolean::class.java) ?: false
+                                val title = snapshot.child("title").getValue(String::class.java).orEmpty().trim()
+                                hasActiveTournament = enabled && title.isNotBlank()
+                            }
+
+                            override fun onCancelled(error: DatabaseError) {
+                                hasActiveTournament = false
+                            }
+                        })
+                }
+            }
+        }
+    }
+
     val transitionSpec = getTransitionSpec()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -950,6 +1088,7 @@ fun LauncherScreen(
                 isProgressVisible = isProgressVisible,
                 taskCount = taskCount,
                 selectedCategory = selectedCategory,
+                hasTournament = hasActiveTournament,
                 accounts = accounts,
                 currentAccount = currentAccount,
                 onAccountSelect = { account ->
@@ -1022,6 +1161,7 @@ fun LauncherScreen(
                         4 -> DurbinServerListOverlay(onBack = { selectedCategory = -1 })
                         2 -> ContentInstallerOverlay(onBack = { selectedCategory = -1 })
                         5 -> DurbinClientDownloadsOverlay(onBack = { selectedCategory = -1 })
+                        6 -> DurbinTournamentOverlay(onBack = { selectedCategory = -1 })
                         3 -> SettingsOverlay(onBack = { selectedCategory = -1 })
                     }
                 }
@@ -1045,12 +1185,137 @@ fun LauncherScreen(
             )
         }
 
+        if (showReleaseSplash) {
+            DurbinReleaseSplashDialog(
+                onContinue = finishReleaseSplash
+            )
+        } else if (showFirstTimeSetup) {
+            DurbinFirstTimeSetupDialog(
+                onLowEndPreset = { finishFirstTimeSetup(768) },
+                onBalancedPreset = { finishFirstTimeSetup(1024) },
+                onOpenSettings = {
+                    finishFirstTimeSetup(null)
+                    selectedCategory = 3
+                },
+                onSkip = { finishFirstTimeSetup(null) }
+            )
+        }
+
         AnimatedVisibility(
             visible = LauncherPreferences.PREF_SHOW_CRYNOIX_LOADING.value,
             enter = fadeIn(),
             exit = fadeOut(animationSpec = tween(1000))
         ) {
             CrynoixLoadingOverlay()
+        }
+    }
+}
+
+@Composable
+private fun DurbinReleaseSplashDialog(
+    onContinue: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = {
+            Text("DURBIN Launcher", fontWeight = FontWeight.Black)
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.icon),
+                    contentDescription = "DURBIN",
+                    modifier = Modifier.size(78.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Text("Made by COSA", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "DURBIN Client • Server hub • Tournament area",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onContinue) {
+                Text("Continue")
+            }
+        }
+    )
+}
+
+@Composable
+private fun DurbinFirstTimeSetupDialog(
+    onLowEndPreset: () -> Unit,
+    onBalancedPreset: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onSkip: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = {
+            Text("Welcome to DURBIN Launcher", fontWeight = FontWeight.Black)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Quick first-time setup before release:",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.74f),
+                    fontWeight = FontWeight.Bold
+                )
+                DurbinSetupStep("1", "Choose a RAM/FPS preset")
+                DurbinSetupStep("2", "LTW renderer is selected for better low-end performance")
+                DurbinSetupStep("3", "Login or use offline account")
+                DurbinSetupStep("4", "Install DURBIN Client from the DURBIN page")
+            }
+        },
+        confirmButton = {
+            Button(onClick = onBalancedPreset) {
+                Text("Balanced")
+            }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onLowEndPreset) {
+                    Text("Low-End")
+                }
+                TextButton(onClick = onOpenSettings) {
+                    Text("Settings")
+                }
+                TextButton(onClick = onSkip) {
+                    Text("Skip")
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun DurbinSetupStep(number: String, text: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.20f))
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(28.dp),
+                shape = RoundedCornerShape(999.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(number, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Text(text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
         }
     }
 }
@@ -1163,6 +1428,243 @@ private fun CssArc(
             useCenter = false,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
         )
+    }
+}
+
+@Composable
+private fun DurbinTournamentOverlay(onBack: () -> Unit) {
+    val context = LocalContext.current
+    BackHandler { onBack() }
+
+    var loading by remember { mutableStateOf(true) }
+    var tournament by remember { mutableStateOf(DurbinTournamentInfo()) }
+    var status by remember { mutableStateOf("Loading tournament...") }
+
+    LaunchedEffect(Unit) {
+        runCatching {
+            if (!DurbinFirebaseConfig.ensureInitialized(context)) {
+                loading = false
+                status = "Firebase is not ready."
+                return@LaunchedEffect
+            }
+
+            FirebaseDatabase.getInstance(context.getString(R.string.durbin_firebase_database_url).trim())
+                .getReference("durbin/tournament/current")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val data = DurbinTournamentInfo(
+                            enabled = snapshot.child("enabled").getValue(Boolean::class.java) ?: false,
+                            title = snapshot.child("title").getValue(String::class.java).orEmpty(),
+                            description = snapshot.child("description").getValue(String::class.java).orEmpty(),
+                            prizePool = snapshot.child("prizePool").getValue(String::class.java).orEmpty(),
+                            imageUrl = snapshot.child("imageUrl").getValue(String::class.java).orEmpty(),
+                            joinUrl = snapshot.child("joinUrl").getValue(String::class.java).orEmpty()
+                        )
+                        tournament = data
+                        loading = false
+                        status = if (data.enabled && data.title.isNotBlank()) "Tournament loaded" else "No active tournament."
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        loading = false
+                        status = error.message
+                    }
+                })
+        }.onFailure {
+            loading = false
+            status = it.message ?: "Could not load tournament."
+        }
+    }
+
+    Surface(modifier = Modifier.fillMaxSize(), color = Color.Transparent) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.Black.copy(alpha = 0.34f),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Tournament", color = Color.White, fontWeight = FontWeight.Black, fontSize = 30.sp)
+                        Text("Live event from DURBIN backend", color = Color.White.copy(alpha = 0.66f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    DurbinClientActionButton(
+                        text = "Back",
+                        icon = R.drawable.ic_px_home,
+                        onClick = onBack,
+                        compact = true
+                    )
+                }
+            }
+
+            if (loading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            } else if (!tournament.enabled || tournament.title.isBlank()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(status, color = Color.White.copy(alpha = 0.72f), fontWeight = FontWeight.Black)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 300.dp)
+                                .clip(RoundedCornerShape(28.dp))
+                                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)), RoundedCornerShape(28.dp))
+                                .background(Color.Black.copy(alpha = 0.56f))
+                        ) {
+                            TournamentRemoteImage(
+                                imageUrl = tournament.imageUrl,
+                                modifier = Modifier.fillMaxSize()
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.Black.copy(alpha = 0.08f),
+                                                Color.Black.copy(alpha = 0.54f),
+                                                Color.Black.copy(alpha = 0.92f)
+                                            )
+                                        )
+                                    )
+                            )
+
+                            Column(
+                                modifier = Modifier.fillMaxSize().padding(22.dp),
+                                verticalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                        shape = RoundedCornerShape(999.dp),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.36f))
+                                    ) {
+                                        Text(
+                                            "LIVE TOURNAMENT",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 11.sp,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                        )
+                                    }
+
+                                    Text(
+                                        tournament.title,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 32.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    if (tournament.description.isNotBlank()) {
+                                        Text(
+                                            tournament.description,
+                                            color = Color.White.copy(alpha = 0.82f),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            maxLines = 5,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+
+                                    if (tournament.prizePool.isNotBlank()) {
+                                        Text(
+                                            "Prize Pool: ${tournament.prizePool}",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 18.sp
+                                        )
+                                    }
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        DurbinClientActionButton(
+                                            text = "How to Join",
+                                            icon = R.drawable.ic_px_play,
+                                            onClick = {
+                                                if (tournament.joinUrl.isNotBlank()) {
+                                                    runCatching {
+                                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(tournament.joinUrl)))
+                                                    }.onFailure {
+                                                        Toast.makeText(context, "Could not open join link", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                } else {
+                                                    Toast.makeText(context, "Join link not added yet.", Toast.LENGTH_LONG).show()
+                                                }
+                                            },
+                                            compact = true
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TournamentRemoteImage(imageUrl: String, modifier: Modifier = Modifier) {
+    var bitmap by remember(imageUrl) { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(imageUrl) {
+        bitmap = null
+        if (imageUrl.isBlank()) return@LaunchedEffect
+
+        bitmap = withContext(Dispatchers.IO) {
+            runCatching {
+                URL(imageUrl).openStream().use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+            }.getOrNull()
+        }
+    }
+
+    val loaded = bitmap
+    if (loaded != null) {
+        Image(
+            bitmap = loaded.asImageBitmap(),
+            contentDescription = "Tournament image",
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Box(
+            modifier = modifier.background(Color.Black.copy(alpha = 0.62f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.icon),
+                contentDescription = null,
+                modifier = Modifier.size(96.dp),
+                contentScale = ContentScale.Fit
+            )
+        }
     }
 }
 

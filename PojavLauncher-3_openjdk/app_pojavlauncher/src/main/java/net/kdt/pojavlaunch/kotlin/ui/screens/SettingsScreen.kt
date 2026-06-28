@@ -614,8 +614,13 @@ fun AppearanceSettings() {
                 val pickBackgroundLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
                     if (uri != null) {
                         try {
+                            val mime = context.contentResolver.getType(uri).orEmpty()
+                            val isVideo = mime.startsWith("video/")
+                            val file = File(
+                                context.filesDir,
+                                if (isVideo) "launcher_background_video.mp4" else "launcher_background_image.png"
+                            )
                             context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                                val file = File(context.filesDir, "launcher_background.png")
                                 file.outputStream().use { outputStream ->
                                     inputStream.copyTo(outputStream)
                                 }
@@ -623,6 +628,11 @@ fun AppearanceSettings() {
                                 LauncherPreferences.PREF_BACKGROUND_PATH = path
                                 LauncherPreferences.PREF_BACKGROUND_PATH_STATE.value = path
                                 LauncherPreferences.DEFAULT_PREF?.edit { putString("backgroundPath", path) }
+                                Toast.makeText(
+                                    context,
+                                    if (isVideo) "Video background saved" else "Image background saved",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         } catch (e: Exception) {
                             Toast.makeText(context, "Failed to load background", Toast.LENGTH_SHORT).show()
@@ -632,9 +642,9 @@ fun AppearanceSettings() {
 
                 PreferenceItem(
                     title = "Change Background",
-                    summary = "Select an image for the launcher background",
+                    summary = "Select an image or video for the launcher background",
                     icon = painterResource(R.drawable.ic_px_image),
-                    onClick = { pickBackgroundLauncher.launch("image/*") }
+                    onClick = { pickBackgroundLauncher.launch("*/*") }
                 )
 
                 PreferenceItem(
@@ -662,7 +672,7 @@ fun AppearanceSettings() {
 
                 PreferenceSwitch(
                     title = "Blur Effect",
-                    summary = "Apply blur to the background image",
+                    summary = "Apply blur to the background image/video",
                     enabled = hasBackground,
                     checked = blurEnabled,
                     onCheckedChange = {

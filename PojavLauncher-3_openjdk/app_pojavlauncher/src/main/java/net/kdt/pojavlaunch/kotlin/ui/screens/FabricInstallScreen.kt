@@ -90,17 +90,14 @@ fun FabricInstallScreen(
 ) {
     val scrollState = rememberScrollState()
 
-    val allowedDurbinMinecraftVersions = remember { listOf("1.21.11") }
     val visibleGameVersions = remember(gameVersions) {
-        allowedDurbinMinecraftVersions.mapNotNull { wanted ->
-            gameVersions.firstOrNull { it?.version == wanted }
-        }
+        gameVersions.filterNotNull()
     }
 
     LaunchedEffect(visibleGameVersions, selectedGameVersion) {
-        val allowedValues = visibleGameVersions.mapNotNull { it?.version }
-        if (allowedValues.isNotEmpty() && selectedGameVersion !in allowedValues) {
-            onGameVersionSelected(allowedValues.first())
+        val values = visibleGameVersions.map { it.version }
+        if (values.isNotEmpty() && selectedGameVersion !in values) {
+            onGameVersionSelected(values.first())
         }
     }
 

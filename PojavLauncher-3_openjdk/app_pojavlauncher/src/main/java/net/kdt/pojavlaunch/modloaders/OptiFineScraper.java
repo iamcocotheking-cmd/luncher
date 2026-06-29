@@ -128,23 +128,40 @@ public class OptiFineScraper implements DownloadUtils.ParseCallback<OptiFineUtil
     }
 
     private String getLinkHref(TagNode parent) {
+        String fallbackHref = null;
+
         if (parent.getName().equals("a") && parent.hasAttribute("href")) {
-            String href = parent.getAttributeByName("href");
-            if (href.startsWith("http://") || href.startsWith("https://")) {
-                return href.replace("http://", "https://");
-            } else if (href.startsWith("/")) {
-                int firstSlash = mBaseUrl.indexOf("/", mBaseUrl.indexOf("://") + 3);
-                String domain = firstSlash == -1 ? mBaseUrl : mBaseUrl.substring(0, firstSlash);
-                return domain + href;
-            } else {
-                return mBaseUrl + href;
+            String href = normalizeHref(parent.getAttributeByName("href"));
+            if (href != null && href.toLowerCase().contains("downloadx")) {
+                return href;
             }
+            fallbackHref = href;
         }
+
         for(TagNode subNode : parent.getChildTags()) {
             String href = getLinkHref(subNode);
-            if (href != null) return href;
+            if (href != null && href.toLowerCase().contains("downloadx")) {
+                return href;
+            }
+            if (fallbackHref == null && href != null) fallbackHref = href;
         }
-        return null;
+
+        return fallbackHref;
+    }
+
+    private String normalizeHref(String href) {
+        if (href == null || href.isBlank()) return null;
+        href = href.replace("&amp;", "&").replace("\\/", "/");
+
+        if (href.startsWith("http://") || href.startsWith("https://")) {
+            return href.replace("http://", "https://");
+        } else if (href.startsWith("/")) {
+            int firstSlash = mBaseUrl.indexOf("/", mBaseUrl.indexOf("://") + 3);
+            String domain = firstSlash == -1 ? mBaseUrl : mBaseUrl.substring(0, firstSlash);
+            return domain + href;
+        } else {
+            return mBaseUrl + href;
+        }
     }
 
     private void insertVersionContent(TagNode tagNode) {

@@ -24,19 +24,6 @@ import java.util.concurrent.Future
 
 class FabricInstallFragment : Fragment(), ModloaderDownloadListener {
 
-    private val DURBIN_SUPPORTED_GAME_VERSIONS = listOf("1.21.11")
-
-    private fun durbinOnlyGameVersions(input: Array<FabricVersion>?): List<FabricVersion> {
-        val byVersion = input.orEmpty().associateBy { it.version }
-        return DURBIN_SUPPORTED_GAME_VERSIONS.map { wanted ->
-            byVersion[wanted] ?: FabricVersion().apply {
-                version = wanted
-                stable = true
-            }
-        }
-    }
-
-
     private var mFabriclikeUtils = FabriclikeUtils.FABRIC_UTILS
     private var mExtraTag = TAG + "_proxy"
 
@@ -139,9 +126,9 @@ class FabricInstallFragment : Fragment(), ModloaderDownloadListener {
                 val versions = mFabriclikeUtils.downloadGameVersions()
                 Tools.runOnUiThread {
                     if (versions != null) {
-                        mGameVersions = durbinOnlyGameVersions(versions)
-                        if (mSelectedGameVersion == null || DURBIN_SUPPORTED_GAME_VERSIONS.none { it == mSelectedGameVersion }) {
-                            val filtered = mGameVersions.filter { DURBIN_SUPPORTED_GAME_VERSIONS.contains(it.version) && (!mOnlyStable || it.stable) }
+                        mGameVersions = versions.toList()
+                        val filtered = mGameVersions.filter { !mOnlyStable || it.stable }
+                        if (mSelectedGameVersion == null || filtered.none { it.version == mSelectedGameVersion }) {
                             mSelectedGameVersion = filtered.firstOrNull()?.version
                             if (mSelectedGameVersion != null) updateLoaderVersions()
                         }

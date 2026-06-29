@@ -124,7 +124,17 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
                                 enabled = child.child("enabled").getValue(Boolean::class.java) ?: true,
                                 order = (child.child("order").value as? Number)?.toInt() ?: 0
                             )
-                        }.sortedWith(compareByDescending<DurbinServerEntry> { it.featured }.thenBy { it.order }.thenBy { it.name.lowercase() })
+                        }
+                            .groupBy { normalizedServerKey(it) }
+                            .map { (_, duplicates) ->
+                                duplicates.sortedWith(
+                                    compareByDescending<DurbinServerEntry> { it.enabled }
+                                        .thenByDescending { it.featured }
+                                        .thenBy { it.order }
+                                        .thenBy { it.name.lowercase() }
+                                ).first()
+                            }
+                            .sortedWith(compareByDescending<DurbinServerEntry> { it.featured }.thenBy { it.order }.thenBy { it.name.lowercase() })
 
                         servers = list
                         loading = false
@@ -210,8 +220,8 @@ fun DurbinServerListOverlay(onBack: () -> Unit) {
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        contentPadding = PaddingValues(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(servers, key = { it.id }) { server ->
                             ServerCard(
@@ -249,8 +259,8 @@ private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(138.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .height(112.dp)
+            .clip(RoundedCornerShape(18.dp))
             .background(Color(0xFF101010))
             .border(
                 BorderStroke(
@@ -258,7 +268,7 @@ private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
                     if (server.featured) MaterialTheme.colorScheme.primary.copy(alpha = 0.48f)
                     else Color.White.copy(alpha = 0.14f)
                 ),
-                RoundedCornerShape(20.dp)
+                RoundedCornerShape(18.dp)
             )
     ) {
         RemoteServerBanner(
@@ -283,9 +293,9 @@ private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 18.dp, vertical = 14.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ServerLogoBox(
                 logoUrl = server.iconUrl,
@@ -294,14 +304,14 @@ private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = server.name,
                         color = Color.White,
                         fontWeight = FontWeight.Black,
-                        fontSize = 20.sp,
+                        fontSize = 18.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -332,7 +342,7 @@ private fun ServerCard(server: DurbinServerEntry, onSync: () -> Unit) {
                         text = server.motd,
                         color = Color.White.copy(alpha = 0.68f),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -397,10 +407,17 @@ private fun fetchMinecraftServerLiveStatus(
             playersMax = playersMax
         )
     }.getOrElse {
+        val cleanManualStatus = manualStatus.trim()
+        val fallbackOnline = cleanManualStatus.equals("online", ignoreCase = true)
+        val fallbackStatus = cleanManualStatus
+            .takeIf { it.isNotBlank() && !it.equals("auto", ignoreCase = true) }
+            ?.uppercase()
+            ?: "STATUS N/A"
+
         MinecraftServerLiveStatus(
             loading = false,
-            online = false,
-            statusText = "API ERROR"
+            online = fallbackOnline,
+            statusText = if (fallbackOnline) "ONLINE" else fallbackStatus
         )
     }
 }
@@ -426,6 +443,8 @@ private fun ServerStatusBadge(
     val color = when {
         loading -> MaterialTheme.colorScheme.primary
         online -> Color(0xFF35E884)
+        label.contains("STATUS N/A") || label.contains("UNKNOWN") -> Color(0xFFFFC857)
+        label.contains("MAINTENANCE") -> Color(0xFFFFC857)
         else -> Color(0xFFFF5C66)
     }
 
@@ -452,10 +471,10 @@ private fun ServerStatusBadge(
 private fun ServerLogoBox(logoUrl: String, serverName: String) {
     Box(
         modifier = Modifier
-            .size(58.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .size(52.dp)
+            .clip(RoundedCornerShape(14.dp))
             .background(Color.Black.copy(alpha = 0.42f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(16.dp)),
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(14.dp)),
         contentAlignment = Alignment.Center
     ) {
         RemoteServerLogo(
@@ -572,6 +591,17 @@ private fun ServerActionButton(
         Spacer(Modifier.width(8.dp))
         Text(text, color = Color.White, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
+}
+
+private fun normalizedServerKey(server: DurbinServerEntry): String {
+    val ipKey = server.ip
+        .trim()
+        .lowercase()
+        .removePrefix("minecraft://")
+        .removePrefix("mc://")
+        .removeSuffix("/")
+
+    return ipKey.ifBlank { server.name.trim().lowercase() }
 }
 
 private fun writeMinecraftServersDat(servers: List<DurbinServerEntry>): String {
